@@ -3,7 +3,7 @@
 **Product:** Clix Church Treasury Management System
 **Company:** Clix Digital Works
 **Type:** Commercial, multi-tenant SaaS for church financial management
-**Status:** Phase 0 — architecture established, no application code written yet
+**Status:** Phases 1–3 implemented (database/multi-tenant foundation, auth/RBAC/security, financial engine) — see [MASTER_TODO.md](MASTER_TODO.md) for exact scope. Code is written and lint-clean; live test verification against MySQL is pending local DB access.
 
 ---
 
@@ -121,7 +121,11 @@ Decisions required by the product brief before coding begins. Each will be expan
 | 13 | File storage | Cloudinary for receipts/logos/attachments; DB stores the returned URL + public ID only, never binary blobs | [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §6 |
 | 14 | Error handling | Centralized Express error-handling middleware, consistent JSON error envelope, no stack traces leaked to clients in production | [API_ARCHITECTURE.md](API_ARCHITECTURE.md) §4 |
 | 15 | API versioning | URL-prefixed, `/api/v1/...`, from day one | [API_ARCHITECTURE.md](API_ARCHITECTURE.md) §1 |
-| 16 | Database migrations | Plain numbered SQL migration files + a small custom runner (no ORM) — open for revisit, see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §Migration Strategy | Flagged as a decision to confirm with stakeholder before Phase 1 begins |
+| 16 | Database migrations | **Resolved:** plain numbered SQL migration files + a small custom runner (no ORM), confirmed with stakeholder and implemented | [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §6 |
+| 17 | Password hashing library | `bcryptjs` (pure JS), not native `bcrypt` — changed after `bcrypt` failed to install (no build tools for `node-gyp` on the dev machine) | [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §2 |
+| 18 | Multi-tenant login | Login requires `{ tenantSlug, email, password }` since `users.email` is only unique per-tenant, not globally — a decision the original brief didn't address | [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §2 |
+| 19 | Ledger transaction direction | Added a `direction` (`in`/`out`) column to `transactions`, beyond the original schema sketch — `type` alone can't disambiguate a transfer's two legs | [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §7, [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §2 |
+| 20 | Domain table sequencing | `contributors`/`contributions`/`expenses`/`pledges`/`receipts`/`budgets` deferred to their owning phases (4–8) rather than created upfront in Phase 1 — avoids empty, unused schema sitting around for several phases | [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2 |
 
 ---
 
@@ -139,11 +143,10 @@ Decisions required by the product brief before coding begins. Each will be expan
 
 ---
 
-## 8. Open Items Before Phase 1 Can Start Coding
+## 8. Open Items
 
-1. **Confirm Decision #16** (migration tooling) with stakeholder — default proposed in [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md), not yet exercised against real schema.
-2. **MySQL 8 server target** — no dev/staging instance exists yet; Phase 1 needs connection details or a local Docker/MySQL install to develop against.
-3. **Cloudinary account** — not yet provisioned; only required starting Phase 7 (Receipts), not a Phase 1 blocker.
-4. **VPS/Nginx/PM2/Cloudflare targets** — not yet provisioned; only required at Phase 12, not a blocker for earlier phases.
+1. **Live MySQL access is the current blocker.** A local `MySQL80` Windows service exists but the root password is unknown to the user; a dedicated least-privilege app user/database pair has been prepared (`server/scripts/setup-db.example.sql`) and is ready to run the moment root access is restored. Nothing in Phases 1–3 has been executed against a real database yet — see [MASTER_TODO.md](MASTER_TODO.md) for exact status.
+2. **Cloudinary account** — not yet provisioned; only required starting Phase 7 (Receipts), not a current blocker.
+3. **VPS/Nginx/PM2/Cloudflare targets** — not yet provisioned; only required at Phase 12, not a blocker for earlier phases.
 
-None of the above block Phase 1 (database + multi-tenant foundation) except item 2, which Phase 1 will resolve as its first task.
+Item 1 blocks *verifying* Phases 1–3 (running migrations/seeds/tests) but has not blocked *writing* them — all code and tests for Phases 1–3 exist and are lint-clean.

@@ -1,6 +1,6 @@
 # Security Architecture
 
-**Current state:** No code exists yet; this defines mandatory security requirements for every phase from Phase 1 onward. Nothing here is optional or "add later" — a financial product handling church funds does not get a security retrofit pass.
+**Current state:** Phases 1–2 implemented — tenant isolation, authentication, RBAC, and the security middleware stack described below all exist in `server/src/`. Verification status: written and lint-clean, tests written, but not yet run against a live database (see [MASTER_TODO.md](MASTER_TODO.md)). This document now describes the actual implementation, not just the target; §§1–3 and §9 were updated to match what was built, everything else remains the Phase 0 target for later phases.
 
 ---
 
@@ -9,44 +9,49 @@
 This is the single most important guarantee the product makes: **one church can never see another church's data.**
 
 - Every tenant-owned table carries `tenant_id` (see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §1).
-- `tenant_id` is resolved server-side from the authenticated user's JWT claim, by the `tenant-resolver` middleware ([API_ARCHITECTURE.md](API_ARCHITECTURE.md) §3), and attached to `req.tenantId`. It is **never** read from URL params, query strings, or request bodies — a request that includes a `tenantId` field in its body has that field ignored/stripped by validation, not trusted.
-- The repository layer's query-building helpers require a `tenantId` argument on every read/write against a tenant-owned table; there is no "unscoped" convenience method available to controllers/services for these tables. Code review checklist item: any new repository method touching a tenant-owned table must show a `WHERE tenant_id = ?` (or equivalent) in its SQL.
-- Tenant-isolation tests (Phase 2 onward, every module): for each endpoint, assert that User A (tenant 1) requesting a resource ID belonging to tenant 2 gets `404`, not `403` — a `403` confirms the resource exists and leaks its existence across tenants; `404` does not.
+- `tenant_id` is resolved server-side from the authenticated user's JWT claim, by `server/src/middleware/tenantContext.js`, and attached to `req.tenantId`. It reads `req.auth.tenantId` — populated only by `authenticate.js` after verifying the JWT signature — and nothing else; a request body/query/param `tenantId` field is never consulted anywhere in the codebase (confirmed by a repo-wide search as part of the Phase 1/2 self-audit — no route reads `req.body.tenantId` or equivalent).
+- `server/src/db/TenantScopedRepository.js` is the base class every tenant-owned-table repository extends. It requires a `tenantId` argument on every method and throws (`assertTenantId`) rather than silently running unscoped if it's missing — there is no unscoped convenience method available. The one deliberate, documented exception is `users.repository.js#findByIdAnyTenant`, used only by the refresh-token flow (which starts from a token record's `user_id`, not client input, and returns the tenant_id from the server-side row — never trusts a client-supplied value).
+- Tenant-isolation tests exist for every module built so far (`tests/phase1/tenantIsolation.*.test.js`, `tests/phase2/rbac.test.js`, `tests/phase3/financialEngine.test.js`), asserting cross-tenant access returns `404`, not `403` — a `403` would confirm the resource exists cross-tenant; `404` does not.
 
 ---
 
 ## 2. Authentication
 
-- Passwords hashed with **bcrypt** (cost factor 12) or **argon2id** — final pick made in Phase 2, either is acceptable, plaintext/reversible storage is not.
-- JWT access tokens: short-lived (15 min), signed with a server-held secret (`HS256` acceptable at this scale; `RS256` only if a second verifying service appears later), contain `userId`, `tenantId`, `roles` — no PII beyond what's needed for authorization checks.
-- Refresh tokens: opaque random value, stored **hashed** in `refresh_tokens` (never store the raw token server-side — same principle as passwords), delivered to the client only via `httpOnly` + `Secure` + `SameSite=Strict` cookie (never in a JS-readable response field, to limit XSS blast radius). Rotated on every use; reuse of a revoked token revokes the entire chain and should be logged as a security event.
-- Account lockout: after N (e.g. 5) failed login attempts within a window, temporarily lock the account and log the event — mitigates credential-stuffing/brute-force without the complexity of CAPTCHA infrastructure at this stage.
-- No password reset via email exists yet as a designed flow — Phase 2 must design it (token-based, single-use, time-limited) before shipping; flagged here so it isn't silently skipped.
+- **Password hashing: `bcryptjs`** (pure JS), not native `bcrypt`. Decision changed from the originally chosen native `bcrypt` after it failed to install on the dev machine (no Python/Visual Studio build tools available for `node-gyp`, and no prebuilt binary matched this Node/Windows combination). `bcryptjs` is the same algorithm with a pure-JS implementation — zero native compilation, slightly slower under heavy load, which is not a concern at this product's expected scale. Cost factor 10. This is a deviation from the Decision #16-style stakeholder pick recorded during Phase 1 setup; recorded here rather than silently changed.
+- JWT access tokens (`server/src/modules/auth/tokens.js`): 15 min TTL (`env.jwt.accessTokenTtl`), `HS256`, signed with `JWT_ACCESS_SECRET`. Payload: `sub` (userId), `tenantId`, `roles` (role names only) — no permissions embedded, no PII. `server/src/middleware/authenticate.js` verifies the signature and expiry on every request; a forged or expired token is rejected before `tenantContext` or any RBAC check runs.
+- **Authorization is never read from the JWT.** `server/src/middleware/rbac.js#requirePermission` re-queries `permissions.repository.js#listForUser` from the database on every single request. This means a permission or role change takes effect on the user's very next request, not only after their 15-minute access token expires.
+- Refresh tokens (`server/src/modules/auth/tokens.js` + `refreshTokens.repository.js`): opaque 48-byte random value, SHA-256 hashed before storage (raw value never persisted), delivered only via an `httpOnly`, `SameSite=Strict` cookie scoped to `/api/v1/auth` (`Secure` in production). Rotated on every `/auth/refresh` call; presenting an already-rotated (revoked) token triggers `refreshTokensRepository.revokeChainFrom`, killing every token descended from it and logging `auth.refresh_reuse_detected` — tested in `tests/phase2/auth.test.js`.
+- Account lockout: `env.login.maxAttempts` (default 5) failed attempts locks the account for `env.login.lockoutMinutes` (default 15), tracked on `users.failed_login_attempts`/`locked_until`. A locked account gets a distinct `423 ACCOUNT_LOCKED` response — this is the one place the API deliberately reveals more than "invalid credentials," since by that point the request has already matched a real account.
+- Both "wrong password" and "unknown email"/"unknown tenant slug" return the exact same message and `401 UNAUTHENTICATED` code, so a login attempt cannot be used to enumerate valid accounts (`tests/phase2/auth.test.js`).
+- Password reset is implemented (`POST /auth/password-reset/request`, `POST /auth/password-reset/confirm`): a hashed, single-use, 30-minute token (`password_reset_tokens` table). No email delivery exists yet — outside production, the request endpoint returns the raw token directly in the response (`devToken`) so the flow can be exercised end-to-end without an email provider; in production it never does. Completing a reset revokes every refresh token the user holds, forcing re-login on all devices.
+- **Multi-tenant login disambiguation (a decision the Phase 0 design didn't address):** since `users.email` is only unique per-tenant, not globally, login requires `{ tenantSlug, email, password }` — a plain email/password login would be ambiguous across tenants. This is documented here since it wasn't an explicit Phase 0 decision.
 
 ---
 
 ## 3. Authorization (RBAC)
 
-- Permissions are fine-grained action strings (`expense.approve`, `period.close`, `report.export`, `user.invite`, ...) — not just role names — so a tenant can eventually customize a role's permission set without a schema change.
-- Every route declares its required permission(s) explicitly; the `rbac` middleware checks `req.user`'s effective permissions (via their role(s)) before the controller runs. No controller performs its own ad-hoc "is this user allowed" check as the *sole* gate — that logic belongs in the shared middleware so it can't be forgotten on a new route.
-- Segregation of duties is a product requirement, not just a nice-to-have: the user who *requests* an expense should not, by default, be the same user whose approval satisfies the approval chain for that expense (self-approval should be blocked at the service layer for the approval action, independent of role permissions).
+- 31 fine-grained permissions seeded (`server/src/db/seeds/permissionCatalog.js`) — e.g. `expense.approve`, `financial_period.close`, `financial_period.reopen` (deliberately separate from `.close`, matching [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §5), `users.manage`, `roles.manage`, `audit.view`. Not just role names, so a tenant can eventually get custom roles without a schema change (`roles.tenant_id` is already nullable for exactly this).
+- Six system-default roles seeded, shared by every tenant: **Super Administrator** (all permissions), **Treasurer**, **Assistant Treasurer**, **Approver**, **Auditor**, **Viewer** — the mapping is in `permissionCatalog.js` and is a Phase 1/2 judgment call (not literally specified in the brief) balancing segregation of duties: Approver gets `expense.approve`/`expense.reject` but not `expense.create`; Auditor gets broad read access plus `audit.view` but no write permissions at all; Viewer gets only `.view` permissions.
+- Every protected route declares its required permission via `requirePermission(name)` (`server/src/middleware/rbac.js`), mounted in the route file itself (e.g. `accounts.routes.js`) — never as an ad-hoc check buried in a controller. A request that clears authentication and tenant-context but lacks the permission gets `403 FORBIDDEN`.
+- Self-management protection implemented now, ahead of the approval workflow that will need the fuller version in Phase 5: `users.service.js#disableUser` blocks a user from disabling their own account (`tests/phase2/rbac.test.js`). The expense-approval-specific segregation of duties (requester ≠ approver) is deferred to Phase 5, where an actual expense/approval record exists to enforce it against.
 
 ---
 
 ## 4. Transport & Headers
 
-- TLS via Let's Encrypt at the Nginx layer (Phase 12) — no plaintext HTTP in production, HTTP→HTTPS redirect enforced.
-- `helmet()` for standard secure headers (HSTS, `X-Content-Type-Options`, `X-Frame-Options`, etc.).
-- CORS: explicit origin allowlist (the production frontend domain + local dev origin), not `*`, especially since credentials (cookies) are involved in the refresh-token flow.
-- Content-Security-Policy: restrict script/style sources; since the frontend is pure CSS/React with no inline-script patterns needed, a fairly strict CSP is achievable — define it in Phase 10 alongside frontend build finalization.
+- TLS via Let's Encrypt at the Nginx layer — still Phase 12, not yet applicable to local dev.
+- `helmet()` applied in `server/src/app.js` — default header set (HSTS, `X-Content-Type-Options: nosniff`, `X-Powered-By` removed, etc.), verified in `tests/phase2/security.test.js`.
+- CORS (`cors` package): explicit allowlist from `CORS_ORIGINS` (`server/src/config/env.js`), `credentials: true` (required since the refresh-token cookie must be sent cross-origin from the dev frontend at `localhost:5173`). A disallowed origin gets no `Access-Control-Allow-Origin` header at all, rather than an error — tested explicitly.
+- CSP: still Phase 10, not yet implemented.
 
 ---
 
 ## 5. Input Validation & Rate Limiting
 
-- Every request body/query/param schema-validated at the middleware layer ([API_ARCHITECTURE.md](API_ARCHITECTURE.md) §3, step 9) before reaching a controller. Reject unknown fields rather than silently ignoring them (prevents mass-assignment-style surprises, e.g. a client sneaking a `status: "posted"` into a create-expense payload).
-- Parameterized queries only, everywhere — no string-concatenated SQL, no exceptions. This is the SQL-injection control; it is a straight-line rule, not a judgment call.
-- Rate limiting: login/auth endpoints get a tight limit (e.g. 5–10/min per IP) to blunt credential stuffing; general API endpoints get a looser but present limit (e.g. 100–300/min per authenticated user) to blunt abuse/scraping.
+- Hand-rolled validators per module (`*.validator.js`, e.g. `accounts.validator.js`, `auth.validator.js`) reject unknown/malformed fields before the controller runs — no external validation library was introduced (`express-validator`/`zod` considered in Phase 0, but the hand-rolled pattern established in Phase 1 for `accounts`/`funds` was extended consistently rather than mixing two approaches). Confirmed by test: an invite payload with an injected `status: "active"` or `role: "Super Administrator"` field is silently ignored — the created row uses only the fields the validator explicitly extracts (`tests/phase2/security.test.js`).
+- Parameterized queries only, everywhere (`mysql2`'s `?` placeholders) — confirmed by repo-wide grep as part of the Phase 1–3 self-audit; no string-concatenated SQL exists.
+- Rate limiting (`express-rate-limit`, `server/src/middleware/rateLimit.js`): `/auth/*` limited to 10 req/min per IP; all other API routes to 300 req/min. Both are skipped when `NODE_ENV=test` so the test suite isn't rate-limited by its own volume of requests — this is a deliberate test-only bypass, not a production behavior.
+- Malformed/oversized request bodies (bad JSON, >1MB) are caught by Express's body-parser and now correctly surfaced as `400`/`413` by `errorHandler.js`, not a generic `500` — this was a real gap the security test suite caught (the error handler originally only special-cased `AppError` instances) and was fixed as part of Phase 2.
 
 ---
 
@@ -60,9 +65,10 @@ This is the single most important guarantee the product makes: **one church can 
 
 ## 7. Audit Logging
 
-- `audit_logs` (see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2) is written by a shared service-layer hook, not scattered `INSERT`s copy-pasted per controller — new financial/security-relevant actions must register with this hook, not invent their own logging.
-- Minimum events logged: login success/failure, permission changes, expense approval/rejection, transfer creation, period close/reopen, any reversal/adjustment, settings changes.
-- Audit logs are append-only at the application layer (no `PATCH`/`DELETE` route exists for them) and excluded from any bulk-delete/cleanup tooling.
+- `server/src/modules/audit/auditLog.service.js#recordAuditLog` is the single write path — confirmed by the Phase 1–3 self-audit that nothing else inserts into `audit_logs` directly.
+- Currently logged: `tenant.registered`, `auth.login_success`, `auth.login_failed`, `auth.refresh_reuse_detected`, `auth.logout`, `auth.password_reset_requested`, `auth.password_reset_completed`, `user.invited`, `user.role_assigned`, `user.role_removed`, `user.disabled`, `transaction.reversed`, `transaction.adjustment_created`, `financial_period.closed`, `financial_period.reopened`. Never logs a raw password or raw token — verified by test (`tests/phase2/security.test.js`), since `before_state`/`after_state` payloads only ever carry IDs/names/reasons.
+- Append-only: no `PATCH`/`DELETE` route exists for `audit_logs` anywhere in the codebase.
+- `GET /api/v1/audit-logs` (permission: `audit.view`) is the first read surface; a full filterable audit UI is Phase 11 scope.
 
 ---
 
@@ -83,9 +89,10 @@ This is the single most important guarantee the product makes: **one church can 
 
 ---
 
-## 9. What Later Phases Must Deliver Against This Document
+## 9. Status Against This Document
 
-- Phase 2: auth, RBAC middleware, rate limiting, secure headers — as foundational infrastructure, before Phase 3+ domain work begins.
-- Every phase 3–9: tenant-isolation tests per new module (§1).
-- Phase 11: full OWASP-mapped hardening pass, dependency audit, audit-log completeness review.
-- Phase 12: TLS, CSP finalization, production secrets management, backup/incident-response runbook.
+- **Phase 2 delivered:** auth, RBAC middleware, rate limiting, secure headers, audit logging — all implemented as described above. `npm audit` on the server package reports 0 vulnerabilities as of this writing.
+- **Phase 3:** the financial engine (`server/src/modules/financial/`) enforces tenant isolation on every account/fund/category/period reference before posting a ledger row (`financialEngine.service.js`'s `assertAccountUsable`/`assertFundUsable`/`assertCategoryUsable`/`assertPeriodOpenAndOwned`), and has its own tenant-isolation tests (`tests/phase3/financialEngine.test.js`). It does not yet have HTTP routes/permission gates of its own — no income/expense endpoints exist yet — so "unauthorized users cannot perform financial operations" is proven at the RBAC layer (Phase 2 tests) and will be proven again end-to-end once Phase 4/5 build real routes on top of this engine.
+- **Not yet verified:** none of the above has been run against a live MySQL instance — see [MASTER_TODO.md](MASTER_TODO.md) for the current blocker. Everything above describes the code as written, not a passing test run.
+- Phase 11: full OWASP-mapped hardening pass, dependency audit, audit-log completeness review — still pending, unchanged from the Phase 0 plan.
+- Phase 12: TLS, CSP finalization, production secrets management, backup/incident-response runbook — still pending, unchanged from the Phase 0 plan.

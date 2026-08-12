@@ -4,6 +4,8 @@ Governing execution plan, Phase 0 through Phase 12. Cross-references: [PROJECT_A
 
 Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md) §8) — never batch-checked at phase end.
 
+**Overall status:** Phases 0–3 have code/tests written; Phases 1–3 are blocked on live verification pending local MySQL root access (a password reset is in progress outside this session — see [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) §8). No phase past 3 has been started. `npm run lint` is clean on both `server/` and the frontend; `npm audit` reports 0 vulnerabilities on both.
+
 ---
 
 ## PHASE 0 — Codebase / Architecture Initialization
@@ -36,30 +38,34 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Objectives:** Stand up MySQL 8, implement the full target schema, prove tenant isolation at the data layer.
 
+**Status: code complete, live verification pending.** MySQL 8 (`MySQL80` Windows service) is installed and reachable on port 3306, but the app's dedicated database user has not been created yet — the root password is unknown to the user and is being reset outside this session (see [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) §8). Every item below marked `[x]` is written, lint-clean code; items are only checked once the described behavior has actually been observed to work. **None of the database/testing checkboxes below are checked yet for that reason**, per this phase's own strict completion rule — "do not mark complete merely because migrations were created."
+
 **Database work:**
-- [ ] Provision a MySQL 8 instance for local development (Docker or native install)
-- [ ] Build the migration runner ([DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §5)
-- [ ] Write migrations for all core tables in FK-safe order: `tenants`, `church_settings`, `users`, `roles`, `permissions`, `role_permissions`, `user_roles`, `refresh_tokens`, `accounts`, `funds`, `categories`, `transactions`, `contributors`, `contributions`, `expenses`, `expense_approvals`, `transfers`, `pledges`, `receipts`, `financial_periods`, `budgets`, `audit_logs`
-- [ ] Apply indexing plan ([DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §4)
-- [ ] Seed data: default permissions, default system roles, one dev tenant + admin user
-- [ ] Update [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) with finalized DDL detail
+- [x] MySQL 8 instance available (native Windows service; not Docker) — connectivity confirmed (`Test-NetConnection` succeeded on port 3306); app-user credentials not yet provisioned
+- [x] Build the migration runner (`server/src/db/migrate.js` — up/down, `schema_migrations` tracking, per-migration transactions)
+- [x] Write migrations for the foundation tables in FK-safe order: `tenants`, `church_settings`, `system_settings`, `permissions`, `users`, `roles`, `role_permissions`, `user_roles`, `refresh_tokens`, `accounts`, `funds`, `categories`, `financial_periods`, `transactions`, `audit_logs` (17 migration files, `0001`–`0017`) — **scope note:** `contributors`/`contributions`/`expenses`/`expense_approvals`/`transfers`/`pledges`/`receipts`/`budgets` were deliberately deferred to Phases 4–8 rather than created here; see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2 for why
+- [x] Apply indexing plan (composite indexes on every hot filter path — see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §5)
+- [x] Seed scripts written: `permissionCatalog.js` (31 permissions, 6 system roles), `seedRbacCatalog.js` (idempotent), `seedDevTenant.js` (dev-only tenant + admin)
+- [x] [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) updated with the finalized DDL (this was done as part of this phase, ahead of the checklist item below)
+- [ ] **Migrations actually run against a live database** — blocked on DB access
 
 **Backend work:**
-- [ ] `server/` package initialized, `mysql2` connection pool, config loading from `.env`
-- [ ] Base repository helper enforcing `tenant_id` scoping (per [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §1)
+- [x] `server/` package initialized (`package.json`, ESM, `mysql2` pool with `decimalNumbers: false`/`dateStrings: true`, config loader with fail-fast required-env validation)
+- [x] Base repository helper enforcing `tenant_id` scoping: `TenantScopedRepository` (`server/src/db/TenantScopedRepository.js`) — every method requires `tenantId`, throws via `assertTenantId` if missing, no unscoped convenience method exists
+- [x] Tenant/user/role/permission/account/fund/category repositories built on this pattern
 
-**Frontend work:** None this phase.
+**Frontend work:** None this phase (as planned).
 
 **Security work:**
-- [ ] `.env.example` created and kept current
-- [ ] Confirm no tenant-owned repository method can execute unscoped (code review checklist item established)
+- [x] `.env.example` created and kept current (also `server/scripts/setup-db.example.sql` as a committed template, since the real `setup-db.sql` contains a generated credential and is gitignored)
+- [x] Confirmed no tenant-owned repository method can execute unscoped — repo-wide grep audit found exactly one documented exception (`users.repository.js#findByIdAnyTenant`, used only by the refresh-token flow, tenant_id sourced server-side never from client input)
+- [x] Confirmed no route/service reads `tenantId`/`tenant_id` from `req.body`/`req.params`/`req.query` anywhere (repo-wide grep, zero matches)
 
 **Testing:**
-- [ ] Migration runner applies cleanly from empty DB and is idempotent (re-run = no-op)
-- [ ] Seed script produces a working dev tenant
-- [ ] Tenant-isolation test at the repository layer: querying tenant A's connection for tenant B's row returns nothing
+- [x] Tests written (`server/tests/phase1/`): `migrations.test.js`, `tenantIsolation.repository.test.js`, `tenantIsolation.http.test.js`, `foreignKeys.test.js`, `tenantService.test.js`, `seed.test.js` — cover migration idempotency, cross-tenant repository/HTTP access (asserting 404 not 403), missing-tenant-context rejection, FK/unique-constraint enforcement, RBAC catalog seeding
+- [ ] Tests actually executed against a live database — blocked on DB access
 
-**Acceptance criteria:** Fresh MySQL instance + `npm run migrate` (or equivalent) produces the complete schema with no manual steps; seed data present; base repository scoping helper exists and is used, not bypassed.
+**Acceptance criteria:** Not yet met — acceptance requires a live run, which is blocked. Once unblocked: `npm run migrate` against the fresh `clix_treasury_dev`/`clix_treasury_test` databases, `npm test`, both green, is what closes this phase out.
 **Dependencies:** Phase 0.
 
 ---
@@ -68,36 +74,35 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Objectives:** Working authentication, session/refresh flow, RBAC enforcement, and the security middleware stack — as reusable infrastructure every later phase builds on.
 
-**Database work:** None beyond what Phase 1 already created (`users`, `roles`, `permissions`, `role_permissions`, `user_roles`, `refresh_tokens`).
+**Status: code complete, live verification pending** — same blocker as Phase 1 (no live database yet). All backend/security work below is real, lint-clean code with tests written against it; nothing has been executed against MySQL yet.
+
+**Database work:** `failed_login_attempts`/`locked_until` added to `users` (`0016`), `password_reset_tokens` table added (`0017`) — beyond what Phase 1 originally created, discovered as genuinely needed while building lockout/reset.
 
 **Backend work:**
-- [ ] Tenant provisioning: church registration endpoint (creates `tenants` + `church_settings` row + first admin `user` in one transaction) — this is the entry point every church onboards through, so it belongs in this phase alongside auth, not deferred to deployment
-- [ ] `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` ([API_ARCHITECTURE.md](API_ARCHITECTURE.md) §6)
-- [ ] Password hashing (bcrypt or argon2id — finalize choice)
-- [ ] JWT access token issuance + verification middleware
-- [ ] Refresh token rotation + reuse detection
-- [ ] `tenant-resolver` middleware
-- [ ] `rbac` middleware (permission-per-route enforcement)
-- [ ] `helmet()`, CORS allowlist, rate limiter, centralized error handler, validation middleware ([API_ARCHITECTURE.md](API_ARCHITECTURE.md) §3)
-- [ ] Audit log service (the shared hook every later module writes through, per [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §7) — built here, before any phase has an event worth logging, so no module reinvents its own logging path
-- [ ] User management endpoints: invite user, assign role, disable user
-- [ ] Password reset flow (token-based, single-use, time-limited) — design + implement (flagged as not yet designed in [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §2)
-- [ ] Account lockout after repeated failed logins
+- [x] Tenant provisioning: `POST /auth/register-tenant` — creates `tenants` + `church_settings` + first admin `user` (status `active`, role `Super Administrator`) in one DB transaction (`auth.service.js#registerTenant`)
+- [x] `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` ([API_ARCHITECTURE.md](API_ARCHITECTURE.md) §6) — plus `POST /auth/password-reset/request` and `/confirm`, which the original plan listed as a design gap to close in this phase
+- [x] Password hashing — **`bcryptjs`**, not native `bcrypt` (native failed to install; see [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) Decision #17)
+- [x] JWT access token issuance + verification middleware (`tokens.js`, `authenticate.js`) — 15 min TTL, `HS256`
+- [x] Refresh token rotation + reuse detection (`refreshTokens.repository.js#revokeChainFrom`) — presenting a revoked token kills its entire descendant chain
+- [x] Tenant context middleware (`tenantContext.js`, built in Phase 1, wired into the real auth chain here)
+- [x] `rbac` middleware (`rbac.js#requirePermission`) — re-derives permissions from the DB on every request, never trusts the JWT for authorization
+- [x] `helmet()`, CORS allowlist (`cors` package, credentialed), rate limiter (`express-rate-limit`, 10/min on `/auth/*`, 300/min general, skipped in test env), centralized error handler (fixed to correctly surface body-parser 400/413s instead of collapsing them to 500 — a real gap the security test suite caught)
+- [x] Audit log service (`auditLog.service.js#recordAuditLog`) — single write path, confirmed by grep audit
+- [x] User management endpoints: `POST /users` (invite), `POST /users/:id/roles` (assign), `DELETE /users/:id/roles/:roleId` (remove), `POST /users/:id/disable`
+- [x] Password reset flow — hashed, single-use, 30-minute token; doubles as "accept invite"; completing a reset revokes every refresh token the user holds
+- [x] Account lockout — `maxAttempts`/`lockoutMinutes` configurable via env, distinct `423 ACCOUNT_LOCKED` response
 
-**Frontend work:**
-- [ ] Login screen, session handling (access token in memory, refresh via cookie), protected route wrapper
-- [ ] `react-router-dom` introduced here
+**Frontend work:** Not started — deferred to Phase 10 per the original plan (this phase is backend-first, matching Phase 1/3's approach). `react-router-dom` is not yet a dependency.
 
 **Security work:**
-- [ ] Full §1–§5 of [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) implemented (isolation, authN, authZ, transport headers, validation/rate limiting)
-- [ ] Self-approval segregation-of-duties rule scaffolded (enforced fully once Phase 5 approvals exist)
+- [x] §§1–5 of [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) implemented as described (isolation, authN, authZ, transport headers, validation/rate limiting) — doc updated in the same pass to describe the actual implementation
+- [x] Self-management protection: a user cannot disable their own account (service-layer check, tested) — full requester≠approver segregation of duties is correctly deferred to Phase 5 where an actual expense/approval record will exist
 
 **Testing:**
-- [ ] Login success/failure, lockout trigger, refresh rotation, reuse-detection
-- [ ] RBAC: user without permission X gets 403 on route requiring X
-- [ ] Tenant isolation at the API layer (not just repository layer): cross-tenant 404s
+- [x] Tests written (`server/tests/phase2/`): `auth.test.js` (registration, login incl. generic-error/lockout/enumeration-resistance, refresh rotation + reuse detection, logout, expired/forged-token rejection, password reset end-to-end), `rbac.test.js` (permission matrix across all 6 roles, privilege-escalation-blocked, disabled-user session revocation, cross-tenant role isolation), `security.test.js` (secure headers, CORS allowlist behavior, malformed/oversized bodies, no password-hash leakage, mass-assignment resistance, audit log never contains raw credentials)
+- [ ] Tests actually executed against a live database — blocked on DB access
 
-**Acceptance criteria:** A user can register/be invited, log in, stay authenticated across refresh, get 401/403 correctly, and no route is reachable without passing through the full middleware stack.
+**Acceptance criteria:** Not yet met pending live verification. Once unblocked: `npm test` green is what closes this phase — the scenarios it needs to prove (login/refresh/RBAC/security) are all written.
 **Dependencies:** Phase 1.
 
 ---
@@ -106,28 +111,31 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Objectives:** Build the ledger and posting/balance/reversal engine every financial module depends on — this phase is pure infrastructure, no user-facing domain feature yet, but it is the most important phase in the product.
 
-**Database work:** `transactions` table finalized (already created in Phase 1); confirm indexing under realistic query patterns.
+**Status: code complete, live verification pending** — same blocker as Phases 1–2.
+
+**Database work:** `transactions` table as built in Phase 1, plus a `direction` (`in`/`out`) column added beyond the original design — `type` alone can't disambiguate a transfer's two legs (see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §7).
 
 **Backend work:**
-- [ ] Posting service: the single function that writes a `transactions` row, used by every future domain module — no module writes to `transactions` directly
-- [ ] Balance calculation service (derive from ledger, per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §2)
-- [ ] Reversal service — `type = 'reversal'`, linked via `reversed_by_transaction_id` (§4)
-- [ ] Adjustment service — `type = 'adjustment'`, distinct from reversal (reconciliation differences, not error corrections), per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §4
-- [ ] Period-scoping enforcement (reject posting against a closed period — full close/reopen workflow lands in Phase 8, but the *enforcement check* belongs here since every poster depends on it)
-- [ ] Fund + account balance query services
+- [x] Posting primitive (`financialEngine.service.js`'s private `insertLedgerRow`) — the only function in the codebase that inserts into `transactions`; every public function (`recordSimpleTransaction`, `transfer`, `reverseTransaction`, `createAdjustment`) funnels through it
+- [x] Balance calculation service — `getAccountBalance`/`getFundBalance`/`getTotalBalance`, all backed by one SQL `SUM` query (`transactions.repository.js#sumSigned`) computed by MySQL over `DECIMAL`, never coerced through a JS float
+- [x] Transfer service — two linked, equal-and-opposite rows in one DB transaction; total-money-conserved is a structural consequence, not a separate check
+- [x] Reversal service — `type = 'reversal'`, linked via `reversed_by_transaction_id`; posts against the *current open* period even if the original's period has since closed; blocks double-reversal
+- [x] Adjustment service — `type = 'adjustment'`, distinct from reversal, requires a non-empty reason
+- [x] Period-scoping enforcement (`financialPeriods.service.js#assertPeriodOpenAndOwned`) — runs before every single ledger insert with no exception, rejects with `409 PERIOD_LOCKED`
+- [x] Fund + account balance query services, plus `getIncomeTotals`/`getExpenseTotals`/`getTransactionHistory` as the reporting-foundation methods Phase 9 will build on
+- [x] Duplicate-transaction-number prevention — unique DB constraint + generation retry loop (`transactionNumber.js`), not just "unlikely by randomness"
+- [x] Money-as-decimal-string end to end — API rejects a JSON number for `amount`, only accepts a validated decimal string (`money.js`)
 
-**Frontend work:** None — no UI consumes this yet.
+**Frontend work:** None — no UI consumes this yet (as planned; no income/expense HTTP routes exist yet either, since those are Phase 4/5).
 
-**Security work:** Posting/reversal actions require explicit permissions; no direct-edit endpoint for posted transactions exists (by omission, per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §4).
+**Security work:** Every account/fund/category/period reference is validated as active and tenant-owned before a row posts (`assertAccountUsable`/`assertFundUsable`/`assertCategoryUsable`/`assertPeriodOpenAndOwned`) — cross-tenant references rejected with `VALIDATION_ERROR`, cross-tenant reversal attempts with `NOT_FOUND`. No direct-edit endpoint for posted transactions exists anywhere in the codebase (confirmed, not just planned).
 
 **Testing:**
-- [ ] Balance = sum of posted ledger rows, verified against hand-computed fixtures
-- [ ] Reversal nets to zero, original row untouched
-- [ ] Posting against a closed period is rejected
-- [ ] Concurrent posting doesn't produce a race (transaction-level DB locking / `SELECT ... FOR UPDATE` where needed)
+- [x] Tests written (`server/tests/phase3/financialEngine.test.js`, `concurrency.test.js`): opening balance, income/expense/multi-transaction balance correctness (cross-checked against an independent manual sum), transfer decreases-source/increases-destination/preserves-total/never-posts-as-income-or-expense/rejects-no-op/rolls-back-both-legs-on-failure, reversal exactly cancels effect/preserves original row/blocks double-reversal/posts-to-current-period-after-original-closes, adjustment posts and requires a reason, closed-period rejection, invalid-amount rejection (negative/zero/JS-number/too-many-decimals), inactive-account rejection, cross-tenant rejection (posting and reversing), duplicate-transaction-number DB-level rejection, 50-concurrent-postings integrity check, concurrent-transfer total-preservation check
+- [ ] Tests actually executed against a live database — blocked on DB access
 
-**Acceptance criteria:** Financial Engine has no consumers yet but is fully tested in isolation; every rule in [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §1–§5 has a corresponding passing test.
-**Dependencies:** Phase 1, Phase 2 (for permission-gated actions).
+**Acceptance criteria:** Not yet met pending live verification. The engine has no consumers yet by design (Phase 4+ builds on it) but every rule in [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §§1–5 has a corresponding test already written, awaiting a database to run against.
+**Dependencies:** Phase 1, Phase 2 (for permission-gated actions — though Phase 3 itself exposes no HTTP routes yet, so this dependency is currently theoretical; it becomes real once Phase 4/5 add income/expense endpoints on top of this engine).
 
 ---
 
@@ -140,7 +148,7 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 **Backend work:**
 - [ ] Contributor CRUD
 - [ ] Contribution recording → posts via Phase 3 posting service
-- [ ] Category management (`categories` table, both `income` and `expense` types — expense categories are used by Phase 5, but the CRUD is shared and built once here)
+- [ ] Category management HTTP routes (`categories.repository.js` already exists from Phase 1 as a tenant-scoped repository, following the same pattern as `accounts`/`funds` — this phase just needs to add `categories.controller.js`/`.routes.js`/`.validator.js` on top of it, both `income` and `expense` types)
 - [ ] Contribution listing/filtering (by contributor, fund, date range, method)
 
 **Frontend work:**
@@ -187,11 +195,12 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Objectives:** Manage accounts/funds as first-class entities; move money between them correctly.
 
-**Database work:** `accounts`, `funds`, `transfers` (already created Phase 1).
+**Database work:** `accounts`, `funds` (created Phase 1). No separate `transfers` table — a transfer is two linked `transactions` rows (Decision, see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2).
 
 **Backend work:**
-- [ ] Account/fund CRUD (create, rename, deactivate — never hard-delete once referenced by a transaction)
-- [ ] Transfer endpoint: posts two linked ledger rows (debit source, credit destination) via Phase 3 engine
+- [x] Account/fund CRUD — already built in Phase 1 (`accounts.controller.js`/`.routes.js`/`.service.js`/`.validator.js`, same for `funds`), permission-gated (`accounts.view`/`accounts.manage`, `funds.view`/`funds.manage`) ahead of this phase, since Phase 1 needed working tenant-scoped HTTP resources to prove the isolation pattern end-to-end. Only "rename"/"deactivate" as distinct UX flows (vs. the generic update already possible) remain for this phase.
+- [x] Transfer logic — `financialEngine.service.js#transfer` built in Phase 3, posts two linked ledger rows atomically, tested
+- [ ] `POST /api/v1/transfers` HTTP endpoint — the *service* exists and is tested directly; no route/controller/permission-gate wraps it in HTTP yet, which is this phase's remaining work
 
 **Frontend work:**
 - [ ] Account/fund management screens
