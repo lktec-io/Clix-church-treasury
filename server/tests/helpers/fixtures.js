@@ -7,6 +7,7 @@ import { rolesRepository } from '../../src/modules/roles/roles.repository.js';
 import { seedRbacCatalog } from '../../src/db/seeds/seedRbacCatalog.js';
 import { categoriesRepository } from '../../src/modules/categories/categories.repository.js';
 import { financialPeriodsRepository } from '../../src/modules/financial/financialPeriods.repository.js';
+import { contributorsRepository } from '../../src/modules/contributors/contributors.repository.js';
 import { pool } from '../../src/config/db.js';
 
 let counter = 0;
@@ -66,6 +67,13 @@ export async function createTestOpenPeriod(tenantId, overrides = {}) {
     label: uniqueName('Period'),
     startDate: '2026-01-01',
     endDate: '2026-12-31',
+    ...overrides,
+  });
+}
+
+export async function createTestContributor(tenantId, overrides = {}) {
+  return contributorsRepository.create(tenantId, {
+    fullName: uniqueName('Contributor'),
     ...overrides,
   });
 }

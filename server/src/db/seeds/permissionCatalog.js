@@ -6,8 +6,10 @@ export const PERMISSIONS = [
   ['dashboard.view', 'View the dashboard'],
   ['income.view', 'View income/contribution records'],
   ['income.create', 'Record income/contributions'],
-  ['income.update', 'Edit a draft income record before posting'],
+  ['income.update', 'Edit a posted contribution\'s non-financial detail (notes, reference, contributor link) — never its amount/account/fund/category, which are immutable once posted; use income.reverse for financial corrections'],
   ['income.reverse', 'Reverse a posted income transaction'],
+  ['contributors.view', 'View the contributor/donor directory (name, phone, email) — separate from income.view so financial amounts can be visible without exposing donor identity'],
+  ['contributors.manage', 'Create/edit contributor records'],
   ['expense.view', 'View expense records'],
   ['expense.create', 'Create expense requests'],
   ['expense.update', 'Edit a draft expense before submission'],
@@ -44,6 +46,7 @@ export const SYSTEM_ROLES = {
   'Treasurer': [
     'dashboard.view',
     'income.view', 'income.create', 'income.update', 'income.reverse',
+    'contributors.view', 'contributors.manage',
     'expense.view', 'expense.create', 'expense.update', 'expense.submit', 'expense.pay',
     'accounts.view', 'accounts.manage',
     'funds.view', 'funds.manage',
@@ -58,6 +61,7 @@ export const SYSTEM_ROLES = {
   'Assistant Treasurer': [
     'dashboard.view',
     'income.view', 'income.create',
+    'contributors.view',
     'expense.view', 'expense.create', 'expense.submit',
     'accounts.view',
     'funds.view',

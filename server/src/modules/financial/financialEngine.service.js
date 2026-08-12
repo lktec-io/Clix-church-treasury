@@ -46,7 +46,14 @@ async function assertCategoryUsable(tenantId, categoryId, connection) {
 // (docs/FINANCIAL_ARCHITECTURE.md §1, §6). Always runs inside the caller's
 // transaction — never opens its own, so multi-row postings (transfer,
 // reversal) stay atomic.
-async function insertLedgerRow(connection, tenantId, entry) {
+//
+// Exported (Phase 4+) so a domain module (e.g. contributions.service.js) can
+// open its own withTransaction, insert its domain row AND post the ledger
+// entry in the same atomic unit, then link the two — the same composition
+// pattern tenants.service.js's createTenantWithConnection established in
+// Phase 1/2. recordSimpleTransaction() below remains the convenience
+// wrapper for callers with no domain row of their own to link.
+export async function postLedgerEntry(connection, tenantId, entry) {
   if (!POSTABLE_TYPES.includes(entry.type)) {
     throw validationError('Invalid transaction type', { type: `must be one of: ${POSTABLE_TYPES.join(', ')}` });
   }
@@ -107,7 +114,7 @@ export async function recordSimpleTransaction(tenantId, entry) {
   if (entry.type !== 'income' && entry.type !== 'expense') {
     throw validationError('Invalid type', { type: 'recordSimpleTransaction only accepts income or expense' });
   }
-  return withTransaction((connection) => insertLedgerRow(connection, tenantId, { ...entry, direction }));
+  return withTransaction((connection) => postLedgerEntry(connection, tenantId, { ...entry, direction }));
 }
 
 // A transfer never appears as ordinary income/expense (type='transfer' on
@@ -127,7 +134,7 @@ export async function transfer(tenantId, {
     const periodId = financialPeriodId ?? (await getOpenPeriod(tenantId, connection))?.id;
     if (!periodId) throw notFound('No open financial period to post the transfer against');
 
-    const outLeg = await insertLedgerRow(connection, tenantId, {
+    const outLeg = await postLedgerEntry(connection, tenantId, {
       type: 'transfer',
       direction: 'out',
       accountId: fromAccountId,
@@ -139,7 +146,7 @@ export async function transfer(tenantId, {
       createdByUserId,
     });
 
-    const inLeg = await insertLedgerRow(connection, tenantId, {
+    const inLeg = await postLedgerEntry(connection, tenantId, {
       type: 'transfer',
       direction: 'in',
       accountId: toAccountId,
@@ -181,7 +188,7 @@ export async function reverseTransaction(tenantId, originalTransactionId, { reas
     const openPeriod = await getOpenPeriod(tenantId, connection);
     if (!openPeriod) throw notFound('No open financial period to post the reversal against');
 
-    const reversal = await insertLedgerRow(connection, tenantId, {
+    const reversal = await postLedgerEntry(connection, tenantId, {
       type: 'reversal',
       direction: original.direction === 'in' ? 'out' : 'in',
       accountId: original.account_id,
@@ -231,7 +238,7 @@ export async function createAdjustment(tenantId, {
     const periodId = financialPeriodId ?? (await getOpenPeriod(tenantId, connection))?.id;
     if (!periodId) throw notFound('No open financial period to post the adjustment against');
 
-    const adjustment = await insertLedgerRow(connection, tenantId, {
+    const adjustment = await postLedgerEntry(connection, tenantId, {
       type: 'adjustment',
       direction,
       accountId,

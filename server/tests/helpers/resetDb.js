@@ -3,6 +3,9 @@ import { pool } from '../../src/config/db.js';
 // Reverse of FK dependency order — see docs/DATABASE_ARCHITECTURE.md §3.
 const TABLES_IN_DELETE_ORDER = [
   'audit_logs',
+  'contributions',
+  'contributors',
+  'expenses',
   'transactions',
   'financial_periods',
   'categories',
