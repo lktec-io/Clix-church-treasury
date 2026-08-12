@@ -32,15 +32,20 @@ class TransactionsRepository extends TenantScopedRepository {
       conditions.push('financial_period_id = ?');
       params.push(financialPeriodId);
     }
+    // CAST(...AS DECIMAL(14,2)) rather than a bare COALESCE(..., 0) fallback
+    // — with no matching rows, SUM() is NULL and the integer literal 0
+    // COALESCE falls back to is not guaranteed to carry the same 2-decimal
+    // formatting as a real DECIMAL(14,2) SUM result. The CAST makes the
+    // empty-result and has-results cases format identically, always "X.XX".
     const [rows] = await this.runner(connection).query(
-      `SELECT COALESCE(SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END), 0) AS balance
+      `SELECT CAST(COALESCE(SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END), 0) AS DECIMAL(14,2)) AS balance
        FROM transactions WHERE ${conditions.join(' AND ')}`,
       params
     );
     return rows[0].balance;
   }
 
-  async sumByType(tenantId, type, { financialPeriodId, fundId, connection } = {}) {
+  async sumByType(tenantId, type, { financialPeriodId, fundId, categoryId, connection } = {}) {
     assertTenantId(tenantId);
     const conditions = ['tenant_id = ?', "status = 'posted'", 'type = ?'];
     const params = [tenantId, type];
@@ -52,8 +57,12 @@ class TransactionsRepository extends TenantScopedRepository {
       conditions.push('fund_id = ?');
       params.push(fundId);
     }
+    if (categoryId !== undefined) {
+      conditions.push('category_id = ?');
+      params.push(categoryId);
+    }
     const [rows] = await this.runner(connection).query(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE ${conditions.join(' AND ')}`,
+      `SELECT CAST(COALESCE(SUM(amount), 0) AS DECIMAL(14,2)) AS total FROM transactions WHERE ${conditions.join(' AND ')}`,
       params
     );
     return rows[0].total;

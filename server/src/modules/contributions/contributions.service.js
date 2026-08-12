@@ -1,11 +1,15 @@
 import { withTransaction } from '../../config/db.js';
 import { notFound, AppError } from '../../errors/AppError.js';
 import { contributionsRepository } from './contributions.repository.js';
-import { contributorsRepository } from '../contributors/contributors.repository.js';
 import { postLedgerEntry } from '../financial/financialEngine.service.js';
 import { transactionsRepository } from '../financial/transactions.repository.js';
 import { getOpenPeriod } from '../financial/financialPeriods.service.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
+import { pledgesRepository } from '../pledges/pledges.repository.js';
+import { syncPledgeStatus } from '../pledges/pledges.service.js';
+import { issueReceiptForContribution } from '../receipts/receipts.service.js';
+
+export { enrichWithContributorInfo } from '../contributors/contributorEnrichment.js';
 
 // Records a contribution AND posts its ledger entry atomically — one DB
 // transaction, so there is never a contribution row with no matching
@@ -18,6 +22,28 @@ export async function recordContribution(tenantId, data, actorUserId) {
   return withTransaction(async (connection) => {
     const openPeriod = await getOpenPeriod(tenantId, connection);
     if (!openPeriod) throw notFound('No open financial period to post this contribution against');
+
+    // Pledge payment: just a contribution with one extra reference — no
+    // separate financial logic (docs/FINANCIAL_ARCHITECTURE.md §7, docs/
+    // MASTER_TODO.md Phase 7). Overpayment is rejected by default; the
+    // brief allows an explicit business rule to permit it, and none exists
+    // yet, so the safe default is to block it.
+    if (data.pledgeId) {
+      const pledge = await pledgesRepository.findById(tenantId, data.pledgeId, connection);
+      if (!pledge) throw notFound('Pledge not found');
+      if (pledge.status === 'cancelled') {
+        throw new AppError('CONFLICT', 'Cannot record a payment against a cancelled pledge', { status: 409 });
+      }
+      const fulfilled = Number(await pledgesRepository.getFulfilledAmount(tenantId, data.pledgeId, connection));
+      const wouldBe = fulfilled + Number(data.amount);
+      if (wouldBe > Number(pledge.pledged_amount) + 0.001) {
+        throw new AppError(
+          'VALIDATION_ERROR',
+          `This payment would exceed the pledge (pledged ${pledge.pledged_amount}, already paid ${fulfilled.toFixed(2)})`,
+          { status: 422, fields: { amount: 'exceeds remaining pledge balance' } }
+        );
+      }
+    }
 
     const transaction = await postLedgerEntry(connection, tenantId, {
       type: 'income',
@@ -37,6 +63,7 @@ export async function recordContribution(tenantId, data, actorUserId) {
       tenantId,
       {
         contributor_id: data.contributorId,
+        pledge_id: data.pledgeId ?? null,
         account_id: data.accountId,
         fund_id: data.fundId,
         category_id: data.categoryId,
@@ -57,6 +84,14 @@ export async function recordContribution(tenantId, data, actorUserId) {
     // .service.js's transfer() for the same pattern).
     await transactionsRepository.update(tenantId, transaction.id, { reference_id: contribution.id }, connection);
 
+    if (data.pledgeId) {
+      await syncPledgeStatus(tenantId, data.pledgeId, connection);
+    }
+
+    // Every contribution gets exactly one receipt, issued atomically with it
+    // — there is no code path that creates a contribution without one.
+    const receipt = await issueReceiptForContribution(tenantId, contribution.id, actorUserId, connection);
+
     await recordAuditLog(
       {
         tenantId,
@@ -64,12 +99,12 @@ export async function recordContribution(tenantId, data, actorUserId) {
         action: 'contribution.recorded',
         entityType: 'contributions',
         entityId: contribution.id,
-        after: { amount: data.amount, fundId: data.fundId, transactionId: transaction.id },
+        after: { amount: data.amount, fundId: data.fundId, transactionId: transaction.id, pledgeId: data.pledgeId },
       },
       connection
     );
 
-    return { ...contribution, transaction };
+    return { ...contribution, transaction, receipt };
   });
 }
 
@@ -83,23 +118,6 @@ export async function getContribution(tenantId, id) {
   return contribution;
 }
 
-// Privacy boundary: contributor identity is only attached for callers who
-// hold contributors.view — everyone else sees the financial record with
-// contributor_id present but no resolved name/phone/email
-// (docs/SECURITY_ARCHITECTURE.md §1, contributors.view permission).
-export async function enrichWithContributorInfo(tenantId, contributions, canViewContributors) {
-  if (!canViewContributors) return contributions;
-  const contributorIds = [...new Set(contributions.map((c) => c.contributor_id).filter(Boolean))];
-  if (contributorIds.length === 0) return contributions;
-
-  const contributors = await Promise.all(contributorIds.map((id) => contributorsRepository.findById(tenantId, id)));
-  const byId = new Map(contributors.filter(Boolean).map((c) => [c.id, c]));
-
-  return contributions.map((c) => ({
-    ...c,
-    contributor: c.contributor_id ? byId.get(c.contributor_id) ?? null : null,
-  }));
-}
 
 export async function updateContribution(tenantId, id, updates, actorUserId) {
   const existing = await contributionsRepository.findById(tenantId, id);
@@ -168,6 +186,10 @@ export async function reverseContribution(tenantId, id, reason, actorUserId) {
       { status: 'reversed' },
       connection
     );
+
+    if (contribution.pledge_id) {
+      await syncPledgeStatus(tenantId, contribution.pledge_id, connection);
+    }
 
     await recordAuditLog(
       {

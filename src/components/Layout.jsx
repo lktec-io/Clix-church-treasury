@@ -7,20 +7,49 @@ import {
   FiCreditCard,
   FiFolder,
   FiRepeat,
+  FiTarget,
+  FiClipboard,
+  FiCalendar,
+  FiBarChart2,
   FiMenu,
   FiLogOut,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 
-const NAV_ITEMS = [
-  { to: '/', icon: FiHome, labelKey: 'nav.dashboard', end: true },
-  { to: '/contributions', icon: FiDollarSign, labelKey: 'nav.contributions' },
-  { to: '/contributors', icon: FiUsers, labelKey: 'nav.contributors' },
-  { to: '/expenses', icon: FiCreditCard, labelKey: 'nav.expenses' },
-  { to: '/accounts', icon: FiFolder, labelKey: 'nav.accounts' },
-  { to: '/funds', icon: FiFolder, labelKey: 'nav.funds' },
-  { to: '/transfers', icon: FiRepeat, labelKey: 'nav.transfers' },
+// Grouped per docs/MASTER_TODO.md Phase 7-9's suggested navigation shape,
+// adapted to what actually exists: Income and Contributions are one page
+// (contributions.repository already covers both), there's no standalone
+// Receipts destination (receipts are downloaded from the contribution
+// they belong to, not browsed as their own list — "one receipt
+// architecture", not a document library), and Administration isn't listed
+// yet since no admin screens exist (Users/Roles/Settings UI is Phase 10 scope).
+const NAV_GROUPS = [
+  { items: [{ to: '/', icon: FiHome, labelKey: 'nav.dashboard', end: true }] },
+  {
+    labelKey: null,
+    items: [
+      { to: '/contributions', icon: FiDollarSign, labelKey: 'nav.contributions' },
+      { to: '/contributors', icon: FiUsers, labelKey: 'nav.contributors' },
+      { to: '/expenses', icon: FiCreditCard, labelKey: 'nav.expenses' },
+      { to: '/transfers', icon: FiRepeat, labelKey: 'nav.transfers' },
+    ],
+  },
+  {
+    labelKey: null,
+    items: [
+      { to: '/accounts', icon: FiFolder, labelKey: 'nav.accounts' },
+      { to: '/funds', icon: FiFolder, labelKey: 'nav.funds' },
+      { to: '/budgets', icon: FiClipboard, labelKey: 'nav.budgets' },
+      { to: '/financial-periods', icon: FiCalendar, labelKey: 'nav.financialPeriods' },
+    ],
+  },
+  {
+    items: [
+      { to: '/pledges', icon: FiTarget, labelKey: 'nav.pledges' },
+      { to: '/reports', icon: FiBarChart2, labelKey: 'nav.reports' },
+    ],
+  },
 ];
 
 export default function Layout() {
@@ -40,17 +69,21 @@ export default function Layout() {
       <nav className={`app-sidebar${sidebarOpen ? ' is-open' : ''}`} aria-label="Primary">
         <div className="app-sidebar__brand">{t('app.name')}</div>
         <div className="app-sidebar__nav">
-          {NAV_ITEMS.map(({ to, icon: Icon, labelKey, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
-            >
-              <Icon aria-hidden="true" />
-              {t(labelKey)}
-            </NavLink>
+          {NAV_GROUPS.map((group, i) => (
+            <div className="app-sidebar__group" key={i}>
+              {group.items.map(({ to, icon: Icon, labelKey, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
+                >
+                  <Icon aria-hidden="true" />
+                  {t(labelKey)}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </div>
         <div className="app-sidebar__footer">

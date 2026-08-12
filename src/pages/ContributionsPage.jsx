@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi } from '../api/endpoints.js';
+import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi, pledgesApi, receiptsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -15,6 +15,7 @@ function emptyForm() {
     fundId: '',
     categoryId: '',
     contributorId: '',
+    pledgeId: '',
     paymentMethod: 'cash',
     contributionDate: new Date().toISOString().slice(0, 10),
     reference: '',
@@ -30,6 +31,7 @@ export default function ContributionsPage() {
   const [funds, setFunds] = useState([]);
   const [categories, setCategories] = useState([]);
   const [contributors, setContributors] = useState([]);
+  const [pledges, setPledges] = useState([]);
   const [form, setForm] = useState(emptyForm());
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -50,6 +52,9 @@ export default function ContributionsPage() {
       setCategories(categoryData);
       if (hasPermission('contributors.view')) {
         setContributors(await contributorsApi.list());
+      }
+      if (hasPermission('pledges.view')) {
+        setPledges((await pledgesApi.list({ status: 'active' })).filter((p) => p.status === 'active'));
       }
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -77,6 +82,7 @@ export default function ContributionsPage() {
         fundId: Number(form.fundId),
         categoryId: Number(form.categoryId),
         contributorId: form.contributorId ? Number(form.contributorId) : null,
+        pledgeId: form.pledgeId ? Number(form.pledgeId) : null,
       });
       setForm(emptyForm());
       await loadAll();
@@ -187,6 +193,19 @@ export default function ContributionsPage() {
                   </select>
                 </div>
               )}
+              {pledges.length > 0 && (
+                <div className="field">
+                  <label>{t('pledges.title')}</label>
+                  <select value={form.pledgeId} onChange={handleChange('pledgeId')}>
+                    <option value="">—</option>
+                    {pledges.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {(p.contributor?.full_name ?? `#${p.pledge_number}`)} — {t('pledges.remaining')}: {p.remaining_amount}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="field">
                 <label>{t('common.reference')}</label>
                 <input value={form.reference} onChange={handleChange('reference')} />
@@ -238,7 +257,16 @@ export default function ContributionsPage() {
                         {c.status === 'reversed' ? t('contributions.reversed') : t('common.active')}
                       </span>
                     </td>
-                    <td>
+                    <td style={{ display: 'flex', gap: 6 }}>
+                      <PermissionGate permission="receipts.view">
+                        <button
+                          type="button"
+                          className="btn btn--secondary btn--sm"
+                          onClick={() => receiptsApi.openPdfForContribution(c.id).catch((err) => setError(unwrapApiError(err).message))}
+                        >
+                          {t('receipts.download')}
+                        </button>
+                      </PermissionGate>
                       {c.status === 'posted' && (
                         <PermissionGate permission="income.reverse">
                           <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleReverse(c.id)}>

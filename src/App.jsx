@@ -10,6 +10,7 @@ import ExpensesPage from './pages/ExpensesPage.jsx';
 import AccountsPage from './pages/AccountsPage.jsx';
 import FundsPage from './pages/FundsPage.jsx';
 import TransfersPage from './pages/TransfersPage.jsx';
+import PledgesPage from './pages/PledgesPage.jsx';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/funds" element={<FundsPage />} />
           <Route path="/transfers" element={<TransfersPage />} />
+          <Route path="/pledges" element={<PledgesPage />} />
         </Route>
       </Route>
 

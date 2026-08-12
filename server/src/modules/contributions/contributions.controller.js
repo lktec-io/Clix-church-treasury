@@ -8,6 +8,7 @@ import {
 function parseFilters(query) {
   const filters = {};
   if (query.contributorId) filters.contributorId = Number(query.contributorId);
+  if (query.pledgeId) filters.pledgeId = Number(query.pledgeId);
   if (query.fundId) filters.fundId = Number(query.fundId);
   if (query.paymentMethod) filters.paymentMethod = query.paymentMethod;
   if (query.dateFrom) filters.dateFrom = query.dateFrom;

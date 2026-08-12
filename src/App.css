@@ -48,7 +48,20 @@
   padding: 10px;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.app-sidebar__group {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.app-sidebar__group:first-child {
+  padding-top: 0;
+  border-top: none;
 }
 
 .app-sidebar__link {

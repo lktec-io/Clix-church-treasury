@@ -14,3 +14,25 @@ export function normalizeMoney(value) {
   const [whole, frac = ''] = value.split('.');
   return `${whole}.${frac.padEnd(2, '0').slice(0, 2)}`;
 }
+
+function toCents(value) {
+  const [whole, frac = ''] = String(value).split('.');
+  const sign = whole.startsWith('-') ? -1 : 1;
+  const cents = Math.abs(Number(whole)) * 100 + Number(frac.padEnd(2, '0').slice(0, 2));
+  return sign * cents;
+}
+
+function fromCents(cents) {
+  const sign = cents < 0 ? '-' : '';
+  const abs = Math.abs(cents);
+  return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
+}
+
+// Integer-cents arithmetic for the rare case display code needs to subtract
+// two money values (e.g. pledge remaining = pledged - fulfilled) — even
+// though this is display-only, not a ledger posting, the codebase's
+// no-floating-point-on-money rule applies uniformly rather than carving out
+// an exception for "just display" arithmetic (docs/FINANCIAL_ARCHITECTURE.md).
+export function subtractMoney(a, b) {
+  return fromCents(toCents(a) - toCents(b));
+}

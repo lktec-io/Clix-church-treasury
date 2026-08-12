@@ -16,6 +16,9 @@ export function validateCreateContribution(body) {
   if (body.contributorId !== undefined && body.contributorId !== null && !Number.isInteger(body.contributorId)) {
     fields.contributorId = 'must be an integer if provided';
   }
+  if (body.pledgeId !== undefined && body.pledgeId !== null && !Number.isInteger(body.pledgeId)) {
+    fields.pledgeId = 'must be an integer if provided';
+  }
   if (!isValidPaymentMethod(body.paymentMethod)) {
     fields.paymentMethod = `must be one of: ${PAYMENT_METHODS.join(', ')}`;
   }
@@ -39,6 +42,7 @@ export function validateCreateContribution(body) {
     fundId: body.fundId,
     categoryId: body.categoryId,
     contributorId: body.contributorId ?? null,
+    pledgeId: body.pledgeId ?? null,
     paymentMethod: body.paymentMethod,
     contributionDate: body.contributionDate,
     reference: body.reference?.trim() || null,

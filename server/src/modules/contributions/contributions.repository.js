@@ -13,13 +13,17 @@ class ContributionsRepository extends TenantScopedRepository {
     return rows[0] ?? null;
   }
 
-  async search(tenantId, { contributorId, fundId, paymentMethod, dateFrom, dateTo, limit = 50, offset = 0 } = {}, connection) {
+  async search(tenantId, { contributorId, pledgeId, fundId, paymentMethod, dateFrom, dateTo, limit = 50, offset = 0 } = {}, connection) {
     assertTenantId(tenantId);
     const conditions = ['tenant_id = ?'];
     const params = [tenantId];
     if (contributorId !== undefined) {
       conditions.push('contributor_id = ?');
       params.push(contributorId);
+    }
+    if (pledgeId !== undefined) {
+      conditions.push('pledge_id = ?');
+      params.push(pledgeId);
     }
     if (fundId !== undefined) {
       conditions.push('fund_id = ?');

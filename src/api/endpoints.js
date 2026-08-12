@@ -56,3 +56,29 @@ export const transfersApi = {
   list: () => apiClient.get('/transfers').then(unwrap),
   create: (body) => apiClient.post('/transfers', body).then(unwrap),
 };
+
+export const pledgesApi = {
+  list: (params) => apiClient.get('/pledges', { params }).then(unwrap),
+  create: (body) => apiClient.post('/pledges', body).then(unwrap),
+  setStatus: (id, status) => apiClient.post(`/pledges/${id}/status`, { status }).then(unwrap),
+};
+
+export const receiptsApi = {
+  // A plain <a href> can't carry the Bearer token, and this route is
+  // authenticated like every other — so the PDF is fetched through the
+  // normal API client (auth header attached automatically) as a blob, then
+  // opened via a local object URL.
+  async openPdf(receiptId, locale) {
+    const res = await apiClient.get(`/receipts/${receiptId}/pdf`, {
+      params: locale ? { locale } : {},
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
+  async openPdfForContribution(contributionId, locale) {
+    const receipt = await apiClient.get(`/receipts/by-contribution/${contributionId}`).then(unwrap);
+    return receiptsApi.openPdf(receipt.id, locale);
+  },
+};
