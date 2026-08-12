@@ -161,5 +161,16 @@
   "reports.exportCsv": "Export CSV",
   "reports.dateFrom": "From",
   "reports.dateTo": "To",
-  "reports.total": "Total"
+  "reports.total": "Total",
+  "reports.selectReport": "Report",
+  "reports.account": "Account",
+  "reports.transferVolume": "Transfers",
+  "reports.netAdjustments": "Adjustments",
+  "reports.fundBalances": "Fund balances",
+  "reports.accountBalances": "Account balances",
+  "reports.allFunds": "All funds",
+  "reports.allAccounts": "All accounts",
+  "reports.allCategories": "All categories",
+  "reports.allMethods": "All methods",
+  "reports.allStatuses": "All statuses"
 }

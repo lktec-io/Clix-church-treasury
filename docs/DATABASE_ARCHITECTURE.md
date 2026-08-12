@@ -1,7 +1,7 @@
 # Database Architecture
 
 **Engine:** MySQL 8
-**Current state:** Phases 1–6 implemented — foundation, auth/RBAC, financial ledger, and now the income/expense/transfer domain schema all exist as real migration files in `server/src/db/migrations/` (0001–0020). Only `pledges`, `receipts` (Phase 7) and `budgets` (Phase 8) remain undelivered — still target schema, noted as "planned" below.
+**Current state:** Phases 1–9 implemented — every table originally scoped across this document exists as real migration files in `server/src/db/migrations/` (0001–0025). Phase 9 (Reports) added no new tables — it is a read-only composition layer over the schema below.
 
 **Verification status:** Migrations, seeds, and the full test suite are written but have not yet been executed against a live MySQL instance — local DB access was still being set up as of this writing (see [MASTER_TODO.md](MASTER_TODO.md) for the current blocker). Every claim below describes what the migration files actually contain, not what has been proven to run.
 
@@ -53,20 +53,20 @@ All in `server/src/db/migrations/`, one `.up.sql`/`.down.sql` pair per table, ap
 ### Expenses (Phase 5)
 - **`expenses`** (`0020`) — `tenant_id`, `expense_number` (`UNIQUE(tenant_id, expense_number)`), `category_id`/`fund_id`/`account_id` (`RESTRICT`), `amount`, `payee`, `description`, `payment_method`, `reference`, `attachment_mime`/`attachment_size_bytes`/`attachment_url` (metadata only — no file storage integration until Phase 7), `status` (`draft`/`submitted`/`approved`/`rejected`/`paid`), `requested_by_user_id`, `approved_by_user_id`/`approval_date`, `rejected_by_user_id`/`rejection_reason`, `paid_by_user_id`/`payment_date`, `transaction_id` (`UNIQUE`, nullable until `paid` — the only status with a ledger effect). **Scope decision:** no separate `expense_approvals` chain table — this phase's brief specifies a single approve/reject decision, so those columns live directly on `expenses`; a multi-approver chain is a natural future extension, not built speculatively now.
 
-**What changed from the original Phase 0 plan:** `pledges`, `receipts`, and `budgets` remain undelivered (Phase 7/8). `expense_approvals` was scoped out per the Phase 5 decision above. `transfers` is not, and was never planned to be, a separate table — a transfer is two linked rows in `transactions` (see [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §3); Phase 6 confirmed this holds and added only a thin HTTP-facing service (`transfers.service.js`) with no table of its own.
+### Pledges & Receipts (Phase 7)
+- **`pledges`** (`0021`) — `tenant_id`, `pledge_number` (`UNIQUE(tenant_id, pledge_number)`), `contributor_id`/`fund_id` (`RESTRICT`), `pledged_amount` (`CHECK(pledged_amount > 0)`), `pledge_date`, `target_date` (nullable), `notes`, `status` (`active`/`completed`/`cancelled`, flat enum — not a general state machine, per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §7), `created_by_user_id`. No `fulfilled_amount` column — always derived from linked `contributions`.
+- **`contributions.pledge_id`** (`0022`, `ALTER TABLE`) — nullable FK to `pledges` (`RESTRICT`), added rather than a separate "pledge_payments" table: a pledge payment is not a distinct kind of record, it *is* a contribution, with this one extra reference.
+- **`receipt_sequences`** (`0023`) — `PRIMARY KEY(tenant_id, year)`, `next_number`. Read with `SELECT ... FOR UPDATE` inside the same DB transaction as the receipt insert, so concurrent contribution recording serializes on this row instead of racing — this is what makes receipt numbering collision-proof under concurrency, not just "unlikely to collide."
+- **`receipts`** (`0024`) — `tenant_id`, `contribution_id` (`UNIQUE` — exactly one receipt per contribution, `RESTRICT`), `receipt_number` (`UNIQUE(tenant_id, receipt_number)`), `issued_by_user_id`, `issued_at`. One receipt table for every income source (plain contributions and pledge payments alike, since a pledge payment is just a contribution) — no per-module receipt logic, matching the Phase 7 brief's "one receipt architecture."
+
+### Budgets (Phase 8)
+- **`budgets`** (`0025`) — `tenant_id`, `financial_period_id`/`fund_id` (`RESTRICT`), `category_id` (nullable, `RESTRICT` — a fund-level budget with no category breakdown), `type` (`income`/`expense` — disambiguates the budget even when `category_id` is `NULL`), `budget_amount` (`CHECK(budget_amount >= 0)`), `notes`, `status` (`active`/`archived`), `created_by_user_id`. `UNIQUE(tenant_id, financial_period_id, fund_id, category_id)` — but since MySQL treats every `NULL` in a unique index as distinct, this alone does **not** stop two fund-level (`category_id = NULL`) budgets for the same period+fund from colliding; `budgets.service.js#createBudget` check-before-inserts to close that gap, the same pattern already used for `contributors.member_number` and `categories(type, name)`. No `actual_amount` column — always derived from `transactions.repository.js#sumByType`.
+
+**What changed from the original Phase 0 plan:** `expense_approvals` was scoped out per the Phase 5 decision above. `transfers` is not, and was never planned to be, a separate table — a transfer is two linked rows in `transactions` (see [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §3); Phase 6 confirmed this holds and added only a thin HTTP-facing service (`transfers.service.js`) with no table of its own. No new table was added for reporting (Phase 9) — it reads the schema above directly, with no cached/materialized report table, matching [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §6.
 
 ---
 
-## 3. Tables — Planned (Phase 7+, not yet created)
-
-- `pledges`, `receipts` (Phase 7)
-- `budgets` (Phase 8)
-
-Column sketches for these are unchanged from the original Phase 0 design and will be finalized in each owning phase's own migration.
-
----
-
-## 4. Key Relationships (as implemented)
+## 3. Key Relationships (as implemented)
 
 ```
 tenants 1──* users, church_settings(1:1), accounts, funds, categories, financial_periods
@@ -81,13 +81,16 @@ transactions *──1 accounts, *──1 funds, *──0..1 categories, *──1
 transactions 0..1──1 transactions (reversed_by_transaction_id, self-reference)
 transactions.reference_id → another transactions row (transfer leg pairing) OR a domain row (reference_type = 'contributions'/'expenses')
 
-contributions *──0..1 contributors, *──1 accounts/funds/categories, 1──1 transactions (via transaction_id, posted at creation)
+contributions *──0..1 contributors, *──0..1 pledges, *──1 accounts/funds/categories, 1──1 transactions (via transaction_id, posted at creation)
 expenses *──1 categories/funds/accounts, 0..1──1 transactions (via transaction_id, posted only at 'paid')
+pledges *──1 contributors, *──1 funds; pledges 1──* contributions (via contributions.pledge_id)
+receipts 1──1 contributions (via contribution_id, UNIQUE); receipt_sequences 1 row per (tenant_id, year)
+budgets *──1 financial_periods/funds, *──0..1 categories — no relation to transactions directly, actual is queried, not joined
 ```
 
 ---
 
-## 5. Indexing (as implemented)
+## 4. Indexing (as implemented)
 
 Matches the plan in the original design, now real:
 - `(tenant_id, status)`, `(tenant_id, financial_period_id)`, `(tenant_id, account_id)`, `(tenant_id, fund_id)`, `(tenant_id, created_at)` on `transactions`.
@@ -95,10 +98,13 @@ Matches the plan in the original design, now real:
 - `UNIQUE(token_hash)` on `refresh_tokens` and `password_reset_tokens` — a hash collision would be a security event, not just a data error, so this is a hard constraint, not just a performance index.
 - `(tenant_id, contribution_date)`, `(tenant_id, contributor_id)`, `(tenant_id, status)` on `contributions`; `UNIQUE(tenant_id, member_number)` on `contributors`.
 - `(tenant_id, status)`, `(tenant_id, requested_by_user_id)` on `expenses`; `UNIQUE(tenant_id, expense_number)`, `UNIQUE(transaction_id)`.
+- `UNIQUE(tenant_id, pledge_number)`, `(tenant_id, contributor_id)`, `(tenant_id, status)` on `pledges`; `(tenant_id, pledge_id)` on `contributions`.
+- `UNIQUE(contribution_id)`, `UNIQUE(tenant_id, receipt_number)` on `receipts`.
+- `UNIQUE(tenant_id, financial_period_id, fund_id, category_id)`, `(tenant_id, financial_period_id)` on `budgets`.
 
 ---
 
-## 6. Migration Strategy — Decision #16, RESOLVED
+## 5. Migration Strategy — Decision #16, RESOLVED
 
 **Confirmed:** hand-written SQL + a custom runner, no ORM, no query builder. Implemented in `server/src/db/migrate.js`:
 - Migrations are `NNNN_description.up.sql` / `NNNN_description.down.sql` pairs in `server/src/db/migrations/`.
@@ -109,15 +115,14 @@ Matches the plan in the original design, now real:
 
 ---
 
-## 7. Financial Data Handling — The `direction` Column
+## 6. Financial Data Handling — The `direction` Column
 
 The original Phase 0 design said "amount always positive; direction implied by type." Building the actual transfer logic in Phase 3 showed this doesn't hold: a transfer posts **two** rows that share `type = 'transfer'` but have opposite effects (one decreases the source account, one increases the destination). `type` alone can't disambiguate that, so an explicit `direction` (`in`/`out`) column was added to `transactions` beyond the original plan. Balance is computed as `SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END)` — see [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §2 for the full reasoning. This is the one schema deviation from the Phase 0 design; every other table matches what was originally documented.
 
 ---
 
-## 8. What Phase 7+ Must Deliver Against This Document
+## 7. Status Against This Document
 
-- The domain tables listed in §3 (`pledges`, `receipts`, `budgets`), each created in the phase that implements its business logic, following the same conventions (§1) and posting through the existing `financialEngine.service.js`, never inventing a parallel balance calculation.
-- This document updated again once each domain table lands.
+Every table originally scoped by the Phase 0 design now exists, each created in the phase that implements its business logic (§2), following the same conventions (§1) and posting through the existing `financialEngine.service.js` — no domain table ever invented a parallel balance calculation. Phase 9 (Reports) needed no new table at all, confirming §6/[FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §6's "reporting must not recompute" held all the way through: a report is a read over this schema, not a schema of its own.
 
-**Verification status (Phases 4–6):** migrations `0018`–`0020` are written and lint-clean but, like `0001`–`0017`, have not been executed against a live MySQL instance — see [MASTER_TODO.md](MASTER_TODO.md).
+**Verification status (Phases 1–9):** migrations `0001`–`0025` are written and lint-clean, and every module that queries this schema was confirmed to import without error, but none of it has been executed against a live MySQL instance — see [MASTER_TODO.md](MASTER_TODO.md) for the blocker (`ER_ACCESS_DENIED_ERROR`, environment-level, not a code defect).

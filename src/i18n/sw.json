@@ -161,5 +161,16 @@
   "reports.exportCsv": "Hamisha CSV",
   "reports.dateFrom": "Kuanzia",
   "reports.dateTo": "Hadi",
-  "reports.total": "Jumla"
+  "reports.total": "Jumla",
+  "reports.selectReport": "Ripoti",
+  "reports.account": "Akaunti",
+  "reports.transferVolume": "Uhamisho",
+  "reports.netAdjustments": "Marekebisho",
+  "reports.fundBalances": "Salio la mifuko",
+  "reports.accountBalances": "Salio la akaunti",
+  "reports.allFunds": "Mifuko yote",
+  "reports.allAccounts": "Akaunti zote",
+  "reports.allCategories": "Aina zote",
+  "reports.allMethods": "Njia zote",
+  "reports.allStatuses": "Hali zote"
 }

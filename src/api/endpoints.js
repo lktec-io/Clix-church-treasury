@@ -97,3 +97,41 @@ export const financialPeriodsApi = {
   close: (id) => apiClient.post(`/financial-periods/${id}/close`).then(unwrap),
   reopen: (id, reason) => apiClient.post(`/financial-periods/${id}/reopen`, { reason }).then(unwrap),
 };
+
+// One path builder per report, keyed the same way ReportsPage.jsx keys its
+// REPORT_DEFS — account/fund statements carry their id in the URL path, not
+// the query string, everything else is a flat query string of filters.
+const REPORT_PATHS = {
+  income: () => '/reports/income',
+  expense: () => '/reports/expense',
+  transactionJournal: () => '/reports/transaction-journal',
+  contributions: () => '/reports/contributions',
+  accountStatement: (params) => `/reports/accounts/${params.accountId}/statement`,
+  fundStatement: (params) => `/reports/funds/${params.fundId}/statement`,
+  budgetVsActual: () => '/reports/budget-vs-actual',
+  pledges: () => '/reports/pledges',
+  financialSummary: () => '/reports/financial-summary',
+};
+
+export const reportsApi = {
+  run: (reportKey, params = {}) => apiClient.get(REPORT_PATHS[reportKey](params), { params }).then(unwrap),
+  // Exports go through the same endpoint as the on-screen run, just with a
+  // ?format=csv|xlsx|pdf query param — one export path, not a bespoke
+  // download route per report (docs/MASTER_TODO.md Phase 9).
+  async export(reportKey, params, format) {
+    const res = await apiClient.get(REPORT_PATHS[reportKey](params), {
+      params: { ...params, format },
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data);
+    if (format === 'pdf') {
+      window.open(url, '_blank', 'noopener');
+    } else {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${reportKey}.${format}`;
+      link.click();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
+};

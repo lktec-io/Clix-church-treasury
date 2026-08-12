@@ -53,7 +53,11 @@ class TransactionsRepository extends TenantScopedRepository {
     return rows[0].balance;
   }
 
-  async sumByType(tenantId, type, { financialPeriodId, fundId, categoryId, direction, connection } = {}) {
+  async sumByType(
+    tenantId,
+    type,
+    { financialPeriodId, fundId, accountId, categoryId, direction, dateFrom, dateTo, connection } = {}
+  ) {
     assertTenantId(tenantId);
     const conditions = ['tenant_id = ?', "status = 'posted'", 'type = ?'];
     const params = [tenantId, type];
@@ -65,6 +69,10 @@ class TransactionsRepository extends TenantScopedRepository {
       conditions.push('fund_id = ?');
       params.push(fundId);
     }
+    if (accountId !== undefined) {
+      conditions.push('account_id = ?');
+      params.push(accountId);
+    }
     if (categoryId !== undefined) {
       conditions.push('category_id = ?');
       params.push(categoryId);
@@ -72,6 +80,14 @@ class TransactionsRepository extends TenantScopedRepository {
     if (direction !== undefined) {
       conditions.push('direction = ?');
       params.push(direction);
+    }
+    if (dateFrom !== undefined) {
+      conditions.push('DATE(posted_at) >= ?');
+      params.push(dateFrom);
+    }
+    if (dateTo !== undefined) {
+      conditions.push('DATE(posted_at) <= ?');
+      params.push(dateTo);
     }
     const [rows] = await this.runner(connection).query(
       `SELECT CAST(COALESCE(SUM(amount), 0) AS DECIMAL(14,2)) AS total FROM transactions WHERE ${conditions.join(' AND ')}`,
@@ -100,9 +116,34 @@ class TransactionsRepository extends TenantScopedRepository {
     return rows[0].balance;
   }
 
+  // Same idea as sumSignedThroughPeriodDate but keyed directly on
+  // transactions.posted_at rather than a period boundary — backs the
+  // Account/Fund Statement reports' opening balance ("balance as of the
+  // day before this statement's date range starts").
+  async sumSignedThroughDate(tenantId, cutoffDate, { accountId, fundId, inclusive = true, connection } = {}) {
+    assertTenantId(tenantId);
+    const operator = inclusive ? '<=' : '<';
+    const conditions = ['tenant_id = ?', "status = 'posted'", `DATE(posted_at) ${operator} ?`];
+    const params = [tenantId, cutoffDate];
+    if (accountId !== undefined) {
+      conditions.push('account_id = ?');
+      params.push(accountId);
+    }
+    if (fundId !== undefined) {
+      conditions.push('fund_id = ?');
+      params.push(fundId);
+    }
+    const [rows] = await this.runner(connection).query(
+      `SELECT CAST(COALESCE(SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END), 0) AS DECIMAL(14,2)) AS balance
+       FROM transactions WHERE ${conditions.join(' AND ')}`,
+      params
+    );
+    return rows[0].balance;
+  }
+
   async listHistory(
     tenantId,
-    { accountId, fundId, financialPeriodId, status, type, direction, limit = 50, offset = 0 } = {},
+    { accountId, fundId, categoryId, financialPeriodId, status, type, direction, dateFrom, dateTo, limit = 50, offset = 0 } = {},
     connection
   ) {
     assertTenantId(tenantId);
@@ -115,6 +156,10 @@ class TransactionsRepository extends TenantScopedRepository {
     if (fundId !== undefined) {
       conditions.push('fund_id = ?');
       params.push(fundId);
+    }
+    if (categoryId !== undefined) {
+      conditions.push('category_id = ?');
+      params.push(categoryId);
     }
     if (financialPeriodId !== undefined) {
       conditions.push('financial_period_id = ?');
@@ -131,6 +176,14 @@ class TransactionsRepository extends TenantScopedRepository {
     if (direction !== undefined) {
       conditions.push('direction = ?');
       params.push(direction);
+    }
+    if (dateFrom !== undefined) {
+      conditions.push('DATE(posted_at) >= ?');
+      params.push(dateFrom);
+    }
+    if (dateTo !== undefined) {
+      conditions.push('DATE(posted_at) <= ?');
+      params.push(dateTo);
     }
     const [rows] = await this.runner(connection).query(
       `SELECT * FROM transactions WHERE ${conditions.join(' AND ')}

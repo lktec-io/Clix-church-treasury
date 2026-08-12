@@ -4,7 +4,7 @@
 
 This document is the most important one in the set — financial integrity is the product's entire value proposition. A treasury system that gets a balance wrong is not a buggy product, it is a failed one.
 
-**Current state:** Phases 3–6 implemented — `server/src/modules/financial/financialEngine.service.js` is real, working code, and now has real consumers: contributions (Phase 4), expenses (Phase 5), and the transfers HTTP layer (Phase 6) all post through it, none of them with a parallel calculation of their own. §§1–5 below describe the actual implementation (deviations from the original design called out explicitly); §7 (pledges) and §8-as-approval-gating are now proven, not just designed — see the note at the end of each section. Written and lint-clean; test suites (`tests/phase3/` through `tests/phase6/`) written but not yet run against a live database — see [MASTER_TODO.md](MASTER_TODO.md).
+**Current state:** Phases 3–9 implemented — `server/src/modules/financial/financialEngine.service.js` is real, working code, and now has real consumers across the whole product: contributions (Phase 4), expenses (Phase 5), the transfers HTTP layer (Phase 6), pledge payments (Phase 7), budgets and period closing (Phase 8), and the reporting suite (Phase 9) all post through, or read from, this one engine — none of them with a parallel calculation of their own. §§1–8 below describe the actual implementation (deviations from the original design called out explicitly). Written and lint-clean; test suites (`tests/phase3/` through `tests/phase9/`) written but not yet run against a live database — see [MASTER_TODO.md](MASTER_TODO.md).
 
 ---
 
@@ -28,8 +28,8 @@ FROM transactions WHERE tenant_id = ? AND status = 'posted' [AND account_id = ?]
 `financialEngine.service.js` exposes this as `getAccountBalance`, `getFundBalance`, and `getTotalBalance` (no filter = every account/fund in the tenant). The SUM is computed by MySQL over the `DECIMAL(14,2)` column and returned as a string — it is never coerced through a JS number, so the balance calculation itself cannot introduce a floating-point rounding error (see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §1).
 
 - No account row stores a running balance as its source of truth — confirmed: the `accounts`/`funds` tables have no balance column at all.
-- **Deviation from the original design:** the `direction` column (`in`/`out`) was added to `transactions` beyond the original Phase 0 schema — see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §7 for why `type` alone can't disambiguate a transfer's two legs.
-- **Performance handling (closing-balance snapshot) is not yet built.** Phase 3 always sums the full ledger; the snapshot-and-cache optimization described in the original design is real future work, correctly scoped to Phase 8 (Budget + Financial Closing) where the full closing workflow lives. Not a regression — Phase 3's job was the correctness of the derivation, not its performance at scale.
+- **Deviation from the original design:** the `direction` column (`in`/`out`) was added to `transactions` beyond the original Phase 0 schema — see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §6 for why `type` alone can't disambiguate a transfer's two legs.
+- **Performance handling (closing-balance snapshot) was deliberately not built, even once Phase 8 (its originally-scoped home) was reached.** Every balance — including a financial period's opening/closing balance — is still computed live by summing the ledger (`sumSignedThroughPeriodDate`/`sumSignedThroughDate`), never cached or snapshotted. This was a conscious scope decision made while building Phase 8, not a gap: at this product's expected scale (individual churches, not enterprises), a live `SUM` over an indexed, tenant-scoped, date-bounded query set is fast enough that a cache would add invalidation complexity for no measurable benefit — exactly the kind of unneeded complexity the "keep it simple" brief for Phase 8 warned against building.
 
 ---
 
@@ -58,28 +58,31 @@ Funds (`funds` table) represent designated pools of money — "General Fund," "B
 
 ## 5. Financial Period Closing
 
-**Phase 3 built the enforcement primitive; Phase 8 builds the full workflow.** As implemented in `financialPeriods.service.js`:
+**Phase 3 built the enforcement primitive; Phase 8 delivered the full workflow on top of it.** As implemented in `financialPeriods.service.js` and `financialSummary.service.js`:
 
-- A `financial_period` starts `open`. `assertPeriodOpenAndOwned` runs before every single ledger insert (`insertLedgerRow`, so every posting path — income, expense, transfer, reversal, adjustment — goes through it without exception) and rejects with `409 PERIOD_LOCKED` if the period is `closed` or doesn't belong to the tenant. Tested (`tests/phase3/financialEngine.test.js`).
-- `closePeriod(tenantId, periodId, userId)` sets `status = 'closed'`, `closed_by_user_id`, `closed_at`, and writes an audit log entry (`financial_period.closed`) — already real and tested.
-- `reopenPeriod(tenantId, periodId, userId, reason)` exists and is audited (`financial_period.reopened`, with the reason recorded), using the separate `financial_period.reopen` permission (§3 of [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md)) rather than `financial_period.close`.
-- **Not yet built (Phase 8 scope, as originally planned):** the `closing_balance` snapshot computation (§2), and any HTTP route/permission-gated endpoint to trigger close/reopen — the Phase 3 service functions exist and are tested directly, but nothing calls them over HTTP yet. This is intentional scoping, not an oversight: Phase 3's job was proving the ledger *respects* period state, not building the operator-facing closing workflow.
+- A `financial_period` starts `open`. `assertPeriodOpenAndOwned` runs before every single ledger insert (`postLedgerEntry`, so every posting path — income, expense, transfer, reversal, adjustment — goes through it without exception) and rejects with `409 PERIOD_LOCKED` if the period is `closed` or doesn't belong to the tenant. Tested (`tests/phase3/financialEngine.test.js`, re-verified at the HTTP layer in `tests/phase8/financialPeriods.test.js`).
+- `closePeriod(tenantId, periodId, userId)` sets `status = 'closed'`, `closed_by_user_id`, `closed_at`, and writes an audit log entry (`financial_period.closed`). `POST /financial-periods/:id/close` (Phase 8) exposes it over HTTP, gated by `financial_period.close`.
+- `reopenPeriod(tenantId, periodId, userId, reason)` is audited (`financial_period.reopened`, with the reason recorded), gated by the separate, deliberately more restrictive `financial_period.reopen` permission (§3 of [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md)) — granted only to Super Administrator, not even to Treasurer, who can close but not reopen. `POST /financial-periods/:id/reopen` rejects with `422` if no reason is given.
+- **Closing is a non-blocking checklist, not a hard gate.** `getClosingChecklist` surfaces pending-approval and approved-unpaid expense counts as *information*, but the only thing that actually blocks `close` is the period already being closed — there are no draft/pending ledger rows in this architecture (every posting is final on insert), so there is no other condition that could meaningfully block closing.
+- **No closing-balance snapshot was built** — see §2 above. Opening/closing balance for a period is computed live via `sumSignedThroughPeriodDate`, joined against `financial_periods.start_date`/`end_date`, every time it's requested.
 
 ---
 
 ## 6. Reporting Must Not Recompute
 
-Report generation (income statements, fund summaries, contribution exports) calls the **same aggregation services** the dashboard calls — a shared Financial Engine service layer (e.g. `financialEngine.getFundSummary(tenantId, periodId)`), not bespoke SQL written per report. PDF/Excel/CSV generation (Phase 9) is purely a rendering step on top of that service's output.
+Report generation (income statements, fund summaries, contribution exports) calls the **same aggregation services** the dashboard calls — a shared Financial Engine service layer, not bespoke SQL written per report. PDF/Excel/CSV generation (Phase 9) is purely a rendering step on top of that service's output.
 
 This is what guarantees the dashboard total and the PDF report total can never silently drift apart — there is structurally only one code path that computes "fund balance," and every surface (dashboard widget, PDF, CSV, API response for a third party) is a view over it.
+
+**As implemented (Phase 9):** all 9 reports in `reports.service.js` call an existing repository/service method — never new aggregation SQL. The Financial Summary report and Phase 8's closing summary call the literal same function, `financialSummary.service.js#getFinancialSummary`. While wiring this up, a real inconsistency was caught and fixed: `transactionsRepository.sumByType` (which produces report *totals*) did not accept the `accountId`/`dateFrom`/`dateTo` filters that `listHistory` (which produces report *rows*) did — meaning an account- or date-filtered Income/Expense report would have shown a total silently computed over a *different, unfiltered* row set than the rows displayed. `sumByType` was extended to accept the same filter set, closing that gap. This is exactly the class of bug this section exists to prevent, caught by keeping rows and totals flowing through comparable, symmetric filter logic rather than two independently-hand-maintained query shapes.
 
 ---
 
 ## 7. Pledges vs. Contributions
 
-A pledge is a *commitment*, not money received — it never posts a ledger transaction on its own. Only the linked `contributions` (via `contributions.pledge_id`) post transactions. A pledge's "fulfilled amount" is always `SUM(contributions.amount WHERE pledge_id = ?)`, computed, not stored — same derived-not-mutable principle as account balances (§2), for the same reason.
+A pledge is a *commitment*, not money received — it never posts a ledger transaction on its own. Only the linked `contributions` (via `contributions.pledge_id`) post transactions. A pledge's "fulfilled amount" is always `SUM(contributions.amount WHERE pledge_id = ? AND status = 'posted')`, computed, not stored — same derived-not-mutable principle as account balances (§2), for the same reason.
 
-*Not yet built — `pledges` doesn't exist until Phase 7.* What Phase 4 did build, matching this section's underlying principle: `contributions.amount`/`status` are documented as denormalized-for-listing copies of the linked `transactions` row, never independently editable — the same "never store what can be derived, and never let a copy drift from its source" discipline this section describes for pledges.
+**As implemented (Phase 7):** exactly as designed. `pledges.repository.js#getFulfilledAmount` is the one place fulfillment is computed; `pledges.service.js#withFulfillment` attaches `fulfilled_amount`/`remaining_amount` to every pledge response, never persisted on the row itself. A pledge payment is not a separate code path — it *is* a normal `contributions.service.js#recordContribution` call carrying an optional `pledgeId`, inside the same DB transaction as the ledger post and the receipt issuance, so a pledge payment cannot exist without an equally real contribution, ledger row, and receipt. Overpayment beyond the remaining balance is rejected (`422`); a payment against a `cancelled` pledge is rejected (`409`). Pledge status (`active`/`completed`/`cancelled`) is a flat enum with exactly one automatic transition (crossing the fulfillment threshold), not a general state machine — deliberately, per the Phase 7 brief's "do not create a complicated state machine unless the business actually requires it."
 
 ---
 
@@ -98,11 +101,14 @@ A pledge is a *commitment*, not money received — it never posts a ledger trans
 **Phase 4–6 delivered — the engine now has real consumers, proving §1's governing principle rather than just stating it:**
 - `postLedgerEntry` was **exported** from `financialEngine.service.js` (previously module-private) specifically so a domain module can open its own DB transaction, insert its own domain row, and post the ledger entry in the same atomic unit — the same composition pattern `tenants.service.js`'s `createTenantWithConnection` established in Phase 1/2. `contributions.service.js#recordContribution` and `expenses.service.js#payExpense` both use this; neither writes to `transactions` any other way.
 - `contributions.reverseContribution` and `expenses`' financial-effect posting both call the exact same reversal/posting logic the engine's own `reverseTransaction`/`transfer` use — confirmed by code review, not just by convention: there is one reversal code path and one posting code path in the entire codebase.
-- The `direction` column decision (§2, [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §7) held up unchanged through three more phases of real usage — no further schema deviation was needed to model income, expenses, or the domain-level detail around them.
+- The `direction` column decision (§2, [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §6) held up unchanged through six more phases of real usage — no further schema deviation was needed to model income, expenses, pledges, receipts, budgets, or reports.
 
-**Not yet verified:** written and lint-clean, but not yet run against a live MySQL instance — see [MASTER_TODO.md](MASTER_TODO.md) for the blocker. "Delivered" above describes the code as written, not a passing test run.
+**Phase 7 delivered:** pledges as commitments-only, fulfillment derived from posted contributions (§7); receipts issued atomically alongside every contribution, server-generated tenant-scoped sequential numbering; a storage-service *contract* for future attachment upload (Cloudinary itself was not provisioned this session — every method throws `501 STORAGE_NOT_CONFIGURED`, documented as PENDING, not silently stubbed).
 
-**Remaining, unchanged from the original plan:**
-- Phase 4–7: each domain module (contributions, expenses, pledges) posts through this engine, never writes its own ledger-adjacent SQL. No HTTP routes for income/expense recording exist yet — Phase 3 deliberately built the engine with no consumer yet.
-- Phase 8: the closing-balance snapshot (§2), the HTTP close/reopen endpoints (§5), budget-vs-actual.
-- Phase 9: report renderers strictly on top of these Financial Engine services (§6), never their own SQL.
+**Phase 8 delivered:** budgets (plan vs. actual, actual always sourced from `sumByType`, §6); the full close/reopen HTTP workflow (§5) — deliberately without a closing-balance snapshot (§2), since every balance in this architecture is already derived live.
+
+**Phase 9 delivered:** exactly 9 reports, all composing existing Financial Engine/domain-service methods (§6); reusable PDF/Excel/CSV export infrastructure shared by all 9, not one exporter per report; the `sumByType` filter-parity fix described in §6.
+
+**Not yet verified:** written and lint-clean, build succeeds, and every new/changed module was confirmed to import without error — but none of this has run against a live MySQL instance — see [MASTER_TODO.md](MASTER_TODO.md) for the blocker. "Delivered" above describes the code as written, not a passing live test run.
+
+**Remaining, unchanged from the original plan:** none — Phases 3 through 9, the full financial domain originally scoped across this document, are now implemented. Phases 10–12 (dashboard/UX polish, audit hardening, production deployment) are the only work left, and none of it involves a new financial calculation.

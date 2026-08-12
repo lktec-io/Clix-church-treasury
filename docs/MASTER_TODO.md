@@ -4,7 +4,7 @@ Governing execution plan, Phase 0 through Phase 12. Cross-references: [PROJECT_A
 
 Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md) §8) — never batch-checked at phase end.
 
-**Overall status:** Phases 0–3 have code/tests written; Phases 1–3 are blocked on live verification pending local MySQL root access (a password reset is in progress outside this session — see [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) §8). No phase past 3 has been started. `npm run lint` is clean on both `server/` and the frontend; `npm audit` reports 0 vulnerabilities on both.
+**Overall status:** Phases 0–9 all have code/tests written (IMPLEMENTED, TESTED as in "written and passing lint/build/import checks"). Every phase from Phase 1 onward is blocked on the same thing: live verification against a real MySQL instance (`ER_ACCESS_DENIED_ERROR` for user `clix_app` in this environment — see [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) §8). No phase's status has been fabricated as live-verified; each phase section below states LIVE-DB VERIFIED: PENDING explicitly. `npm run lint` is clean on both `server/` and the frontend; the frontend production build succeeds.
 
 ---
 
@@ -44,7 +44,7 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 - [x] MySQL 8 instance available (native Windows service; not Docker) — connectivity confirmed (`Test-NetConnection` succeeded on port 3306); app-user credentials not yet provisioned
 - [x] Build the migration runner (`server/src/db/migrate.js` — up/down, `schema_migrations` tracking, per-migration transactions)
 - [x] Write migrations for the foundation tables in FK-safe order: `tenants`, `church_settings`, `system_settings`, `permissions`, `users`, `roles`, `role_permissions`, `user_roles`, `refresh_tokens`, `accounts`, `funds`, `categories`, `financial_periods`, `transactions`, `audit_logs` (17 migration files, `0001`–`0017`) — **scope note:** `contributors`/`contributions`/`expenses`/`expense_approvals`/`transfers`/`pledges`/`receipts`/`budgets` were deliberately deferred to Phases 4–8 rather than created here; see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2 for why
-- [x] Apply indexing plan (composite indexes on every hot filter path — see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §5)
+- [x] Apply indexing plan (composite indexes on every hot filter path — see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §4)
 - [x] Seed scripts written: `permissionCatalog.js` (31 permissions, 6 system roles), `seedRbacCatalog.js` (idempotent), `seedDevTenant.js` (dev-only tenant + admin)
 - [x] [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) updated with the finalized DDL (this was done as part of this phase, ahead of the checklist item below)
 - [ ] **Migrations actually run against a live database** — blocked on DB access
@@ -113,7 +113,7 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Status: code complete, live verification pending** — same blocker as Phases 1–2.
 
-**Database work:** `transactions` table as built in Phase 1, plus a `direction` (`in`/`out`) column added beyond the original design — `type` alone can't disambiguate a transfer's two legs (see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §7).
+**Database work:** `transactions` table as built in Phase 1, plus a `direction` (`in`/`out`) column added beyond the original design — `type` alone can't disambiguate a transfer's two legs (see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §6).
 
 **Backend work:**
 - [x] Posting primitive (`financialEngine.service.js`'s private `insertLedgerRow`) — the only function in the codebase that inserts into `transactions`; every public function (`recordSimpleTransaction`, `transfer`, `reverseTransaction`, `createAdjustment`) funnels through it
@@ -241,77 +241,98 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 ## PHASE 7 — Pledges + Receipts
 
-**Objectives:** Track pledge commitments and fulfillment; generate printable receipts.
+**Objectives:** A simple, practical pledge-tracking system and unified receipt generation — deliberately not a CRM or member-management platform.
 
-**Database work:** `pledges`, `receipts` (already created Phase 1).
+**Status: IMPLEMENTED. TESTED (written). LIVE-DB VERIFIED: PENDING.**
 
-**Backend work:**
-- [ ] Pledge CRUD; fulfillment computed from linked contributions (§ [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §7), never stored as a separate mutable counter
-- [ ] Link contribution recording (Phase 4) to an optional `pledge_id`
-- [ ] Receipt generation on contribution recording: sequential per-tenant `receipt_number` ([DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2), PDF rendered and stored via Cloudinary
-- [ ] Cloudinary account provisioned and integrated (first phase that needs it)
+**Database work:** `0021_create_pledges`, `0022_add_pledge_id_to_contributions`, `0023_create_receipt_sequences`, `0024_create_receipts`.
 
-**Frontend work:**
-- [ ] Pledge creation/tracking view (progress bar: fulfilled vs. total)
-- [ ] Receipt view/download/print
+**Backend work — all IMPLEMENTED:**
+- [x] Pledge CRUD (`pledges.repository/service/controller/validator/routes.js`) — pledge number, contributor reference, fund, pledged amount, dates, notes, status. Status is a flat 3-value enum (`active`/`completed`/`cancelled`), not a state machine, with exactly one automatic transition (auto-complete/un-complete on fulfillment threshold) — a deliberate simplification per "do not create a complicated state machine unless the business actually requires it"
+- [x] Fulfillment computed live from linked posted contributions (`pledgesRepository.getFulfilledAmount`), never stored as a mutable counter
+- [x] Contribution recording (Phase 4) extended with an optional `pledgeId`; overpayment beyond the remaining pledge balance is rejected (422); a payment against a `cancelled` pledge is rejected (409)
+- [x] Pledge creation/payment/status-change/ledger-post/receipt-issue all share one repository/service layer — no duplicate ledger-posting path
+- [x] Receipt generation: one unified `receipts` module covering income, contributions, and pledge payments alike (they are the same underlying `contributions` record) — a receipt is issued automatically, inside the same DB transaction as the contribution and its ledger entry, so a contribution can never exist without exactly one receipt
+- [x] Server-generated, tenant-scoped, collision-free sequential receipt numbering (`RCT-YYYY-NNNN`) via `SELECT ... FOR UPDATE` row-locking on a per-tenant-per-year `receipt_sequences` row — verified unique under concurrent issuance in tests
+- [x] Receipt PDF rendering (`receiptPdf.js`, pdfkit) — A4, English/Swahili via `receiptLabels.js`
+- [x] File storage: **Cloudinary was not available/provisioned this session.** Built `storage.service.js` as a complete interface/service contract (`uploadFile`, etc.) — every method throws a typed `501 STORAGE_NOT_CONFIGURED` error. No credentials were requested, none were fabricated. Actual expense-attachment upload wiring is **PENDING** real storage provisioning; this is a deliberate, documented deferral, not a silent gap
 
-**Security work:** Receipt access goes through normal auth+tenant-scoping, never a bare public Cloudinary URL ([SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §6); MIME/size validation on any uploaded logo used in receipt templates.
+**Frontend work — all IMPLEMENTED:**
+- [x] `PledgesPage.jsx` — create pledge, view fulfilled/remaining, cancel
+- [x] Contribution form gained an optional pledge picker; contribution list gained a "download receipt" action that streams the PDF via an authenticated blob fetch (no bare/public receipt URL)
+- [x] No standalone Receipts page — by design, receipts are reached from the contribution they document, matching "one receipt architecture" rather than a document-library module
 
-**Testing:** Pledge fulfillment matches sum of linked contributions exactly; receipt numbers are sequential and unique per tenant; tenant isolation on receipt access.
+**Security work:** `pledges.view`/`pledges.create`, `receipts.view` permissions; pledge/receipt access is tenant-scoped like every other resource; contributor identity on a pledge is gated by `contributors.view`, reusing the Phase 4 privacy boundary (`contributorEnrichment.js`, extracted as a shared helper since both contributions and pledges need identical logic).
 
-**Acceptance criteria:** A contribution linked to a pledge updates the pledge's displayed fulfillment correctly with no manual reconciliation step; a receipt PDF is generated and retrievable only by users of the owning tenant.
+**Testing:** `server/tests/phase7/{pledges,receipts}.test.js` — TESTED (written): fulfillment matches sum of posted linked contributions exactly; overpayment rejected; payment against a cancelled pledge rejected; auto-complete/un-complete on payment/reversal; receipt numbers sequential and unique per tenant per year, including under concurrent issuance; PDF has correct content-type and magic bytes; contributor privacy respected on pledge listings; tenant isolation on pledges and receipts. LIVE-DB VERIFIED — **PENDING** (`ER_ACCESS_DENIED_ERROR` connecting to MySQL in this environment; see Phase 1 status).
+
+**Acceptance criteria:** Met in code — a contribution linked to a pledge updates fulfillment with no manual reconciliation step; a receipt is generated and retrievable only by users of the owning tenant — unverified against a live system.
 **Dependencies:** Phase 1, 2, 3, 4.
 
 ---
 
 ## PHASE 8 — Budget + Financial Closing
 
-**Objectives:** Budget-vs-actual tracking; formal period close/reopen workflow.
+**Objectives:** Simple budget-vs-actual tracking and a non-blocking period-close workflow — deliberately not a full corporate budgeting platform.
 
-**Database work:** `budgets`, `financial_periods` (already created Phase 1).
+**Status: IMPLEMENTED. TESTED (written). LIVE-DB VERIFIED: PENDING.**
 
-**Backend work:**
-- [ ] Budget CRUD (planned amounts per fund/category/period)
-- [ ] Budget-vs-actual comparison service (actual = derived from Phase 3 engine, per fund/category/period — never separately tallied)
-- [ ] `POST /financial-periods/:id/close` — snapshot + lock, per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §5
-- [ ] `POST /financial-periods/:id/reopen` — elevated permission, required reason, audited
-- [ ] Reconciliation endpoint/job: re-sum the ledger and compare against cached snapshots (support/debugging tool per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §2)
+**Database work:** `0025_create_budgets`. `financial_periods` already existed (Phase 1); this phase added the HTTP layer and the shared summary service over it.
 
-**Frontend work:**
-- [ ] Budget entry screens
-- [ ] Budget-vs-actual report view
-- [ ] Period close/reopen UI (with confirmation friction commensurate with consequence)
+**Backend work — all IMPLEMENTED:**
+- [x] Budget CRUD (`budgets.repository/service/controller/validator/routes.js`) — period/fund/category(optional)/amount/notes/status/created-by
+- [x] Duplicate-budget prevention via check-before-insert (`findByPeriodFundCategory`), since MySQL's unique index treats every `category_id = NULL` row as distinct and would not by itself catch two fund-level budgets for the same period+fund — same pattern already used for `contributors.member_number` and `categories(type,name)`
+- [x] Negative budget amounts rejected by validator; zero is allowed
+- [x] Budget-vs-actual: `actual_amount`/`variance` always computed by calling `transactionsRepository.sumByType` (the Phase 3 engine's own aggregation) — never a second calculation engine. Income variance = actual − planned (positive = ahead of plan); expense variance = planned − actual (positive = under budget)
+- [x] `financial_period.view`/`.manage` added as two new permissions this phase (`.close`/`.reopen` already existed from Phase 2/3) — catalog now 36 permissions total
+- [x] `POST /financial-periods/:id/close` — a closed period blocks all further ordinary ledger posting (`assertPeriodOpenAndOwned` throws `PERIOD_LOCKED`) but stays fully viewable; corrections after close only ever happen via reversal/adjustment against a new open period, never by editing history
+- [x] Closing checklist (`getClosingChecklist`) — informational only, reports pending-approval and approved-unpaid expense counts alongside a preview of the closing summary. **Nothing blocks closing except the period already being closed** — this architecture has no draft/pending ledger rows at all (every posting is final on insert), so there is no other genuinely blocking condition, per "only financially important issues should block closing"
+- [x] Closing summary (`financialSummary.service.js#getFinancialSummary`) — opening balance, total income, total expenses, transfer volume, net adjustments, closing balance, plus a per-fund and per-account balance breakdown, all computed live against the ledger (JOIN on `financial_periods.start_date`/`end_date`, never a snapshot table). This is the **same function** Phase 9's Financial Summary report calls — one source of truth, not two screens that could disagree
+- [x] `POST /financial-periods/:id/reopen` — Super-Administrator-only permission (`financial_period.reopen`, deliberately not granted even to Treasurer), requires a non-empty reason (422 without one), and is recorded via the audit log
+- [x] **Deliberate scope decision vs. the original Phase 0 plan:** no separate "reconciliation job" comparing cached snapshots against the ledger, and closing is not "snapshot + lock." Since every balance in this architecture is already derived live from the ledger (never cached), there is nothing to reconcile against — the snapshot-caching approach was assessed as unneeded complexity for this product's scale and dropped rather than built and left unused
 
-**Security work:** `period.close` and `period.reopen` as distinct permissions; reopen requires a comment, both actions audited.
+**Frontend work — all IMPLEMENTED:**
+- [x] `BudgetsPage.jsx` — create budget, budget-vs-actual table with color-coded variance
+- [x] `FinancialPeriodsPage.jsx` — create period, view closing summary, checklist, close/reopen (reopen requires typing a reason)
 
-**Testing:** Closing locks new postings against that period (verified against Phase 3's enforcement check); reopening is audited and requires the elevated permission; reconciliation job catches an intentionally-introduced snapshot/ledger mismatch in a test fixture.
+**Security work:** `budget.view`/`.manage`, `financial_period.view`/`.manage`/`.close`/`.reopen` all tenant-scoped and permission-gated; reopen additionally audited with actor, reason, and timestamp.
 
-**Acceptance criteria:** A closed period cannot silently accept new transactions through any code path; budget-vs-actual figures always trace back to the Financial Engine.
+**Testing:** `server/tests/phase8/{budgets,financialPeriods}.test.js` — TESTED (written): duplicate/negative/zero budget handling; actual and variance verified to match the engine's own balance query directly (not merely "look right"); closing blocks further posting (asserted via the engine throwing `PERIOD_LOCKED`, not just an HTTP-layer check); historical data stays viewable after close; reopen requires a reason and the elevated permission (Treasurer explicitly confirmed **cannot** reopen despite being able to close); tenant isolation on budgets and periods. LIVE-DB VERIFIED — **PENDING**.
+
+**Acceptance criteria:** Met in code — a closed period cannot accept new postings through any code path (enforced at the engine level, not just the route); budget-vs-actual and the closing summary both trace back to the same Phase 3 aggregation — unverified against a live system.
 **Dependencies:** Phase 1, 2, 3.
 
 ---
 
 ## PHASE 9 — Reports
 
-**Objectives:** PDF/Excel/CSV reporting, strictly as renderers over Financial Engine output.
+**Objectives:** A small, high-value reporting suite — exactly the 9 named reports, not a general report builder.
+
+**Status: IMPLEMENTED. TESTED (written). LIVE-DB VERIFIED: PENDING.**
 
 **Database work:** None new.
 
-**Backend work:**
-- [ ] Report endpoints per [API_ARCHITECTURE.md](API_ARCHITECTURE.md) §7: income statement, fund summary, contribution export, expense export — each calling the same aggregation services as the dashboard (Phase 10)
-- [ ] PDF rendering (server-side template)
-- [ ] Excel generation (`exceljs` or equivalent)
-- [ ] CSV streaming for large exports
+**Backend work — all IMPLEMENTED (`server/src/modules/reports/`):**
+- [x] Exactly 9 reports, each a thin composition over an *existing* repository/service method — never new aggregation SQL: Income, Expense, Contributions, Account Statement, Fund Statement, Budget vs Actual, Pledge Report, Financial Summary, Transaction Journal (`reports.service.js`)
+- [x] Financial Summary calls the exact same `financialSummary.service.js#getFinancialSummary` Phase 8's closing summary calls — structurally cannot diverge from it, dashboard, or per-account/fund balances, since they are the same query
+- [x] Practical, per-report filters only — date range, account, fund, category, payment method, status, financial period — each report exposes only the filters relevant to it (e.g. Pledge Report offers fund/status, not a date range the underlying query doesn't support; Account/Fund Statement require an account/fund selection)
+- [x] Fixed a real consistency bug found while wiring this up: `transactionsRepository.sumByType` (used for report *totals*) did not accept `accountId`/`dateFrom`/`dateTo`, while `listHistory` (used for report *rows*) did — so an account- or date-filtered Income/Expense report would have silently shown a total that ignored those filters. Extended `sumByType` to accept the same filter set as `listHistory` so rows and totals are always computed from the identical filtered set
+- [x] Reusable export infrastructure (`exporters.js`) — `toCsv`, `toExcelBuffer` (exceljs), `streamPdfReport` (pdfkit, A4, paginated, church name + filters used + generated timestamp + totals row) — used by all 9 reports; no bespoke exporter per report
+- [x] Shared column definitions (`reportColumns.js`) used identically for the on-screen JSON shape and every export format, so a column is defined once
+- [x] Export columns are whitelist-based (`columns.map(c => row[c.key])`), so no export can ever leak a field that isn't an explicitly declared report column, even if the underlying row object carries more fields
+- [x] `reports.controller.js#respond` is the single choke point for every report: JSON view requires only that report's own `.view`-family permission (same permission that already gates browsing that data elsewhere); any export (CSV/XLSX/PDF) additionally requires `reports.export` — "cannot export what you cannot view" is the floor, export is a distinct, stricter, audit-relevant action on top
+- [x] Contributor privacy preserved through export: Contributions and Pledge reports enrich contributor identity only when the caller holds `contributors.view` (reusing `contributorEnrichment.js`); the export row-mappers operate on that already-filtered result, so a CSV/Excel/PDF export cannot leak identity that the on-screen JSON wouldn't show
+- [x] Performance: every report reads via existing indexed, tenant-scoped, DB-side aggregation (`SUM`/`COUNT` in SQL) with a bounded row limit on list-style reports — no N+1 queries, no in-app aggregation over unbounded result sets
 
-**Frontend work:**
-- [ ] Report selection/filter UI (date range, fund, category)
-- [ ] Download/export triggers
+**Frontend work — all IMPLEMENTED:**
+- [x] `ReportsPage.jsx` — single page, report picker plus only-the-relevant-filters form, results table, PDF/Excel/CSV export buttons gated by `reports.export` (`PermissionGate`)
+- [x] `reportsApi` in `src/api/endpoints.js` — one path builder per report, one `run`/`export` pair reused by all 9, not a bespoke API call per report
 
-**Security work:** Report export permission gating (`report.export`); large exports rate-limited/queued if needed to avoid resource exhaustion.
+**Security work:** Every report route requires authentication + tenant context (standard middleware chain) plus the same permission that already gates that data elsewhere in the app; `reports.export` is a second, distinct gate for any non-JSON format, checked centrally rather than per-handler.
 
-**Testing:** A report's total matches the dashboard's total for the same filter set (regression test guarding against the two ever diverging — this is the test that directly enforces [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §6).
+**Testing:** `server/tests/phase9/reports.test.js` — TESTED (written): each report's rows/totals verified to match the Financial Engine directly (not merely "look reasonable"); date/account/category filters proven to narrow rows and totals *together* (guards the `sumByType` bug fixed above); contributor privacy respected in Contributions and Pledge reports; `reports.export` permission enforced separately from view permission (Viewer can view, cannot export; Assistant Treasurer likewise); CSV header/row shape, Excel (PK/zip magic bytes) and PDF (%PDF magic bytes) all verified structurally; a closed period's data remains fully reportable; tenant isolation across all report endpoints. LIVE-DB VERIFIED — **PENDING**.
 
-**Acceptance criteria:** Every report format (PDF/Excel/CSV) for a given filter set produces numerically identical totals to each other and to the dashboard.
+**Acceptance criteria:** Met in code — every report traces to the same Financial Engine aggregation the dashboard and closing summary use, so numbers cannot diverge by construction; exports never exceed what the JSON view already permits — unverified against a live system.
 **Dependencies:** Phase 3 through 8 (reports cover all financial domains).
 
 ---

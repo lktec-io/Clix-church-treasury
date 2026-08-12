@@ -1,7 +1,7 @@
 # API Architecture
 
 **Style:** REST over HTTPS, JSON only.
-**Current state:** Phases 1–6 implemented — every endpoint in §2 below marked without a "(planned)" tag is real, lint-clean code in `server/src/`. Live verification against a database is pending (see [MASTER_TODO.md](MASTER_TODO.md)).
+**Current state:** Phases 1–9 implemented — every endpoint in §2 below is real, lint-clean code in `server/src/`; nothing remains in a "planned" state. Live verification against a database is pending (see [MASTER_TODO.md](MASTER_TODO.md)). `settings` (church profile/logo) is the one resource from the original Phase 0 URL map still undelivered — it belongs to Phase 10/11 (Dashboard/UI polish and hardening), not any phase completed so far.
 
 ---
 
@@ -73,18 +73,41 @@ GET    /api/v1/transfers/:id
 
 GET    /api/v1/audit-logs
 
---- planned, not yet built (Phase 7+) ---
 GET    /api/v1/pledges
 POST   /api/v1/pledges
+GET    /api/v1/pledges/:id
+PATCH  /api/v1/pledges/:id
+POST   /api/v1/pledges/:id/status               — active/completed/cancelled; completed also reached automatically on full payment
+
+GET    /api/v1/receipts/:id
 GET    /api/v1/receipts/:id/pdf
+GET    /api/v1/receipts/by-contribution/:contributionId
+                                                 — no POST — a receipt is only ever issued automatically alongside a contribution
+
 GET    /api/v1/budgets
+POST   /api/v1/budgets
+POST   /api/v1/budgets/:id/archive
+
 GET    /api/v1/financial-periods
-POST   /api/v1/financial-periods/:id/close      — service exists (Phase 3), no HTTP route yet
-POST   /api/v1/financial-periods/:id/reopen     — service exists (Phase 3), no HTTP route yet
-GET    /api/v1/reports/income-statement
-GET    /api/v1/reports/fund-summary
-GET    /api/v1/reports/contributions.csv
-GET    /api/v1/reports/income-statement.pdf
+POST   /api/v1/financial-periods
+GET    /api/v1/financial-periods/:id
+GET    /api/v1/financial-periods/:id/summary
+GET    /api/v1/financial-periods/:id/checklist
+POST   /api/v1/financial-periods/:id/close
+POST   /api/v1/financial-periods/:id/reopen     — Super Administrator only, requires a reason
+
+GET    /api/v1/reports/income
+GET    /api/v1/reports/expense
+GET    /api/v1/reports/transaction-journal
+GET    /api/v1/reports/contributions
+GET    /api/v1/reports/accounts/:accountId/statement
+GET    /api/v1/reports/funds/:fundId/statement
+GET    /api/v1/reports/budget-vs-actual
+GET    /api/v1/reports/pledges
+GET    /api/v1/reports/financial-summary
+                                                 — every report above accepts ?format=csv|xlsx|pdf (default json); non-json requires reports.export in addition to that report's own .view permission
+
+--- planned, not yet built (Phase 10+) ---
 GET    /api/v1/settings
 PATCH  /api/v1/settings
 ```
@@ -163,7 +186,9 @@ Full detail and rationale in [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md
 
 ## 7. Report Endpoints
 
-Report endpoints (`/reports/*`) are **read-only views over Financial Engine output** — they call the same aggregation services the dashboard uses, then a format-specific renderer (PDF via a server-side template, Excel/CSV via streamed generation). A report endpoint never runs its own bespoke SQL that recomputes a total differently from the dashboard — see [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §6, this is the architectural principle that prevents the dashboard and the PDF report from ever disagreeing.
+Report endpoints (`/reports/*`) are **read-only views over Financial Engine output** — they call the same aggregation services the dashboard uses, then a format-specific renderer (PDF via `pdfkit`, Excel via `exceljs`, CSV hand-written — all three shared across every report, see `server/src/modules/reports/exporters.js`). A report endpoint never runs its own bespoke SQL that recomputes a total differently from the dashboard — see [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §6, this is the architectural principle that prevents the dashboard and the PDF report from ever disagreeing.
+
+**As implemented (Phase 9):** every report is `GET`, defaults to `format=json` for on-screen viewing, and accepts `format=csv|xlsx|pdf` for export. Viewing requires only the permission that already gates that data elsewhere (`income.view`, `expense.view`, `accounts.view`, `funds.view`, `budget.view`, `pledges.view`, or `reports.view` for the two cross-cutting reports); any export additionally requires `reports.export`, checked once centrally rather than per-route. Exported columns are whitelisted per report (`reportColumns.js`) — an export can never surface a field the on-screen JSON view doesn't already expose.
 
 ---
 
@@ -181,5 +206,7 @@ The one and only production domain for this product is **`https://treasurer.clix
 
 ## 9. What Later Phases Must Deliver Against This Document
 
-- Phase 7–9: `pledges`, `receipts`, `budgets`, `financial-periods` (close/reopen HTTP routes — the underlying service already exists), `reports/*` endpoints, following §2's URL map and §7's renderer-only principle for reports.
+- Phase 10–11: `settings` (church profile/logo) — the one endpoint pair from the original URL map not yet built; dashboard aggregation endpoints if the dashboard needs anything beyond what `reports/financial-summary` already provides.
 - Phase 12: TLS termination and the Nginx routing described in §8, exercised against the real production domain for the first time.
+
+**Status:** every other section of this document (§1–§8) now describes delivered, real code — `pledges`, `receipts`, `budgets`, `financial-periods` (including close/reopen), and all 9 `reports/*` endpoints (Phases 7–9) are implemented exactly as §2's URL map and §7's renderer-only principle describe.
