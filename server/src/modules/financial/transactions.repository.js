@@ -59,7 +59,11 @@ class TransactionsRepository extends TenantScopedRepository {
     return rows[0].total;
   }
 
-  async listHistory(tenantId, { accountId, fundId, financialPeriodId, status, limit = 50, offset = 0 } = {}, connection) {
+  async listHistory(
+    tenantId,
+    { accountId, fundId, financialPeriodId, status, type, direction, limit = 50, offset = 0 } = {},
+    connection
+  ) {
     assertTenantId(tenantId);
     const conditions = ['tenant_id = ?'];
     const params = [tenantId];
@@ -78,6 +82,14 @@ class TransactionsRepository extends TenantScopedRepository {
     if (status !== undefined) {
       conditions.push('status = ?');
       params.push(status);
+    }
+    if (type !== undefined) {
+      conditions.push('type = ?');
+      params.push(type);
+    }
+    if (direction !== undefined) {
+      conditions.push('direction = ?');
+      params.push(direction);
     }
     const [rows] = await this.runner(connection).query(
       `SELECT * FROM transactions WHERE ${conditions.join(' AND ')}

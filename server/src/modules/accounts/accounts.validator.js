@@ -15,3 +15,10 @@ export function validateCreateAccount(body) {
   }
   return { name: body.name.trim(), type: body.type };
 }
+
+export function validateRenameAccount(body) {
+  if (typeof body.name !== 'string' || body.name.trim().length === 0) {
+    throw validationError('Invalid payload', { name: 'name is required' });
+  }
+  return body.name.trim();
+}

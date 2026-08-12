@@ -13,3 +13,10 @@ export function validateCreateFund(body) {
   }
   return { name: body.name.trim(), isRestricted: body.isRestricted ?? false };
 }
+
+export function validateRenameFund(body) {
+  if (typeof body.name !== 'string' || body.name.trim().length === 0) {
+    throw validationError('Invalid payload', { name: 'name is required' });
+  }
+  return body.name.trim();
+}
