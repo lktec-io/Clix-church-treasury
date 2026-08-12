@@ -82,3 +82,18 @@ export const receiptsApi = {
     return receiptsApi.openPdf(receipt.id, locale);
   },
 };
+
+export const budgetsApi = {
+  list: (params) => apiClient.get('/budgets', { params }).then(unwrap),
+  create: (body) => apiClient.post('/budgets', body).then(unwrap),
+  archive: (id) => apiClient.post(`/budgets/${id}/archive`).then(unwrap),
+};
+
+export const financialPeriodsApi = {
+  list: () => apiClient.get('/financial-periods').then(unwrap),
+  create: (body) => apiClient.post('/financial-periods', body).then(unwrap),
+  summary: (id) => apiClient.get(`/financial-periods/${id}/summary`).then(unwrap),
+  checklist: (id) => apiClient.get(`/financial-periods/${id}/checklist`).then(unwrap),
+  close: (id) => apiClient.post(`/financial-periods/${id}/close`).then(unwrap),
+  reopen: (id, reason) => apiClient.post(`/financial-periods/${id}/reopen`, { reason }).then(unwrap),
+};

@@ -19,6 +19,8 @@ import { expensesRoutes } from './modules/expenses/expenses.routes.js';
 import { transfersRoutes } from './modules/transfers/transfers.routes.js';
 import { pledgesRoutes } from './modules/pledges/pledges.routes.js';
 import { receiptsRoutes } from './modules/receipts/receipts.routes.js';
+import { budgetsRoutes } from './modules/budgets/budgets.routes.js';
+import { financialPeriodsRoutes } from './modules/financial/financialPeriods.routes.js';
 
 // Middleware order matters and matches docs/API_ARCHITECTURE.md §3:
 // secure headers -> CORS -> body/cookie parsing -> rate limit -> auth ->
@@ -55,6 +57,8 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
   app.use('/api/v1/transfers', apiRateLimiter, auth, tenantContext, transfersRoutes());
   app.use('/api/v1/pledges', apiRateLimiter, auth, tenantContext, pledgesRoutes());
   app.use('/api/v1/receipts', apiRateLimiter, auth, tenantContext, receiptsRoutes());
+  app.use('/api/v1/budgets', apiRateLimiter, auth, tenantContext, budgetsRoutes());
+  app.use('/api/v1/financial-periods', apiRateLimiter, auth, tenantContext, financialPeriodsRoutes());
 
   app.use((req, res) => {
     res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Route not found' } });

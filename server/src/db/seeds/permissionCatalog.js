@@ -30,6 +30,8 @@ export const PERMISSIONS = [
   ['reports.export', 'Export reports (PDF/Excel/CSV)'],
   ['budget.view', 'View budgets'],
   ['budget.manage', 'Create/edit budgets'],
+  ['financial_period.view', 'View financial periods and their status'],
+  ['financial_period.manage', 'Create financial periods'],
   ['financial_period.close', 'Close a financial period'],
   ['financial_period.reopen', 'Reopen a closed financial period (elevated, distinct from close)'],
   ['users.view', 'View tenant users'],
@@ -56,7 +58,7 @@ export const SYSTEM_ROLES = {
     'receipts.view',
     'reports.view', 'reports.export',
     'budget.view', 'budget.manage',
-    'financial_period.close',
+    'financial_period.view', 'financial_period.manage', 'financial_period.close',
   ],
   'Assistant Treasurer': [
     'dashboard.view',
@@ -69,6 +71,7 @@ export const SYSTEM_ROLES = {
     'receipts.view',
     'reports.view',
     'budget.view',
+    'financial_period.view',
   ],
   'Approver': [
     'dashboard.view',
@@ -82,6 +85,7 @@ export const SYSTEM_ROLES = {
     'pledges.view', 'receipts.view',
     'reports.view', 'reports.export',
     'budget.view',
+    'financial_period.view',
     'audit.view',
   ],
   'Viewer': [
@@ -90,5 +94,6 @@ export const SYSTEM_ROLES = {
     'accounts.view', 'funds.view',
     'pledges.view', 'receipts.view',
     'reports.view', 'budget.view',
+    'financial_period.view',
   ],
 };

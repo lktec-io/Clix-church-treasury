@@ -15,6 +15,26 @@ class FinancialPeriodsRepository extends TenantScopedRepository {
     return rows[0] ?? null;
   }
 
+  async listForTenant(tenantId, connection) {
+    const [rows] = await this.runner(connection).query(
+      'SELECT * FROM financial_periods WHERE tenant_id = ? ORDER BY start_date DESC',
+      [tenantId]
+    );
+    return rows;
+  }
+
+  // The period immediately before this one by start_date — used to derive
+  // an opening balance as "the previous period's closing balance", itself
+  // computed live rather than stored (docs/FINANCIAL_ARCHITECTURE.md §2).
+  async findPrevious(tenantId, period, connection) {
+    const [rows] = await this.runner(connection).query(
+      `SELECT * FROM financial_periods WHERE tenant_id = ? AND start_date < ?
+       ORDER BY start_date DESC LIMIT 1`,
+      [tenantId, period.start_date]
+    );
+    return rows[0] ?? null;
+  }
+
   async create(tenantId, { label, startDate, endDate }, connection) {
     return this.insert(tenantId, { label, start_date: startDate, end_date: endDate, status: 'open' }, connection);
   }

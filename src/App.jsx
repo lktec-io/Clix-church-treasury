@@ -11,6 +11,8 @@ import AccountsPage from './pages/AccountsPage.jsx';
 import FundsPage from './pages/FundsPage.jsx';
 import TransfersPage from './pages/TransfersPage.jsx';
 import PledgesPage from './pages/PledgesPage.jsx';
+import BudgetsPage from './pages/BudgetsPage.jsx';
+import FinancialPeriodsPage from './pages/FinancialPeriodsPage.jsx';
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
           <Route path="/funds" element={<FundsPage />} />
           <Route path="/transfers" element={<TransfersPage />} />
           <Route path="/pledges" element={<PledgesPage />} />
+          <Route path="/budgets" element={<BudgetsPage />} />
+          <Route path="/financial-periods" element={<FinancialPeriodsPage />} />
         </Route>
       </Route>
 
