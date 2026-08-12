@@ -280,3 +280,18 @@ export async function resetPassword({ rawToken, newPassword }) {
 export async function getEffectivePermissions(userId) {
   return permissionsRepository.listForUser(userId);
 }
+
+// Backs GET /auth/me — how the frontend recovers "who is logged in" after a
+// page reload, since the access token itself lives only in memory
+// (src/api/client.js) and carries no display-friendly profile data.
+export async function getCurrentUser(tenantId, userId) {
+  const user = await usersRepository.findById(tenantId, userId);
+  if (!user) throw notFound('User not found');
+
+  const roles = await rolesRepository.listForTenant(tenantId);
+  const roleIds = new Set(await userRolesRepository.listRoleIdsForUser(userId));
+  const roleNames = roles.filter((r) => roleIds.has(r.id)).map((r) => r.name);
+  const permissions = await permissionsRepository.listForUser(userId);
+
+  return { user: toPublicUser(user), roles: roleNames, permissions };
+}

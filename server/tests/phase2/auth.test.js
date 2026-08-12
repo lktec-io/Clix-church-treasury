@@ -258,6 +258,29 @@ describe('access token verification', () => {
   });
 });
 
+describe('GET /auth/me', () => {
+  it('returns the current user, roles, and permissions', async () => {
+    const app = buildRealApp();
+    const { tenant, payload } = await registerChurch(app);
+    const token = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ tenantSlug: tenant.slug, email: payload.adminEmail, password: payload.adminPassword })
+      .then((res) => res.body.data.accessToken);
+
+    const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(res.body.data.user.email).toBe(payload.adminEmail);
+    expect(res.body.data.roles).toContain('Super Administrator');
+    expect(res.body.data.permissions).toContain('settings.manage');
+    expect(res.body.data.user.password_hash).toBeUndefined();
+  });
+
+  it('requires authentication', async () => {
+    const app = buildRealApp();
+    const res = await request(app).get('/api/v1/auth/me').expect(401);
+    expect(res.body.error.code).toBe('UNAUTHENTICATED');
+  });
+});
+
 describe('password reset', () => {
   it('completes a reset and revokes existing sessions', async () => {
     const app = buildRealApp();

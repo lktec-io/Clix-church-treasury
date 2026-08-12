@@ -3,7 +3,8 @@
 **Product:** Clix Church Treasury Management System
 **Company:** Clix Digital Works
 **Type:** Commercial, multi-tenant SaaS for church financial management
-**Status:** Phases 1–3 implemented (database/multi-tenant foundation, auth/RBAC/security, financial engine) — see [MASTER_TODO.md](MASTER_TODO.md) for exact scope. Code is written and lint-clean; live test verification against MySQL is pending local DB access.
+**Status:** Phases 1–6 implemented (database/multi-tenant foundation, auth/RBAC/security, financial engine, income/contributions, expenses/approval, accounts/funds/transfers) plus a working frontend (React Router, Axios, i18n en/sw) covering all six phases' features — see [MASTER_TODO.md](MASTER_TODO.md) for exact scope. Code is written, lint-clean on both frontend and backend, builds successfully; live test verification against MySQL is pending local DB access.
+**Production domain:** `https://treasurer.clixworks.co.tz` — the one and only production domain for this product. Never localhost/127.0.0.1/example.com/an old Clix project domain in any production configuration path (verified by repo-wide self-audit — see [MASTER_TODO.md](MASTER_TODO.md) Phase 4–6 entry).
 
 ---
 
@@ -126,6 +127,12 @@ Decisions required by the product brief before coding begins. Each will be expan
 | 18 | Multi-tenant login | Login requires `{ tenantSlug, email, password }` since `users.email` is only unique per-tenant, not globally — a decision the original brief didn't address | [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §2 |
 | 19 | Ledger transaction direction | Added a `direction` (`in`/`out`) column to `transactions`, beyond the original schema sketch — `type` alone can't disambiguate a transfer's two legs | [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §7, [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §2 |
 | 20 | Domain table sequencing | `contributors`/`contributions`/`expenses`/`pledges`/`receipts`/`budgets` deferred to their owning phases (4–8) rather than created upfront in Phase 1 — avoids empty, unused schema sitting around for several phases | [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2 |
+| 21 | Contributor privacy | `contributors.view`/`contributors.manage` are permissions distinct from `income.*` — a role can see contribution amounts without seeing donor identity | [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §1 |
+| 22 | Income vs. expense approval gating | Contributions post immediately (no approval workflow); expenses require draft→submitted→approved→**paid** (an extra explicit step beyond the original "approved = posted" sketch) — the two are asymmetric by design, not oversight | [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §8 |
+| 23 | Expense approval chain scope | No `expense_approvals` multi-step chain table — single approve/reject decision, columns live directly on `expenses`. A future multi-approver requirement would add the chain table then, not speculatively now | [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2 |
+| 24 | Financial Engine composability | `financialEngine.service.js`'s posting primitive was exported (`postLedgerEntry`) so domain modules (contributions, expenses) can post the ledger and insert their own row in one atomic transaction — same pattern as Phase 1/2's `createTenantWithConnection` | [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §9 |
+| 25 | Production domain & API topology | `https://treasurer.clixworks.co.tz`; frontend and API share this origin in production (Nginx routes `/api/*` to the backend), so browser requests need no cross-origin CORS grant in practice — CORS is still configured explicitly as defense-in-depth | [API_ARCHITECTURE.md](API_ARCHITECTURE.md) §8 |
+| 26 | CORS/frontend-URL config strictness | `CORS_ORIGINS` and `FRONTEND_URL` are required, fail-fast server config (no default) — upgraded from an initial dev-convenience default specifically so a misconfigured production deploy can't silently inherit a localhost origin | [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §4 |
 
 ---
 
@@ -145,8 +152,8 @@ Decisions required by the product brief before coding begins. Each will be expan
 
 ## 8. Open Items
 
-1. **Live MySQL access is the current blocker.** A local `MySQL80` Windows service exists but the root password is unknown to the user; a dedicated least-privilege app user/database pair has been prepared (`server/scripts/setup-db.example.sql`) and is ready to run the moment root access is restored. Nothing in Phases 1–3 has been executed against a real database yet — see [MASTER_TODO.md](MASTER_TODO.md) for exact status.
+1. **Live MySQL access is the current blocker.** A local `MySQL80` Windows service exists but the root password is unknown to the user; a password reset was in progress outside the build session as of this writing. A dedicated least-privilege app user/database pair has been prepared (`server/scripts/setup-db.example.sql`) and is ready to run the moment root access is restored. Nothing in Phases 1–6 has been executed against a real database yet — see [MASTER_TODO.md](MASTER_TODO.md) for exact status per phase.
 2. **Cloudinary account** — not yet provisioned; only required starting Phase 7 (Receipts), not a current blocker.
-3. **VPS/Nginx/PM2/Cloudflare targets** — not yet provisioned; only required at Phase 12, not a blocker for earlier phases.
+3. **VPS/Nginx/PM2/Cloudflare targets** — not yet provisioned; only required at Phase 12, not a blocker for earlier phases. Production domain and API topology are already decided (Decision #25), so Phase 12 has a concrete target rather than an open question.
 
-Item 1 blocks *verifying* Phases 1–3 (running migrations/seeds/tests) but has not blocked *writing* them — all code and tests for Phases 1–3 exist and are lint-clean.
+Item 1 blocks *verifying* Phases 1–6 (running migrations/seeds/tests) but has not blocked *writing* them — all code and tests for Phases 1–6, plus the frontend covering all six phases, exist, are lint-clean, and build successfully.

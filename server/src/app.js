@@ -40,7 +40,7 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
     res.json({ success: true, data: { status: 'ok' } });
   });
 
-  app.use('/api/v1/auth', authRoutes());
+  app.use('/api/v1/auth', authRoutes({ authenticate: auth, tenantContext }));
 
   app.use('/api/v1/users', apiRateLimiter, auth, tenantContext, usersRoutes());
   app.use('/api/v1/audit-logs', apiRateLimiter, auth, tenantContext, auditRoutes());

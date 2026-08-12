@@ -85,6 +85,15 @@ export async function requestPasswordReset(req, res, next) {
   }
 }
 
+export async function me(req, res, next) {
+  try {
+    const result = await authService.getCurrentUser(req.tenantId, req.auth.userId);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function resetPassword(req, res, next) {
   try {
     const rawToken = req.body?.token;

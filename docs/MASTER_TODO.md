@@ -143,24 +143,34 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Objectives:** Record contributions against contributors, funds, and categories; post through the Financial Engine.
 
-**Database work:** `contributors`, `contributions` (already created Phase 1) — confirm/adjust as real usage patterns emerge.
+**Status: IMPLEMENTED. TESTED (written). LIVE-DB VERIFIED: PENDING.**
 
-**Backend work:**
-- [ ] Contributor CRUD
-- [ ] Contribution recording → posts via Phase 3 posting service
-- [ ] Category management HTTP routes (`categories.repository.js` already exists from Phase 1 as a tenant-scoped repository, following the same pattern as `accounts`/`funds` — this phase just needs to add `categories.controller.js`/`.routes.js`/`.validator.js` on top of it, both `income` and `expense` types)
-- [ ] Contribution listing/filtering (by contributor, fund, date range, method)
+**Database work:**
+- [x] IMPLEMENTED — `contributors` (0018), `contributions` (0019) migrations. Deviates from the original Phase 1 sketch: `contributors` is a separate table specifically so contributor-identity visibility (`contributors.view`) can be permissioned independently of income-amount visibility (`income.view`) — see [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md).
+- [ ] LIVE-DB VERIFIED — migrations have not been run against a real database.
 
-**Frontend work:**
-- [ ] Record-contribution form (mobile-first)
-- [ ] Contributor list/search
-- [ ] Contribution history view
+**Backend work — all IMPLEMENTED:**
+- [x] Contributor CRUD (`contributors.controller.js`/`.service.js`/`.repository.js`/`.routes.js`/`.validator.js`)
+- [x] Contribution recording — posts through the Financial Engine via `postLedgerEntry` (exported from `financialEngine.service.js` for exactly this composition), the contribution row and its ledger row created atomically in one DB transaction
+- [x] Category management HTTP routes (`categories.controller.js`/`.routes.js`/`.validator.js`) on the Phase 1 repository
+- [x] Contribution listing/filtering (by contributor, fund, date range, payment method) — `contributions.repository.js#search`
+- [x] Contribution reversal (`POST /contributions/:id/reverse`) — composes the reversal primitive with the contribution's own status flip in one transaction
+- [x] Two rough edges found and fixed during this phase: duplicate contributor member-number and duplicate category (type, name) now return `409 CONFLICT` via check-before-insert, not a generic 500
 
-**Security work:** Tenant-isolation tests for all new endpoints; permission gating (`contribution.create`, `contribution.view`).
+**Frontend work — all IMPLEMENTED (`src/pages/ContributionsPage.jsx`, `ContributorsPage.jsx`):**
+- [x] Record-contribution form (mobile-first, pure CSS)
+- [x] Contributor list + add form
+- [x] Contribution history table with reversal action, contributor identity shown only when the viewer holds `contributors.view`
 
-**Testing:** Happy path, tenant isolation, posted contribution reflected correctly in balance (integration test against Phase 3 engine).
+**Security work:**
+- [x] IMPLEMENTED — `contributors.view`/`contributors.manage` permissions, deliberately separate from `income.*`, granted only to Super Administrator/Treasurer/Assistant Treasurer (not Auditor/Approver/Viewer) — the privacy boundary the brief asked for
+- [x] IMPLEMENTED — tenant-isolation enforced identically to every other module (via `TenantScopedRepository` + the Financial Engine's own cross-tenant reference checks)
 
-**Acceptance criteria:** A treasurer can record a contribution end-to-end and see it reflected in the relevant fund/account balance via the Financial Engine, not a separately computed number.
+**Testing:**
+- [x] TESTED (written) — `server/tests/phase4/`: `contributions.test.js`, `contributors.test.js`, `categories.test.js`. Covers create/retrieve, tenant isolation, permission denial, invalid amount/account/fund/category, closed-period rejection, reversal (including double-reversal block and missing-reason rejection), contributor-privacy enrichment both with and without `contributors.view`, non-financial-only update.
+- [ ] LIVE-DB VERIFIED — PENDING. No test in this suite has executed against a real database; `npm test` fails at `globalSetup` (migration step) with `ER_ACCESS_DENIED_ERROR` before any test runs.
+
+**Acceptance criteria:** Met in code — a treasurer can record a contribution end-to-end via the UI and see it reflected in the relevant fund/account balance via the Financial Engine — but unverified against a live system.
 **Dependencies:** Phase 1, 2, 3.
 
 ---
@@ -169,24 +179,33 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Objectives:** Expense request → multi-step approval → posting, with segregation of duties.
 
-**Database work:** `expenses`, `expense_approvals` (already created Phase 1).
+**Status: IMPLEMENTED. TESTED (written). LIVE-DB VERIFIED: PENDING.**
 
-**Backend work:**
-- [ ] Expense request creation (draft state, no posting yet)
-- [ ] Approval chain: `POST /expenses/:id/approve`, `POST /expenses/:id/reject`
-- [ ] On final approval → posts via Phase 3 posting service (per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §8)
-- [ ] Self-approval block (requester ≠ approver) enforced at service layer
+**Database work:**
+- [x] IMPLEMENTED — `expenses` migration (0020). **Scope decision:** a single-decision `expense_approvals`-style chain table from the original Phase 1 sketch was not built; this phase's own brief specifies a single approve/reject decision (not a multi-step chain), so `approved_by_user_id`/`rejected_by_user_id`/their timestamps live directly on `expenses`. A multi-approver chain remains a natural extension if a real requirement appears.
+- [ ] LIVE-DB VERIFIED — PENDING.
 
-**Frontend work:**
-- [ ] Expense request form
-- [ ] Approval queue/inbox view for approvers
-- [ ] Expense status tracking (draft/pending/approved/rejected/paid)
+**Backend work — all IMPLEMENTED:**
+- [x] Full workflow: draft → submitted → approved/rejected (or returned to draft for correction) → paid (`expenses.service.js`)
+- [x] `POST /expenses/:id/submit`, `/approve`, `/reject`, `/return`, `/pay`
+- [x] Financial effect only at `pay` — posts through `postLedgerEntry` composed with the status flip in one DB transaction; every earlier state (draft/submitted/approved/rejected) has zero ledger effect, verified by test at each state
+- [x] Segregation of duties: `approveExpense` blocks `requested_by_user_id === actorUserId`, independent of what permissions the requester holds
+- [x] Double-payment prevented by a `409 CONFLICT` status-transition guard, not by a database race
+- [x] Attachment metadata validation (MIME allowlist, 5MB cap) — **no upload endpoint** since Cloudinary isn't provisioned until Phase 7; this is a deliberate deferral, not a gap, to avoid building upload handling ahead of real storage
 
-**Security work:** Permission gating per step (`expense.create`, `expense.approve`); audit log entries for every approval/rejection decision.
+**Frontend work — all IMPLEMENTED (`src/pages/ExpensesPage.jsx`):**
+- [x] Expense request form
+- [x] Combined list + inline workflow actions (submit/approve/reject/pay), each button permission-gated and state-gated (e.g. approve never shown to the requester of that same expense)
+- [x] Status badges for all five states
 
-**Testing:** Approval chain correctness, self-approval rejection, rejected expense never posts, tenant isolation.
+**Security work:**
+- [x] IMPLEMENTED — permission gating per transition (`expense.create/update/submit/approve/reject/pay`, all seeded in Phase 2); audit log entries for every state transition
 
-**Acceptance criteria:** An expense cannot affect any balance until it clears its full approval chain; rejected expenses are visible in history but contribute zero to totals.
+**Testing:**
+- [x] TESTED (written) — `server/tests/phase5/expenses.test.js`: financial effect (or lack of it) at every state, invalid transitions (409), double-payment prevention, return-for-correction, closed-period rejection at pay time, self-approval block, permission boundaries per role, attachment MIME/size validation, tenant isolation.
+- [ ] LIVE-DB VERIFIED — PENDING, same blocker.
+
+**Acceptance criteria:** Met in code — an expense cannot affect any balance until `pay`, which requires clearing the full workflow — unverified against a live system.
 **Dependencies:** Phase 1, 2, 3, 4 (shares the category CRUD built in Phase 4).
 
 ---
@@ -195,22 +214,27 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Objectives:** Manage accounts/funds as first-class entities; move money between them correctly.
 
-**Database work:** `accounts`, `funds` (created Phase 1). No separate `transfers` table — a transfer is two linked `transactions` rows (Decision, see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2).
+**Status: IMPLEMENTED. TESTED (written). LIVE-DB VERIFIED: PENDING.**
 
-**Backend work:**
-- [x] Account/fund CRUD — already built in Phase 1 (`accounts.controller.js`/`.routes.js`/`.service.js`/`.validator.js`, same for `funds`), permission-gated (`accounts.view`/`accounts.manage`, `funds.view`/`funds.manage`) ahead of this phase, since Phase 1 needed working tenant-scoped HTTP resources to prove the isolation pattern end-to-end. Only "rename"/"deactivate" as distinct UX flows (vs. the generic update already possible) remain for this phase.
-- [x] Transfer logic — `financialEngine.service.js#transfer` built in Phase 3, posts two linked ledger rows atomically, tested
-- [ ] `POST /api/v1/transfers` HTTP endpoint — the *service* exists and is tested directly; no route/controller/permission-gate wraps it in HTTP yet, which is this phase's remaining work
+**Database work:** `accounts`, `funds` (created Phase 1), no schema changes this phase. No separate `transfers` table — a transfer is two linked `transactions` rows (Decision, see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2).
 
-**Frontend work:**
-- [ ] Account/fund management screens
-- [ ] Transfer form (account-to-account and/or fund-to-fund within an account)
+**Backend work — all IMPLEMENTED:**
+- [x] Account/fund CRUD — base create/list/get built in Phase 1; this phase added `PATCH` (rename) and `POST /:id/activate`/`/deactivate`. No delete route exists anywhere for either resource — deactivation is the only retirement path, backed by `RESTRICT` foreign keys from `transactions` so a fund/account with historical activity structurally cannot be removed
+- [x] Verified a deactivated account is rejected by the Financial Engine's own `assertAccountUsable` check (Phase 3 code — this phase confirmed the invariant, no change needed)
+- [x] Transfer logic — built in Phase 3 (`financialEngine.service.js#transfer`)
+- [x] `POST /api/v1/transfers`, `GET /api/v1/transfers`, `GET /api/v1/transfers/:id` — a thin HTTP wrapper (`transfers.controller.js`/`.service.js`/`.validator.js`/`.routes.js`) with no repository of its own and no parallel financial logic; lists one row per transfer (the 'out' leg), `GET /:id` returns both legs
 
-**Security work:** Permission gating (`account.manage`, `transfer.create`); prevent deactivating an account/fund with a nonzero balance without explicit confirmation.
+**Frontend work — all IMPLEMENTED (`src/pages/AccountsPage.jsx`, `FundsPage.jsx`, `TransfersPage.jsx`):**
+- [x] Account/fund management screens: create, rename (prompt-based), activate/deactivate toggle
+- [x] Transfer form (account + fund pair on both sides, single amount)
 
-**Testing:** Transfer posts both legs atomically (both or neither); balances update correctly on both sides; tenant isolation.
+**Security work:** Permission gating (`accounts.manage`, `funds.manage`, `transfers.create`), all seeded in Phase 2.
 
-**Acceptance criteria:** Transfers never leave the ledger in a half-posted state; account/fund balances remain fully derivable per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §2 after any sequence of transfers.
+**Testing:**
+- [x] TESTED (written) — `server/tests/phase6/accountsFunds.test.js`, `transfers.test.js`: rename, deactivate/reactivate, deactivated-account rejected by the engine, no delete route exists, tenant isolation, permission gating, and the financial invariants explicitly re-verified at the HTTP layer (source decreases/destination increases by exactly the amount, total money preserved, never counted as income/expense, same-account+fund rejected, cross-tenant rejected, closed-period rejected, atomic rollback on failure).
+- [ ] LIVE-DB VERIFIED — PENDING, same blocker.
+
+**Acceptance criteria:** Met in code — transfers never leave the ledger in a half-posted state, account/fund balances remain fully derivable — unverified against a live system.
 **Dependencies:** Phase 1, 2, 3.
 
 ---

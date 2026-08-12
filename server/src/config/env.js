@@ -39,6 +39,14 @@ export const env = {
     ttlMinutes: Number(process.env.PASSWORD_RESET_TTL_MINUTES ?? 30),
   },
   cors: {
-    origins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',').map((o) => o.trim()),
+    // Required, not defaulted — a misconfigured deploy should fail to start
+    // rather than silently fall back to a dev origin in production.
+    origins: required('CORS_ORIGINS').split(',').map((o) => o.trim()),
   },
+  // Production: https://treasurer.clixworks.co.tz — the one and only
+  // production domain for this product (docs/PROJECT_ARCHITECTURE.md).
+  // Not yet consumed anywhere (no email-link generation exists until
+  // Phase 7+), but present now so it's configured once, correctly, ahead
+  // of that need rather than improvised later.
+  frontendUrl: required('FRONTEND_URL'),
 };

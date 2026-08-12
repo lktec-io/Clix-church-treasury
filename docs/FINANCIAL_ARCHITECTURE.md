@@ -4,7 +4,7 @@
 
 This document is the most important one in the set — financial integrity is the product's entire value proposition. A treasury system that gets a balance wrong is not a buggy product, it is a failed one.
 
-**Current state:** Phase 3 implemented — `server/src/modules/financial/financialEngine.service.js` is real, working code, not just this design. §§1–5 below now describe the actual implementation (with deviations from the original design called out explicitly where they happened); §§6–8 remain the Phase 0 target for Phase 4+. Written and lint-clean; test suite (`tests/phase3/`) written but not yet run against a live database — see [MASTER_TODO.md](MASTER_TODO.md).
+**Current state:** Phases 3–6 implemented — `server/src/modules/financial/financialEngine.service.js` is real, working code, and now has real consumers: contributions (Phase 4), expenses (Phase 5), and the transfers HTTP layer (Phase 6) all post through it, none of them with a parallel calculation of their own. §§1–5 below describe the actual implementation (deviations from the original design called out explicitly); §7 (pledges) and §8-as-approval-gating are now proven, not just designed — see the note at the end of each section. Written and lint-clean; test suites (`tests/phase3/` through `tests/phase6/`) written but not yet run against a live database — see [MASTER_TODO.md](MASTER_TODO.md).
 
 ---
 
@@ -79,17 +79,26 @@ This is what guarantees the dashboard total and the PDF report total can never s
 
 A pledge is a *commitment*, not money received — it never posts a ledger transaction on its own. Only the linked `contributions` (via `contributions.pledge_id`) post transactions. A pledge's "fulfilled amount" is always `SUM(contributions.amount WHERE pledge_id = ?)`, computed, not stored — same derived-not-mutable principle as account balances (§2), for the same reason.
 
+*Not yet built — `pledges` doesn't exist until Phase 7.* What Phase 4 did build, matching this section's underlying principle: `contributions.amount`/`status` are documented as denormalized-for-listing copies of the linked `transactions` row, never independently editable — the same "never store what can be derived, and never let a copy drift from its source" discipline this section describes for pledges.
+
 ---
 
 ## 8. Approval Gating
 
-An expense only posts a ledger transaction once it reaches `status = approved` (after passing its `expense_approvals` chain — see [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §2). A `draft` or `pending_approval` expense is visible in the UI as a pending item but contributes nothing to any balance or report total. This means "money isn't spent, as far as the books are concerned, until someone with authority says it is" — matching how church treasuries actually expect approvals to work.
+**Implemented in Phase 5, as designed here.** An expense only posts a ledger transaction once it reaches `status = 'approved'` **and** the treasurer executes the separate `pay` action (`expenses.service.js#payExpense`) — `draft`, `submitted`, `approved`, and `rejected` all have zero ledger effect, verified by test at every state (`tests/phase5/expenses.test.js`). This is one step more explicit than this section originally sketched ("approved" alone was the trigger in the Phase 0 design); building the real workflow surfaced that "approved" and "money has actually left the account" are two different moments a treasurer needs to track separately (an approved-but-unpaid expense is still a real, distinct state), so `pay` was added as its own gated transition. Segregation of duties — the requester of an expense cannot be the one who approves it — is enforced in the same service function, independent of what permissions the requester otherwise holds.
+
+**Contributions (Phase 4) do not have an approval gate** — income posts immediately on recording, matching how church treasuries record money received (no one needs to "approve" an offering before it counts). This asymmetry between income and expense gating was a genuine design decision made while building Phase 4, not an oversight: the original Phase 0 design didn't explicitly address whether income needed the same gating expenses do.
 
 ---
 
 ## 9. Status Against This Document
 
-**Phase 3 delivered:** `transactions` table, the posting primitive (`insertLedgerRow`, private — every public entry point funnels through it), `recordSimpleTransaction` (income/expense), `transfer`, `reverseTransaction`, `createAdjustment`, and the reporting-foundation query methods (`getAccountBalance`, `getFundBalance`, `getTotalBalance`, `getIncomeTotals`, `getExpenseTotals`, `getTransactionHistory`) — all in `server/src/modules/financial/financialEngine.service.js`. Money is handled as decimal strings end-to-end (§1, [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §1); every multi-row operation (transfer, reversal) is one atomic DB transaction; duplicate transaction numbers are structurally prevented (unique constraint + generation retry loop, `transactionNumber.js`); concurrency is handled by the append-only design itself rather than explicit locking (`tests/phase3/concurrency.test.js` fires 50 concurrent postings and checks the result). Tenant isolation is enforced on every account/fund/category/period reference before a row posts.
+**Phase 3 delivered:** `transactions` table, the posting primitive (`postLedgerEntry` — private until Phase 4 needed it exported for composition, see below), `recordSimpleTransaction`, `transfer`, `reverseTransaction`, `createAdjustment`, and the reporting-foundation query methods — all in `server/src/modules/financial/financialEngine.service.js`. Money is handled as decimal strings end-to-end; every multi-row operation is one atomic DB transaction; duplicate transaction numbers are structurally prevented; concurrency is handled by the append-only design itself (`tests/phase3/concurrency.test.js`).
+
+**Phase 4–6 delivered — the engine now has real consumers, proving §1's governing principle rather than just stating it:**
+- `postLedgerEntry` was **exported** from `financialEngine.service.js` (previously module-private) specifically so a domain module can open its own DB transaction, insert its own domain row, and post the ledger entry in the same atomic unit — the same composition pattern `tenants.service.js`'s `createTenantWithConnection` established in Phase 1/2. `contributions.service.js#recordContribution` and `expenses.service.js#payExpense` both use this; neither writes to `transactions` any other way.
+- `contributions.reverseContribution` and `expenses`' financial-effect posting both call the exact same reversal/posting logic the engine's own `reverseTransaction`/`transfer` use — confirmed by code review, not just by convention: there is one reversal code path and one posting code path in the entire codebase.
+- The `direction` column decision (§2, [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) §7) held up unchanged through three more phases of real usage — no further schema deviation was needed to model income, expenses, or the domain-level detail around them.
 
 **Not yet verified:** written and lint-clean, but not yet run against a live MySQL instance — see [MASTER_TODO.md](MASTER_TODO.md) for the blocker. "Delivered" above describes the code as written, not a passing test run.
 
