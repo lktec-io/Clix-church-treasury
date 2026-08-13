@@ -22,7 +22,7 @@ export async function get(req, res, next) {
 export async function create(req, res, next) {
   try {
     const data = validateCreateAccount(req.body ?? {});
-    const account = await accountsService.createAccount(req.tenantId, data);
+    const account = await accountsService.createAccount(req.tenantId, data, req.auth.userId);
     res.status(201).json({ success: true, data: account });
   } catch (err) {
     next(err);
@@ -32,7 +32,7 @@ export async function create(req, res, next) {
 export async function rename(req, res, next) {
   try {
     const name = validateRenameAccount(req.body ?? {});
-    const account = await accountsService.renameAccount(req.tenantId, req.params.id, name);
+    const account = await accountsService.renameAccount(req.tenantId, req.params.id, name, req.auth.userId);
     res.json({ success: true, data: account });
   } catch (err) {
     next(err);
@@ -41,7 +41,7 @@ export async function rename(req, res, next) {
 
 export async function deactivate(req, res, next) {
   try {
-    const account = await accountsService.setAccountActive(req.tenantId, req.params.id, false);
+    const account = await accountsService.setAccountActive(req.tenantId, req.params.id, false, req.auth.userId);
     res.json({ success: true, data: account });
   } catch (err) {
     next(err);
@@ -50,7 +50,7 @@ export async function deactivate(req, res, next) {
 
 export async function activate(req, res, next) {
   try {
-    const account = await accountsService.setAccountActive(req.tenantId, req.params.id, true);
+    const account = await accountsService.setAccountActive(req.tenantId, req.params.id, true, req.auth.userId);
     res.json({ success: true, data: account });
   } catch (err) {
     next(err);

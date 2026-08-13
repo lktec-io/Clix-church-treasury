@@ -6,11 +6,16 @@ export function signAccessToken({ userId, tenantId, roles }) {
   return jwt.sign({ tenantId, roles }, env.jwt.accessSecret, {
     subject: String(userId),
     expiresIn: env.jwt.accessTokenTtl,
+    algorithm: 'HS256',
   });
 }
 
+// Explicit algorithm allow-list rather than trusting the token's own header
+// — a defense-in-depth measure against algorithm-confusion attacks, even
+// though jsonwebtoken's default behavior with a string secret already
+// restricts to the HMAC family.
 export function verifyAccessToken(token) {
-  const payload = jwt.verify(token, env.jwt.accessSecret);
+  const payload = jwt.verify(token, env.jwt.accessSecret, { algorithms: ['HS256'] });
   return { userId: Number(payload.sub), tenantId: payload.tenantId, roles: payload.roles ?? [] };
 }
 

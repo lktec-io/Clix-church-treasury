@@ -7,7 +7,7 @@ import { enrichWithContributorInfo } from '../contributors/contributorEnrichment
 import { listBudgetsWithActual } from '../budgets/budgets.service.js';
 import { listPledges } from '../pledges/pledges.service.js';
 import { getFinancialSummary } from '../financial/financialSummary.service.js';
-import { subtractMoney } from '../financial/money.js';
+import { subtractMoney, sumMoney } from '../financial/money.js';
 
 // Every report here composes an existing repository/service method — none
 // of them run their own aggregation SQL. This is what
@@ -35,7 +35,7 @@ export async function getTransactionJournal(tenantId, filters) {
 export async function getContributionsReport(tenantId, filters, { canViewContributors }) {
   const rows = await contributionsRepository.search(tenantId, { ...filters, limit: 1000 });
   const enriched = await enrichWithContributorInfo(tenantId, rows, canViewContributors);
-  const total = rows.reduce((sum, r) => (r.status === 'posted' ? sum + Number(r.amount) : sum), 0).toFixed(2);
+  const total = sumMoney(rows.filter((r) => r.status === 'posted').map((r) => r.amount));
   return { rows: enriched, total };
 }
 
@@ -79,7 +79,7 @@ export async function getFundStatement(tenantId, fundId, { dateFrom, dateTo, fin
 
 export async function getBudgetVsActualReport(tenantId, financialPeriodId) {
   const budgets = await listBudgetsWithActual(tenantId, { financialPeriodId });
-  const sum = (key) => budgets.reduce((acc, b) => acc + Number(b[key]), 0).toFixed(2);
+  const sum = (key) => sumMoney(budgets.map((b) => b[key]));
   return {
     rows: budgets,
     totals: { budget_amount: sum('budget_amount'), actual_amount: sum('actual_amount'), variance: sum('variance') },
@@ -89,8 +89,8 @@ export async function getBudgetVsActualReport(tenantId, financialPeriodId) {
 export async function getPledgeReport(tenantId, filters, { canViewContributors }) {
   const pledges = await listPledges(tenantId, filters);
   const enriched = await enrichWithContributorInfo(tenantId, pledges, canViewContributors);
-  const totalPledged = pledges.reduce((sum, p) => sum + Number(p.pledged_amount), 0).toFixed(2);
-  const totalFulfilled = pledges.reduce((sum, p) => sum + Number(p.fulfilled_amount), 0).toFixed(2);
+  const totalPledged = sumMoney(pledges.map((p) => p.pledged_amount));
+  const totalFulfilled = sumMoney(pledges.map((p) => p.fulfilled_amount));
   return { rows: enriched, totalPledged, totalFulfilled, totalRemaining: subtractMoney(totalPledged, totalFulfilled) };
 }
 

@@ -13,14 +13,17 @@ export function validateCreateExpense(body) {
   if (!Number.isInteger(body.fundId)) fields.fundId = 'fundId is required';
   if (!Number.isInteger(body.accountId)) fields.accountId = 'accountId is required';
   if (typeof body.payee !== 'string' || body.payee.trim().length === 0) fields.payee = 'payee is required';
+  else if (body.payee.length > 255) fields.payee = 'must be at most 255 characters';
   if (!isValidPaymentMethod(body.paymentMethod)) {
     fields.paymentMethod = `must be one of: ${PAYMENT_METHODS.join(', ')}`;
   }
-  if (body.description !== undefined && body.description !== null && typeof body.description !== 'string') {
-    fields.description = 'must be a string';
+  if (body.description !== undefined && body.description !== null) {
+    if (typeof body.description !== 'string') fields.description = 'must be a string';
+    else if (body.description.length > 500) fields.description = 'must be at most 500 characters';
   }
-  if (body.reference !== undefined && body.reference !== null && typeof body.reference !== 'string') {
-    fields.reference = 'must be a string';
+  if (body.reference !== undefined && body.reference !== null) {
+    if (typeof body.reference !== 'string') fields.reference = 'must be a string';
+    else if (body.reference.length > 100) fields.reference = 'must be at most 100 characters';
   }
 
   let attachment = null;
@@ -52,6 +55,9 @@ export function validateCreateExpense(body) {
 export function validateRejectExpense(body) {
   if (typeof body?.reason !== 'string' || body.reason.trim().length === 0) {
     throw validationError('Invalid payload', { reason: 'a reason is required to reject an expense' });
+  }
+  if (body.reason.length > 500) {
+    throw validationError('Invalid payload', { reason: 'must be at most 500 characters' });
   }
   return { reason: body.reason.trim() };
 }

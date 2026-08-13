@@ -21,16 +21,28 @@ export async function createBudget(tenantId, data, actorUserId) {
     throw conflict('A budget already exists for this period, fund, and category');
   }
 
-  const budget = await budgetsRepository.insert(tenantId, {
-    financial_period_id: data.financialPeriodId,
-    fund_id: data.fundId,
-    category_id: data.categoryId,
-    type: data.type,
-    budget_amount: data.budgetAmount,
-    notes: data.notes,
-    status: 'active',
-    created_by_user_id: actorUserId,
-  });
+  // The check above has a narrow race window under truly concurrent
+  // requests; when category_id is set, the DB's own unique constraint is
+  // the backstop — catch it here and translate to the same friendly 409
+  // rather than letting a raw ER_DUP_ENTRY reach the client as a 500.
+  let budget;
+  try {
+    budget = await budgetsRepository.insert(tenantId, {
+      financial_period_id: data.financialPeriodId,
+      fund_id: data.fundId,
+      category_id: data.categoryId,
+      type: data.type,
+      budget_amount: data.budgetAmount,
+      notes: data.notes,
+      status: 'active',
+      created_by_user_id: actorUserId,
+    });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('uq_budgets_tenant_period_fund_category')) {
+      throw conflict('A budget already exists for this period, fund, and category');
+    }
+    throw error;
+  }
 
   await recordAuditLog({
     tenantId,

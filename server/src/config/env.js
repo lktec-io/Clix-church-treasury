@@ -8,6 +8,17 @@ function required(name) {
   return value;
 }
 
+// A short/guessable secret makes HS256 tokens forgeable by brute force —
+// fail fast at startup rather than silently accepting a weak one
+// (docs/MASTER_TODO.md Phase 11: "look for ... weak validation").
+function requiredSecret(name, minLength = 32) {
+  const value = required(name);
+  if (value.length < minLength) {
+    throw new Error(`${name} must be at least ${minLength} characters — generate one with node's crypto.randomBytes`);
+  }
+  return value;
+}
+
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const isTest = nodeEnv === 'test';
 
@@ -25,7 +36,7 @@ export const env = {
     connectionLimit: Number(process.env.DB_CONNECTION_LIMIT ?? 10),
   },
   jwt: {
-    accessSecret: required('JWT_ACCESS_SECRET'),
+    accessSecret: requiredSecret('JWT_ACCESS_SECRET'),
     accessTokenTtl: process.env.ACCESS_TOKEN_TTL ?? '15m',
   },
   refreshToken: {

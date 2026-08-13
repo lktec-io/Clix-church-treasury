@@ -10,6 +10,8 @@ export function validateInviteUser(body) {
   }
   if (typeof body.fullName !== 'string' || body.fullName.trim().length === 0) {
     fields.fullName = 'fullName is required';
+  } else if (body.fullName.length > 255) {
+    fields.fullName = 'must be at most 255 characters';
   }
   if (Object.keys(fields).length > 0) {
     throw validationError('Invalid invite payload', fields);

@@ -15,8 +15,12 @@ export function validatePassword(password, fieldName = 'password') {
   }
 }
 
+// 254 is the practical RFC 5321 maximum for a full email address — also
+// comfortably under every `email`/`users.email` VARCHAR(255) column, so a
+// pasted-in giant string fails validation with a clear message instead of a
+// raw DB "data too long" error.
 export function validateEmail(email, fieldName = 'email') {
-  if (typeof email !== 'string' || !EMAIL_RE.test(email)) {
+  if (typeof email !== 'string' || email.length > 254 || !EMAIL_RE.test(email)) {
     throw validationError('Invalid email', { [fieldName]: 'must be a valid email address' });
   }
 }
@@ -46,9 +50,13 @@ export function validateRegisterTenant(body) {
   const fields = {};
   if (typeof body.churchName !== 'string' || body.churchName.trim().length === 0) {
     fields.churchName = 'churchName is required';
+  } else if (body.churchName.length > 255) {
+    fields.churchName = 'must be at most 255 characters';
   }
   if (typeof body.adminFullName !== 'string' || body.adminFullName.trim().length === 0) {
     fields.adminFullName = 'adminFullName is required';
+  } else if (body.adminFullName.length > 255) {
+    fields.adminFullName = 'must be at most 255 characters';
   }
   try {
     validateEmail(body.adminEmail, 'adminEmail');

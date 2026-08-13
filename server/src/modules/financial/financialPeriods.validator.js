@@ -6,6 +6,8 @@ export function validateCreatePeriod(body) {
   const fields = {};
   if (typeof body.label !== 'string' || body.label.trim().length === 0) {
     fields.label = 'label is required';
+  } else if (body.label.length > 100) {
+    fields.label = 'must be at most 100 characters';
   }
   if (typeof body.startDate !== 'string' || !DATE_RE.test(body.startDate)) {
     fields.startDate = 'must be a date string in YYYY-MM-DD format';

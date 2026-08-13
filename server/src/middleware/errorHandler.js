@@ -23,9 +23,10 @@ export function errorHandler(err, req, res, next) {
     });
   }
 
-  if (!env.isProduction) {
-    console.error(err);
-  }
+  // Always logged server-side — production included. Only the client-facing
+  // message is redacted in production (docs/MASTER_TODO.md Phase 11/12:
+  // production logging must help diagnose failures, never expose them).
+  console.error(err);
 
   return res.status(500).json({
     success: false,

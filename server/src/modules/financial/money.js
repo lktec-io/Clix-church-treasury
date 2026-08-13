@@ -36,3 +36,25 @@ function fromCents(cents) {
 export function subtractMoney(a, b) {
   return fromCents(toCents(a) - toCents(b));
 }
+
+export function addMoney(a, b) {
+  return fromCents(toCents(a) + toCents(b));
+}
+
+// Sums a JS array of money strings at the integer-cents level — for the
+// handful of report totals that aggregate an already-fetched row list
+// (rather than a fresh SQL SUM) and would otherwise be tempted to reduce
+// with `+` over `Number(...)`, reintroducing exactly the floating-point
+// risk this module exists to rule out.
+export function sumMoney(values) {
+  return fromCents(values.reduce((cents, v) => cents + toCents(v), 0));
+}
+
+// -1 / 0 / 1, exactly like a sort comparator — for any "would this exceed
+// that" check the codebase needs without going through a JS float (e.g. an
+// overpayment guard). Comparing at the integer-cents level means there is no
+// binary-fraction rounding edge case to guard against with an epsilon.
+export function compareMoney(a, b) {
+  const diff = toCents(a) - toCents(b);
+  return diff === 0 ? 0 : diff > 0 ? 1 : -1;
+}

@@ -8,6 +8,7 @@ import { recordAuditLog } from '../audit/auditLog.service.js';
 import { pledgesRepository } from '../pledges/pledges.repository.js';
 import { syncPledgeStatus } from '../pledges/pledges.service.js';
 import { issueReceiptForContribution } from '../receipts/receipts.service.js';
+import { addMoney, compareMoney } from '../financial/money.js';
 
 export { enrichWithContributorInfo } from '../contributors/contributorEnrichment.js';
 
@@ -34,12 +35,12 @@ export async function recordContribution(tenantId, data, actorUserId) {
       if (pledge.status === 'cancelled') {
         throw new AppError('CONFLICT', 'Cannot record a payment against a cancelled pledge', { status: 409 });
       }
-      const fulfilled = Number(await pledgesRepository.getFulfilledAmount(tenantId, data.pledgeId, connection));
-      const wouldBe = fulfilled + Number(data.amount);
-      if (wouldBe > Number(pledge.pledged_amount) + 0.001) {
+      const fulfilled = await pledgesRepository.getFulfilledAmount(tenantId, data.pledgeId, connection);
+      const wouldBe = addMoney(fulfilled, data.amount);
+      if (compareMoney(wouldBe, pledge.pledged_amount) > 0) {
         throw new AppError(
           'VALIDATION_ERROR',
-          `This payment would exceed the pledge (pledged ${pledge.pledged_amount}, already paid ${fulfilled.toFixed(2)})`,
+          `This payment would exceed the pledge (pledged ${pledge.pledged_amount}, already paid ${fulfilled})`,
           { status: 422, fields: { amount: 'exceeds remaining pledge balance' } }
         );
       }

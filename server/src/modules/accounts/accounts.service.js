@@ -1,5 +1,6 @@
 import { notFound } from '../../errors/AppError.js';
 import { accountsRepository } from './accounts.repository.js';
+import { recordAuditLog } from '../audit/auditLog.service.js';
 
 export async function listAccounts(tenantId) {
   return accountsRepository.findAllByTenant(tenantId);
@@ -11,15 +12,34 @@ export async function getAccount(tenantId, id) {
   return account;
 }
 
-export async function createAccount(tenantId, data) {
-  return accountsRepository.create(tenantId, data);
+export async function createAccount(tenantId, data, actorUserId) {
+  const account = await accountsRepository.create(tenantId, data);
+  await recordAuditLog({
+    tenantId,
+    actorUserId,
+    action: 'account.created',
+    entityType: 'accounts',
+    entityId: account.id,
+    after: { name: account.name, type: account.type },
+  });
+  return account;
 }
 
 // Rename only — never a status change through this path, so "deactivate"
 // can't be smuggled into what looks like a plain rename request.
-export async function renameAccount(tenantId, id, name) {
+export async function renameAccount(tenantId, id, name, actorUserId) {
+  const before = await accountsRepository.findById(tenantId, id);
   const account = await accountsRepository.update(tenantId, id, { name });
   if (!account) throw notFound('Account not found');
+  await recordAuditLog({
+    tenantId,
+    actorUserId,
+    action: 'account.renamed',
+    entityType: 'accounts',
+    entityId: id,
+    before: { name: before.name },
+    after: { name: account.name },
+  });
   return account;
 }
 
@@ -28,8 +48,15 @@ export async function renameAccount(tenantId, id, name) {
 // never be removed (docs/MASTER_TODO.md Phase 6). RESTRICT foreign keys from
 // `transactions` back this up at the DB layer even if this check were ever
 // bypassed.
-export async function setAccountActive(tenantId, id, isActive) {
+export async function setAccountActive(tenantId, id, isActive, actorUserId) {
   const account = await accountsRepository.update(tenantId, id, { is_active: isActive });
   if (!account) throw notFound('Account not found');
+  await recordAuditLog({
+    tenantId,
+    actorUserId,
+    action: isActive ? 'account.activated' : 'account.deactivated',
+    entityType: 'accounts',
+    entityId: id,
+  });
   return account;
 }

@@ -18,5 +18,15 @@ export async function createContributor(tenantId, data) {
       throw conflict(`Member number "${data.memberNumber}" is already in use`);
     }
   }
-  return contributorsRepository.create(tenantId, data);
+  try {
+    return await contributorsRepository.create(tenantId, data);
+  } catch (error) {
+    // Backstop for the narrow race window above — the DB's own unique
+    // constraint is the real guarantee; this only makes a genuine
+    // concurrent collision return a friendly 409 instead of a raw 500.
+    if (error.code === 'ER_DUP_ENTRY' && error.message.includes('uq_contributors_tenant_member_number')) {
+      throw conflict(`Member number "${data.memberNumber}" is already in use`);
+    }
+    throw error;
+  }
 }

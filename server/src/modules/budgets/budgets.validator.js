@@ -20,8 +20,9 @@ export function validateCreateBudget(body) {
   if (!isNonNegativeMoneyString(body.budgetAmount)) {
     fields.budgetAmount = 'must be a non-negative decimal string with at most 2 places, e.g. "5000000.00"';
   }
-  if (body.notes !== undefined && body.notes !== null && typeof body.notes !== 'string') {
-    fields.notes = 'must be a string';
+  if (body.notes !== undefined && body.notes !== null) {
+    if (typeof body.notes !== 'string') fields.notes = 'must be a string';
+    else if (body.notes.length > 500) fields.notes = 'must be at most 500 characters';
   }
 
   if (Object.keys(fields).length > 0) {

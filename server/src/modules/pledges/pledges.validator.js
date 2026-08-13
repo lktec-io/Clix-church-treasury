@@ -17,8 +17,9 @@ export function validateCreatePledge(body) {
   if (body.targetDate !== undefined && body.targetDate !== null && !DATE_RE.test(body.targetDate)) {
     fields.targetDate = 'must be a date string in YYYY-MM-DD format if provided';
   }
-  if (body.notes !== undefined && body.notes !== null && typeof body.notes !== 'string') {
-    fields.notes = 'must be a string';
+  if (body.notes !== undefined && body.notes !== null) {
+    if (typeof body.notes !== 'string') fields.notes = 'must be a string';
+    else if (body.notes.length > 500) fields.notes = 'must be at most 500 characters';
   }
 
   if (Object.keys(fields).length > 0) {
@@ -40,8 +41,9 @@ export function validateUpdatePledge(body) {
   if (body.targetDate !== undefined && body.targetDate !== null && !DATE_RE.test(body.targetDate)) {
     fields.targetDate = 'must be a date string in YYYY-MM-DD format if provided';
   }
-  if (body.notes !== undefined && body.notes !== null && typeof body.notes !== 'string') {
-    fields.notes = 'must be a string';
+  if (body.notes !== undefined && body.notes !== null) {
+    if (typeof body.notes !== 'string') fields.notes = 'must be a string';
+    else if (body.notes.length > 500) fields.notes = 'must be at most 500 characters';
   }
   if (Object.keys(fields).length > 0) {
     throw validationError('Invalid pledge update payload', fields);

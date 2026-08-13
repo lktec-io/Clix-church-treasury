@@ -25,11 +25,13 @@ export function validateCreateContribution(body) {
   if (typeof body.contributionDate !== 'string' || !DATE_RE.test(body.contributionDate)) {
     fields.contributionDate = 'must be a date string in YYYY-MM-DD format';
   }
-  if (body.reference !== undefined && body.reference !== null && typeof body.reference !== 'string') {
-    fields.reference = 'must be a string';
+  if (body.reference !== undefined && body.reference !== null) {
+    if (typeof body.reference !== 'string') fields.reference = 'must be a string';
+    else if (body.reference.length > 100) fields.reference = 'must be at most 100 characters';
   }
-  if (body.notes !== undefined && body.notes !== null && typeof body.notes !== 'string') {
-    fields.notes = 'must be a string';
+  if (body.notes !== undefined && body.notes !== null) {
+    if (typeof body.notes !== 'string') fields.notes = 'must be a string';
+    else if (body.notes.length > 500) fields.notes = 'must be at most 500 characters';
   }
 
   if (Object.keys(fields).length > 0) {
