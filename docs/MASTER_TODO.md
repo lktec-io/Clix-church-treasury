@@ -466,6 +466,17 @@ A follow-up pass after Phase 12, specifically for the actual target deployment's
 
 ---
 
+## Post-Launch Hotfix — Public Registration Route
+
+Found after the site went live at `https://treasurer.clixworks.co.tz`: `/register` redirected to `/login`, blocking the only path for a brand-new church to ever sign up. Root cause: `src/App.jsx` never had a `/register` route or a `RegisterPage` component at all — the backend endpoint (`POST /api/v1/auth/register-tenant`) was correctly public since Phase 2, but no frontend screen was ever built for it. This is a genuine gap the Phase 12 "commercial QA" code-level walkthrough should have, and didn't, catch — noted here rather than glossed over.
+
+- [x] `src/pages/RegisterPage.jsx` (new) and `src/components/PublicOnlyRoute.jsx` (new, the inverse of `ProtectedRoute` — redirects an already-authenticated visitor away from `/login`/`/register` instead of showing the form again). No backend change — the registration endpoint's atomicity, validation, rate limiting, and tenant isolation were re-verified, not modified.
+- [x] Routing matrix re-verified against the actual route tree (not assumed): unauthenticated → `/login`/`/register` render, everything else → `/login`; authenticated → `/login`/`/register` redirect to `/`, protected routes remain permission-gated; logged out → `/register` stays public.
+
+**Status: IMPLEMENTED. Lint/build clean. No backend files touched, so no backend test re-run needed. LIVE-DB VERIFIED: PENDING, unchanged.**
+
+---
+
 ## Testing Strategy Summary
 
 | Layer | Tooling (to be finalized in Phase 1/2, not yet chosen) | Owning phases |

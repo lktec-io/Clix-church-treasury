@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 
@@ -71,6 +71,9 @@ export default function LoginPage() {
             {submitting ? t('common.loading') : t('auth.login.submit')}
           </button>
         </form>
+        <p className="auth-card__subtitle" style={{ marginTop: 16, marginBottom: 0 }}>
+          {t('auth.login.needAccount')} <Link to="/register">{t('auth.register.submit')}</Link>
+        </p>
       </div>
     </div>
   );

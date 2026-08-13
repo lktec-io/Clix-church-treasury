@@ -50,6 +50,15 @@
   "auth.login.password": "Password",
   "auth.login.submit": "Sign in",
   "auth.login.error": "Sign-in failed",
+  "auth.login.needAccount": "New church?",
+
+  "auth.register.subtitle": "Register your church to get started",
+  "auth.register.churchName": "Church name",
+  "auth.register.adminFullName": "Your full name",
+  "auth.register.confirmPassword": "Confirm password",
+  "auth.register.passwordMismatch": "Passwords do not match",
+  "auth.register.submit": "Register",
+  "auth.register.haveAccount": "Already have an account?",
 
   "dashboard.title": "Dashboard",
   "dashboard.totalBalance": "Total balance",

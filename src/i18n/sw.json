@@ -50,6 +50,15 @@
   "auth.login.password": "Nenosiri",
   "auth.login.submit": "Ingia",
   "auth.login.error": "Imeshindwa kuingia",
+  "auth.login.needAccount": "Kanisa jipya?",
+
+  "auth.register.subtitle": "Sajili kanisa lako ili kuanza",
+  "auth.register.churchName": "Jina la kanisa",
+  "auth.register.adminFullName": "Jina lako kamili",
+  "auth.register.confirmPassword": "Thibitisha nenosiri",
+  "auth.register.passwordMismatch": "Manenosiri hayafanani",
+  "auth.register.submit": "Jisajili",
+  "auth.register.haveAccount": "Una akaunti tayari?",
 
   "dashboard.title": "Dashibodi",
   "dashboard.totalBalance": "Salio jumla",
