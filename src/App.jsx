@@ -14,6 +14,7 @@ import PledgesPage from './pages/PledgesPage.jsx';
 import BudgetsPage from './pages/BudgetsPage.jsx';
 import FinancialPeriodsPage from './pages/FinancialPeriodsPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
+import UsersPage from './pages/UsersPage.jsx';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="/budgets" element={<BudgetsPage />} />
           <Route path="/financial-periods" element={<FinancialPeriodsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/users" element={<UsersPage />} />
         </Route>
       </Route>
 

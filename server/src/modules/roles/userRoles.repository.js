@@ -28,6 +28,21 @@ class UserRolesRepository {
     ]);
     return rows.map((r) => r.role_id);
   }
+
+  // One query for the whole Users admin list, not one per row — avoids an
+  // N+1 (docs/MASTER_TODO.md Phase 9/12: "avoid N+1 database queries").
+  async listRolesForUsers(userIds, connection) {
+    if (userIds.length === 0) return [];
+    const placeholders = userIds.map(() => '?').join(', ');
+    const [rows] = await this.runner(connection).query(
+      `SELECT ur.user_id, r.id AS role_id, r.name AS role_name
+       FROM user_roles ur
+       JOIN roles r ON r.id = ur.role_id
+       WHERE ur.user_id IN (${placeholders})`,
+      userIds
+    );
+    return rows;
+  }
 }
 
 export const userRolesRepository = new UserRolesRepository();

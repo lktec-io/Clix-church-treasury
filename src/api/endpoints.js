@@ -83,6 +83,18 @@ export const receiptsApi = {
   },
 };
 
+export const usersApi = {
+  list: () => apiClient.get('/users').then(unwrap),
+  invite: (body) => apiClient.post('/users', body).then(unwrap),
+  assignRole: (userId, roleId) => apiClient.post(`/users/${userId}/roles`, { roleId }).then(unwrap),
+  removeRole: (userId, roleId) => apiClient.delete(`/users/${userId}/roles/${roleId}`).then(unwrap),
+  disable: (userId) => apiClient.post(`/users/${userId}/disable`).then(unwrap),
+};
+
+export const rolesApi = {
+  list: () => apiClient.get('/roles').then(unwrap),
+};
+
 export const budgetsApi = {
   list: (params) => apiClient.get('/budgets', { params }).then(unwrap),
   create: (body) => apiClient.post('/budgets', body).then(unwrap),

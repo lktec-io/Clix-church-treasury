@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { financialPeriodsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useToast } from '../components/Toast.jsx';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import { formatMoney } from '../utils/format.js';
 
@@ -11,6 +13,8 @@ function emptyForm() {
 
 export default function FinancialPeriodsPage() {
   const { t } = useLocale();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [periods, setPeriods] = useState([]);
   const [selected, setSelected] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -57,29 +61,44 @@ export default function FinancialPeriodsPage() {
       await financialPeriodsApi.create(form);
       setForm(emptyForm());
       await load();
+      toast.success(t('financialPeriods.created'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
   };
 
   const handleClose = async (period) => {
-    if (!window.confirm(t('financialPeriods.close') + '?')) return;
+    const ok = await confirm({
+      title: t('financialPeriods.close'),
+      message: t('financialPeriods.closeConfirm'),
+      tone: 'danger',
+      confirmLabel: t('financialPeriods.close'),
+    });
+    if (!ok) return;
     try {
       await financialPeriodsApi.close(period.id);
       await load();
       setSelected(null);
+      toast.success(t('financialPeriods.closedToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
   };
 
   const handleReopen = async (period) => {
-    const reason = window.prompt(t('common.reason'));
-    if (!reason) return;
+    const result = await confirm({
+      title: t('financialPeriods.reopen'),
+      message: t('financialPeriods.reopenConfirm'),
+      tone: 'danger',
+      confirmLabel: t('financialPeriods.reopen'),
+      requireReason: true,
+    });
+    if (!result.confirmed) return;
     try {
-      await financialPeriodsApi.reopen(period.id, reason);
+      await financialPeriodsApi.reopen(period.id, result.reason);
       await load();
       setSelected(null);
+      toast.success(t('financialPeriods.reopenedToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }

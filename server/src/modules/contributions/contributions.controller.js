@@ -13,6 +13,10 @@ function parseFilters(query) {
   if (query.paymentMethod) filters.paymentMethod = query.paymentMethod;
   if (query.dateFrom) filters.dateFrom = query.dateFrom;
   if (query.dateTo) filters.dateTo = query.dateTo;
+  // Capped rather than trusting the client outright — a very large limit is
+  // just an expensive, unbounded query in disguise.
+  if (query.limit) filters.limit = Math.min(Number(query.limit), 200);
+  if (query.offset) filters.offset = Number(query.offset);
   return filters;
 }
 

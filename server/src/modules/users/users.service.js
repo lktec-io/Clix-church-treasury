@@ -19,7 +19,14 @@ function toPublicUser(user) {
 
 export async function listUsers(tenantId) {
   const users = await usersRepository.findAllByTenant(tenantId);
-  return users.map(toPublicUser);
+  const roleRows = await userRolesRepository.listRolesForUsers(users.map((u) => u.id));
+  const rolesByUserId = new Map();
+  for (const row of roleRows) {
+    const list = rolesByUserId.get(row.user_id) ?? [];
+    list.push({ id: row.role_id, name: row.role_name });
+    rolesByUserId.set(row.user_id, list);
+  }
+  return users.map((user) => ({ ...toPublicUser(user), roles: rolesByUserId.get(user.id) ?? [] }));
 }
 
 export async function inviteUser(tenantId, { email, fullName }, actorUserId) {

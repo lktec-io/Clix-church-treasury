@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { pledgesApi, contributorsApi, fundsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useToast } from '../components/Toast.jsx';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import { formatMoney } from '../utils/format.js';
 
@@ -17,6 +19,8 @@ function emptyForm() {
 
 export default function PledgesPage() {
   const { t } = useLocale();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [pledges, setPledges] = useState([]);
   const [contributors, setContributors] = useState([]);
   const [funds, setFunds] = useState([]);
@@ -66,6 +70,7 @@ export default function PledgesPage() {
       });
       setForm(emptyForm());
       await load();
+      toast.success(t('pledges.created'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -74,10 +79,17 @@ export default function PledgesPage() {
   };
 
   const handleCancel = async (pledge) => {
-    if (!window.confirm(t('pledges.cancel') + '?')) return;
+    const ok = await confirm({
+      title: t('pledges.cancel'),
+      message: t('pledges.cancelConfirm'),
+      tone: 'danger',
+      confirmLabel: t('pledges.cancel'),
+    });
+    if (!ok) return;
     try {
       await pledgesApi.setStatus(pledge.id, 'cancelled');
       await load();
+      toast.success(t('pledges.cancelledToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }

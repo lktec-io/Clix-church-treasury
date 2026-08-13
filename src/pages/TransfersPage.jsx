@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { transfersApi, accountsApi, fundsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import { formatMoney, formatDate } from '../utils/format.js';
 
@@ -11,6 +12,7 @@ function emptyForm() {
 
 export default function TransfersPage() {
   const { t } = useLocale();
+  const toast = useToast();
   const [transfers, setTransfers] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [funds, setFunds] = useState([]);
@@ -58,6 +60,7 @@ export default function TransfersPage() {
       });
       setForm(emptyForm());
       await load();
+      toast.success(t('transfers.created'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {

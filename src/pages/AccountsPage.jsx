@@ -2,12 +2,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { accountsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useToast } from '../components/Toast.jsx';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 
 const TYPES = ['cash', 'bank', 'mobile_money'];
 
 export default function AccountsPage() {
   const { t } = useLocale();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [accounts, setAccounts] = useState([]);
   const [form, setForm] = useState({ name: '', type: 'cash' });
   const [error, setError] = useState(null);
@@ -37,15 +41,26 @@ export default function AccountsPage() {
       await accountsApi.create(form);
       setForm({ name: '', type: 'cash' });
       await load();
+      toast.success(t('accounts.created'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
   };
 
   const toggleActive = async (account) => {
+    if (account.is_active) {
+      const ok = await confirm({
+        title: t('common.deactivate'),
+        message: t('accounts.deactivateConfirm'),
+        tone: 'danger',
+        confirmLabel: t('common.deactivate'),
+      });
+      if (!ok) return;
+    }
     try {
       await (account.is_active ? accountsApi.deactivate(account.id) : accountsApi.activate(account.id));
       await load();
+      toast.success(account.is_active ? t('accounts.deactivatedToast') : t('accounts.activatedToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
@@ -57,6 +72,7 @@ export default function AccountsPage() {
     try {
       await accountsApi.rename(account.id, name);
       await load();
+      toast.success(t('common.saved'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }

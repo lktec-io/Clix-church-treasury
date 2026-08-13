@@ -2,10 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { fundsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useToast } from '../components/Toast.jsx';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 
 export default function FundsPage() {
   const { t } = useLocale();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [funds, setFunds] = useState([]);
   const [form, setForm] = useState({ name: '', isRestricted: false });
   const [error, setError] = useState(null);
@@ -34,15 +38,26 @@ export default function FundsPage() {
       await fundsApi.create(form);
       setForm({ name: '', isRestricted: false });
       await load();
+      toast.success(t('funds.created'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
   };
 
   const toggleActive = async (fund) => {
+    if (fund.is_active) {
+      const ok = await confirm({
+        title: t('common.deactivate'),
+        message: t('funds.deactivateConfirm'),
+        tone: 'danger',
+        confirmLabel: t('common.deactivate'),
+      });
+      if (!ok) return;
+    }
     try {
       await (fund.is_active ? fundsApi.deactivate(fund.id) : fundsApi.activate(fund.id));
       await load();
+      toast.success(fund.is_active ? t('funds.deactivatedToast') : t('funds.activatedToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
@@ -54,6 +69,7 @@ export default function FundsPage() {
     try {
       await fundsApi.rename(fund.id, name);
       await load();
+      toast.success(t('common.saved'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }

@@ -7,6 +7,8 @@ function parseFilters(query) {
   if (query.status) filters.status = query.status;
   if (query.fundId) filters.fundId = Number(query.fundId);
   if (query.requestedByUserId) filters.requestedByUserId = Number(query.requestedByUserId);
+  if (query.limit) filters.limit = Math.min(Number(query.limit), 200);
+  if (query.offset) filters.offset = Number(query.offset);
   return filters;
 }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { budgetsApi, financialPeriodsApi, fundsApi, categoriesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import { formatMoney } from '../utils/format.js';
 
@@ -11,6 +12,7 @@ function emptyForm(periodId) {
 
 export default function BudgetsPage() {
   const { t } = useLocale();
+  const toast = useToast();
   const [periods, setPeriods] = useState([]);
   const [funds, setFunds] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -89,6 +91,7 @@ export default function BudgetsPage() {
       });
       setForm(emptyForm(selectedPeriodId));
       await loadBudgets(selectedPeriodId);
+      toast.success(t('budgets.created'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {

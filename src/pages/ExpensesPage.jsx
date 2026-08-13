@@ -3,10 +3,13 @@ import { expensesApi, accountsApi, fundsApi, categoriesApi } from '../api/endpoi
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../components/Toast.jsx';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import { formatMoney } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
+const PAGE_SIZE = 50;
 const STATUS_BADGE = {
   draft: 'badge--neutral',
   submitted: 'badge--warning',
@@ -22,6 +25,8 @@ function emptyForm() {
 export default function ExpensesPage() {
   const { t } = useLocale();
   const { session } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [expenses, setExpenses] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [funds, setFunds] = useState([]);
@@ -30,17 +35,20 @@ export default function ExpensesPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [expenseData, accountData, fundData, categoryData] = await Promise.all([
-        expensesApi.list(),
+        expensesApi.list({ limit: PAGE_SIZE }),
         accountsApi.list(),
         fundsApi.list(),
         categoriesApi.list('expense'),
       ]);
       setExpenses(expenseData);
+      setHasMore(expenseData.length === PAGE_SIZE);
       setAccounts(accountData);
       setFunds(fundData);
       setCategories(categoryData);
@@ -50,6 +58,19 @@ export default function ExpensesPage() {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const nextPage = await expensesApi.list({ limit: PAGE_SIZE, offset: expenses.length });
+      setExpenses((rows) => [...rows, ...nextPage]);
+      setHasMore(nextPage.length === PAGE_SIZE);
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -71,6 +92,7 @@ export default function ExpensesPage() {
       });
       setForm(emptyForm());
       await load();
+      toast.success(t('expenses.requested'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -78,14 +100,27 @@ export default function ExpensesPage() {
     }
   };
 
-  const runAction = async (action) => {
+  const runAction = async (action, successMessage) => {
     setError(null);
     try {
       await action();
       await load();
+      if (successMessage) toast.success(successMessage);
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
+  };
+
+  const handleReject = async (expense) => {
+    const result = await confirm({
+      title: t('expenses.reject'),
+      message: t('expenses.rejectConfirm'),
+      tone: 'danger',
+      confirmLabel: t('expenses.reject'),
+      requireReason: true,
+    });
+    if (!result.confirmed) return;
+    await runAction(() => expensesApi.reject(expense.id, result.reason), t('expenses.rejectedToast'));
   };
 
   const isOwnRequest = (expense) => expense.requested_by_user_id === session?.user?.id;
@@ -198,7 +233,7 @@ export default function ExpensesPage() {
                           <button
                             type="button"
                             className="btn btn--secondary btn--sm"
-                            onClick={() => runAction(() => expensesApi.submit(expense.id))}
+                            onClick={() => runAction(() => expensesApi.submit(expense.id), t('expenses.submittedToast'))}
                           >
                             {t('expenses.submit')}
                           </button>
@@ -209,7 +244,7 @@ export default function ExpensesPage() {
                           <button
                             type="button"
                             className="btn btn--primary btn--sm"
-                            onClick={() => runAction(() => expensesApi.approve(expense.id))}
+                            onClick={() => runAction(() => expensesApi.approve(expense.id), t('expenses.approvedToast'))}
                           >
                             {t('expenses.approve')}
                           </button>
@@ -217,14 +252,7 @@ export default function ExpensesPage() {
                       )}
                       {expense.status === 'submitted' && (
                         <PermissionGate permission="expense.reject">
-                          <button
-                            type="button"
-                            className="btn btn--danger btn--sm"
-                            onClick={() => {
-                              const reason = window.prompt(t('common.reason'));
-                              if (reason) runAction(() => expensesApi.reject(expense.id, reason));
-                            }}
-                          >
+                          <button type="button" className="btn btn--danger btn--sm" onClick={() => handleReject(expense)}>
                             {t('expenses.reject')}
                           </button>
                         </PermissionGate>
@@ -234,7 +262,7 @@ export default function ExpensesPage() {
                           <button
                             type="button"
                             className="btn btn--primary btn--sm"
-                            onClick={() => runAction(() => expensesApi.pay(expense.id))}
+                            onClick={() => runAction(() => expensesApi.pay(expense.id), t('expenses.paidToast'))}
                           >
                             {t('expenses.pay')}
                           </button>
@@ -245,6 +273,13 @@ export default function ExpensesPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {hasMore && (
+          <div style={{ textAlign: 'center', marginTop: 14 }}>
+            <button type="button" className="btn btn--secondary btn--sm" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? t('common.loading') : t('common.loadMore')}
+            </button>
           </div>
         )}
       </div>

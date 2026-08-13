@@ -3,10 +3,13 @@ import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../components/Toast.jsx';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import { formatMoney, formatDate } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
+const PAGE_SIZE = 50;
 
 function emptyForm() {
   return {
@@ -26,6 +29,8 @@ function emptyForm() {
 export default function ContributionsPage() {
   const { t } = useLocale();
   const { hasPermission } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [contributions, setContributions] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [funds, setFunds] = useState([]);
@@ -36,17 +41,20 @@ export default function ContributionsPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
       const [contribData, accountData, fundData, categoryData] = await Promise.all([
-        contributionsApi.list(),
+        contributionsApi.list({ limit: PAGE_SIZE }),
         accountsApi.list(),
         fundsApi.list(),
         categoriesApi.list('income'),
       ]);
       setContributions(contribData);
+      setHasMore(contribData.length === PAGE_SIZE);
       setAccounts(accountData);
       setFunds(fundData);
       setCategories(categoryData);
@@ -62,6 +70,19 @@ export default function ContributionsPage() {
       setLoading(false);
     }
   }, [hasPermission]);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const nextPage = await contributionsApi.list({ limit: PAGE_SIZE, offset: contributions.length });
+      setContributions((rows) => [...rows, ...nextPage]);
+      setHasMore(nextPage.length === PAGE_SIZE);
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -86,6 +107,7 @@ export default function ContributionsPage() {
       });
       setForm(emptyForm());
       await loadAll();
+      toast.success(t('contributions.recorded'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -94,11 +116,18 @@ export default function ContributionsPage() {
   };
 
   const handleReverse = async (id) => {
-    const reason = window.prompt(t('common.reason'));
-    if (!reason) return;
+    const result = await confirm({
+      title: t('contributions.reverse'),
+      message: t('contributions.reverseConfirm'),
+      tone: 'danger',
+      confirmLabel: t('contributions.reverse'),
+      requireReason: true,
+    });
+    if (!result.confirmed) return;
     try {
-      await contributionsApi.reverse(id, reason);
+      await contributionsApi.reverse(id, result.reason);
       await loadAll();
+      toast.success(t('contributions.reversedToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
@@ -279,6 +308,13 @@ export default function ContributionsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {hasMore && (
+          <div style={{ textAlign: 'center', marginTop: 14 }}>
+            <button type="button" className="btn btn--secondary btn--sm" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? t('common.loading') : t('common.loadMore')}
+            </button>
           </div>
         )}
       </div>

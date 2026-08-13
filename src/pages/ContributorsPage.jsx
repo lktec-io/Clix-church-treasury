@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { contributorsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 
 function emptyForm() {
@@ -10,6 +11,7 @@ function emptyForm() {
 
 export default function ContributorsPage() {
   const { t } = useLocale();
+  const toast = useToast();
   const [contributors, setContributors] = useState([]);
   const [form, setForm] = useState(emptyForm());
   const [error, setError] = useState(null);
@@ -42,6 +44,7 @@ export default function ContributorsPage() {
       await contributorsApi.create(form);
       setForm(emptyForm());
       await load();
+      toast.success(t('contributors.created'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
