@@ -1,0 +1,99 @@
+# Clix Church Treasury Management System — Nginx production config template
+#
+# Site: https://treasurer.clixworks.co.tz (the one and only production
+# domain for this product — never localhost/127.0.0.1/an old Clix domain).
+#
+# Copy this file to /etc/nginx/sites-available/treasurer.clixworks.co.tz on
+# the production host, adjust the paths marked CHANGE_ME below, symlink it
+# into sites-enabled, then `nginx -t && systemctl reload nginx`.
+#
+# This file assumes:
+#   - The frontend production build (`npm run build` at the repo root,
+#     producing `dist/`) has been copied to the server and its files are
+#     served directly by Nginx — the Node process never serves the frontend.
+#   - The backend (server/, started via PM2 — see ecosystem.config.cjs) is
+#     listening on 127.0.0.1:4000 (or whatever PORT is set to in server/.env)
+#     and is never exposed directly to the internet, only reached through
+#     this reverse proxy.
+#   - TLS certificates already exist at the paths below (see docs/DEPLOYMENT.md
+#     for the Cloudflare/Let's Encrypt instructions — this file does not
+#     issue certificates itself).
+
+# Plain HTTP: redirect everything to HTTPS. No application traffic is ever
+# served over HTTP.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name treasurer.clixworks.co.tz;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name treasurer.clixworks.co.tz;
+
+    # CHANGE_ME — paths to the certificate and key for this domain (see
+    # docs/DEPLOYMENT.md §SSL for how these get here — either Cloudflare
+    # Origin CA or Let's Encrypt/Certbot; this template does not assume which).
+    ssl_certificate     /etc/ssl/treasurer.clixworks.co.tz/fullchain.pem;
+    ssl_certificate_key /etc/ssl/treasurer.clixworks.co.tz/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # A modest client body cap — comfortably above any real form payload
+    # this app sends (JSON bodies are capped at 1MB by Express itself,
+    # see server/src/app.js) with headroom for the PDF/Excel/CSV report
+    # exports the API streams back, not something a client ever uploads to it.
+    client_max_body_size 2m;
+
+    # Security headers as defense-in-depth alongside helmet() on the API
+    # itself (server/src/middleware — helmet only covers /api responses).
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # --- API: reverse-proxied to the Node/PM2 process ---
+    # Same-origin as the frontend (docs/API_ARCHITECTURE.md §Production) —
+    # the browser never needs a cross-origin CORS grant for the app's own
+    # requests; CORS_ORIGINS is still configured server-side as
+    # defense-in-depth (see server/.env.example).
+    location /api/ {
+        proxy_pass http://127.0.0.1:4000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # The app trusts exactly one proxy hop (`app.set('trust proxy', 1)`
+        # in server/src/app.js) — matches this single Nginx hop in front of it.
+        proxy_read_timeout 30s;
+        proxy_connect_timeout 5s;
+    }
+
+    location /health {
+        proxy_pass http://127.0.0.1:4000/health;
+        proxy_set_header Host $host;
+        access_log off;
+    }
+
+    # --- Frontend: static build output ---
+    # CHANGE_ME — where the built frontend (`npm run build` output, i.e.
+    # the contents of `dist/`) actually lives on this server.
+    root /var/www/treasurer.clixworks.co.tz/dist;
+    index index.html;
+
+    # Client-side routing (React Router) — any path not matching a real
+    # static file falls back to index.html, letting the frontend router
+    # decide what to render instead of Nginx 404ing on a deep link refresh.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Built assets are content-hashed by Vite — safe to cache aggressively.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}

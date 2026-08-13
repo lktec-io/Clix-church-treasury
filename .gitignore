@@ -17,6 +17,7 @@ dist-ssr
 .env.*
 !.env.example
 server/scripts/setup-db.sql
+server/scripts/setup-db.production.sql
 
 # Editor directories and files
 .vscode/*

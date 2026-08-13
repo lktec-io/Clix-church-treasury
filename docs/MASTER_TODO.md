@@ -1,10 +1,10 @@
 # Master TODO — Clix Church Treasury Management System
 
-Governing execution plan, Phase 0 through Phase 12. Cross-references: [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md), [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md), [API_ARCHITECTURE.md](API_ARCHITECTURE.md), [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md), [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md), [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md).
+Governing execution plan, Phase 0 through Phase 12. Cross-references: [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md), [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md), [API_ARCHITECTURE.md](API_ARCHITECTURE.md), [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md), [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md), [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md), [DEPLOYMENT.md](DEPLOYMENT.md).
 
 Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md) §8) — never batch-checked at phase end.
 
-**Overall status:** Phases 0–9 all have code/tests written (IMPLEMENTED, TESTED as in "written and passing lint/build/import checks"). Every phase from Phase 1 onward is blocked on the same thing: live verification against a real MySQL instance (`ER_ACCESS_DENIED_ERROR` for user `clix_app` in this environment — see [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) §8). No phase's status has been fabricated as live-verified; each phase section below states LIVE-DB VERIFIED: PENDING explicitly. `npm run lint` is clean on both `server/` and the frontend; the frontend production build succeeds.
+**Overall status:** Phases 0–12 all have code/documentation written and are considered feature-complete (IMPLEMENTED). Every phase from Phase 1 onward is blocked on the same thing: live verification against a real MySQL instance (`ER_ACCESS_DENIED_ERROR` for user `clix_app` in this environment — see [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) §8), and Phase 12 additionally requires a real production host/DNS/TLS that doesn't exist in this build environment. No phase's status has been fabricated as live-verified or live-deployed; each phase section below states LIVE-DB VERIFIED: PENDING explicitly, and Phase 12 states outright which infrastructure steps were not executed. `npm run lint` is clean on both `server/` and the frontend; the frontend production build succeeds and was verified to bake in the correct production API URL with zero dev-localhost references. **DEVELOPMENT COMPLETE** in the sense of "all planned functionality exists, is wired end-to-end, and is code-reviewed" — deployment itself (§ [DEPLOYMENT.md](DEPLOYMENT.md)) is a separate, not-yet-taken step.
 
 ---
 
@@ -339,84 +339,109 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 ## PHASE 10 — Dashboard + Complete UI/UX
 
-**Objectives:** Full application UI — dashboard, navigation, all module screens polished, mobile-first, localized.
+**Objectives:** Turn the working-but-unpolished Phase 0–9 frontend into a coherent, commercially presentable product surface — without touching any financial calculation.
+
+**Status: IMPLEMENTED. Verified via lint/build/code review (no live-browser session possible — DB unavailable, no working login). LIVE-DB VERIFIED: PENDING.**
 
 **Database work:** None new.
 
-**Backend work:** Dashboard aggregation endpoints (reusing Financial Engine services, per [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) §6).
+**Backend work — all IMPLEMENTED:**
+- [x] `GET /api/v1/roles` (new, thin, reuses the existing `rolesRepository` — no new module) so the Users admin screen has a role catalog to offer
+- [x] `usersService.listUsers` now attaches each user's roles via one batched query (`userRolesRepository.listRolesForUsers`), not one query per row
+- [x] `limit`/`offset` query support added to `contributions.controller.js` and `expenses.controller.js` — the repositories already accepted them, the controllers never parsed them out of the query string, so pagination silently couldn't work until now
 
-**Frontend work:**
-- [ ] Full navigation/layout, mobile-first responsive shell
-- [ ] Dashboard: balance summaries, fund breakdown, recent activity, pending approvals widget
-- [ ] Polish pass across every module screen built in Phases 4–9
-- [ ] i18n: English + Swahili dictionaries, no hardcoded strings remaining anywhere in `src/`
-- [ ] Church settings/profile screens (logo upload, receipt format, fiscal year config)
-- [ ] Notifications (in-app at minimum — e.g. pending approvals, period-close reminders; email/SMS out of scope unless separately requested)
-- [ ] Error handling/empty states/loading states across all screens
+**Frontend work — all IMPLEMENTED:**
+- [x] Real `DashboardPage.jsx` replacing the Phase 0 placeholder stub — current balance, income/expenses for a This Month/Quarter/Year/Custom-range filter, transfer volume, active pledges + outstanding amount, a compact budget-vs-actual summary, and the 8 most recent transactions. Every figure is sourced from an existing Phase 3/8/9 service (`reports/financial-summary`, `reports/income`, `reports/expense`, `reports/pledges`, `reports/budget-vs-actual`, `reports/transaction-journal`) — the period filter is calendar-boundary math only, never a second financial calculation. Handles the zero-open-financial-period state explicitly instead of crashing or showing NaN/blank.
+- [x] Shared `ConfirmDialog` (promise-based, focus trap, Escape-to-cancel, optional reason field) and `Toast` notification system (`src/components/`) — replaced every `window.confirm`/`window.prompt` used for a destructive action (reverse contribution, reject expense, cancel pledge, deactivate account/fund, close/reopen financial period) and added success feedback to every create/mutate action across the app, which previously had none at all
+- [x] Navigation: links are now filtered by the same permission that gates each page's own API calls — a real, pre-existing gap fixed (e.g. the Approver role previously saw Accounts/Funds/Budgets/Pledges links despite lacking every one of those permissions, guaranteeing a 403 on click). Added visible group headings (Transactions / Finance / Pledges & Reports / Administration) for hierarchy.
+- [x] Mobile sidebar: added the previously-missing accessible close button and body-scroll-lock while open; existing slide-in/overlay/close-on-navigate behavior kept as-is (already correct)
+- [x] `UsersPage.jsx` (new) — invite, list with roles, assign/remove role, disable, all through the Phase 2 backend that had zero frontend until now
+- [x] Pagination ("Load more") on Contributions and Expenses, the two highest-volume lists
+- [x] Tables already used `.table-wrap { overflow-x: auto }` (horizontal scroll on narrow viewports) from Phase 4 onward — reviewed and kept rather than rebuilt as cards, matching the brief's own "horizontal scroll OR compact card view, whichever is better" framing
+- [x] i18n: every new string (dashboard, confirm dialogs, toasts, Users page, nav groups) added to both `en.json` and `sw.json` — no hardcoded UI strings introduced
 
-**Security work:** CSP finalized ([SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §4) once frontend build patterns are locked.
+**Deliberately not built:** Church Settings screen and a custom-role editor — both were named as example nav items in the brief's suggested structure, but neither has *any* backend behind it (no `settings` module exists; roles are system-defined only, no tenant-custom-role creation exists anywhere). Building either now would be a screen with nothing real behind it — the kind of "add a module to make the product look bigger" the brief explicitly warns against. Both are noted as known, deliberate gaps rather than silently omitted.
 
-**Testing:** Manual QA pass across all screens on mobile viewport widths; i18n completeness check (no missing translation keys).
+**Testing:** No live-browser interaction testing was possible — the database is unreachable in this environment, so there is no way to log in and click through the app. Verified instead via: `npm run lint` (frontend + backend, clean), `npm run build` (clean, and the production build was independently re-verified to bake in the correct API URL with zero `localhost:4000` references — see Phase 12 §12.18), and a full manual code review of every changed file. This is explicitly a lower bar than real browser QA and is reported as such, not as "tested."
 
-**Acceptance criteria:** Every backend capability built in Phases 2–9 has a corresponding, polished, mobile-usable UI in both supported languages.
+**Acceptance criteria:** Met in code — every backend capability through Phase 9 has a corresponding UI; nav visibility matches actual permission; confirmations/toasts are consistent app-wide — unverified in a live browser session.
 **Dependencies:** Phase 2 through 9.
 
 ---
 
 ## PHASE 11 — Audit + Hardening
 
-**Objectives:** Full audit-log completeness, OWASP-mapped security hardening pass, dependency audit.
+**Objectives:** A real, code-level security and reliability audit — not a documentation exercise.
 
-**Database work:** Confirm `audit_logs` coverage against the minimum-events list in [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §7; add any missing hook calls.
+**Status: IMPLEMENTED. TESTED (written, new). LIVE-DB VERIFIED: PENDING.**
 
-**Backend work:**
-- [ ] Audit-log completeness review across every module built so far
-- [ ] `npm audit` (frontend and backend) resolved
-- [ ] Full OWASP Top 10 mapping ([SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) §8) re-verified against actual code, not just design intent
-- [ ] Rate limiting tuned against realistic usage
-- [ ] Load/stress test of the Financial Engine under concurrent posting
+**Database work:** None new. Schema/migrations reviewed for integrity (FKs, unique constraints, indexes) — found already correct, not modified (per this phase's own instruction not to touch migrations without a real reason).
 
-**Frontend work:** Accessibility pass, error-boundary coverage.
+**Backend work — audit performed across all 15 brief subsections; real findings fixed:**
+- [x] **Tenant isolation** — re-verified: `req.tenantId` has exactly one assignment site (`tenantContext.js`), always from `req.auth.tenantId` (server-derived from the verified JWT), never from `req.body`/`req.query`/`req.params`. Every custom repository query includes `tenant_id`; the handful that don't are `permissions`/`role_permissions` (global by design) and `refresh_tokens` (keyed by cryptographic token hash, not tenant) — both pre-existing, documented, legitimate exceptions.
+- [x] **Authentication** — reviewed login/refresh-rotation/reuse-detection/logout/lockout/password-reset, all already solid (generic error messages, no user enumeration, bcrypt, single-use expiring reset tokens, full-chain revocation on reuse detection). Hardened further: `jwt.verify` now passes an explicit `algorithms: ['HS256']` allow-list (defense-in-depth against algorithm-confusion); `JWT_ACCESS_SECRET` now enforces a 32-character minimum at startup.
+- [x] **Authorization** — re-verified every route in every `*.routes.js` file individually declares `requirePermission(...)`; no route found unprotected.
+- [x] **Financial integrity — real bug found and fixed:** three places summed money via JS floating-point `Number(...)` addition instead of SQL or integer-cents arithmetic (the pledge-overpayment guard, already patched with a telling `+ 0.001` epsilon — itself a symptom of the underlying float risk — and two Phase 9 report totals). Added `addMoney`/`compareMoney`/`sumMoney` to `money.js` (all integer-cents), switched all three call sites, removed the epsilon.
+- [x] **Concurrency — real gap found and fixed:** `budgets`/`contributors`/`categories` each use check-before-insert duplicate prevention; under a genuine race the DB's own unique constraint was the only backstop, and a collision surfaced as a raw unhandled 500. All three now catch `ER_DUP_ENTRY` and return the same friendly `409` the sequential path already does.
+- [x] **Input validation — real gap found and fixed:** several free-text fields (contribution/expense notes and reference, expense payee, pledge/budget notes, contributor fields, financial period label, email addresses, church/admin names) had no length cap, so a value exceeding its `VARCHAR` column would fail as a raw DB error rather than a clean `422`. Added explicit length checks matching each column's actual width across 7 validator files.
+- [x] **HTTP security** — re-verified: CORS locked to explicit origins (no wildcard), `helmet()` applied, rate limiting wired (10/min auth, 300/min general), refresh cookie `httpOnly`/`secure`(prod)/`sameSite=strict`/path-scoped, `express.json({limit:'1mb'})`.
+- [x] **File security** — Cloudinary remains un-provisioned; `storage.service.js`'s `501 PENDING` contract re-confirmed, not touched.
+- [x] **Secrets** — repo-wide sweep for hardcoded credentials: clean. `.env`/`server/.env`/`setup-db*.sql` (real, filled-in versions) all correctly gitignored, only `.example` templates tracked.
+- [x] **Dependencies** — `npm audit`: 0 vulnerabilities (frontend), 2 moderate transitive in the server package (`exceljs → uuid`, unchanged from Phase 9, already investigated and documented as non-exploitable in this codebase's usage — no user-controlled buffer ever reaches `uuid`).
+- [x] **Error handling — real gap found and fixed:** `errorHandler.js` previously only logged unhandled exceptions server-side when `NODE_ENV !== 'production'` — a production 500 was invisible to operators, not just hidden from the client. Now always logged server-side; the client-facing message stays redacted in production.
+- [x] **Audit logging — real gap found and fixed:** `accounts`/`funds` create/rename/activate/deactivate were entirely unlogged, unlike every other domain module. Added `account.*`/`fund.*` audit entries with the acting user threaded through from the controller (previously not even passed to the service).
+- [x] **Hard delete** — re-verified: the only `DELETE` route in the entire API removes a role *assignment* (a join-table row); no financial or domain record can be hard-deleted anywhere.
 
-**Security work:** This entire phase is security work — see backend list above. Additionally: penetration-test-style pass on tenant isolation (attempt cross-tenant access on every endpoint, confirm 404).
+**Frontend work:** No frontend-specific findings this phase (Phase 10 already added the confirmation-dialog layer destructive actions need).
 
-**Testing:**
-- [ ] Full regression suite run (unit + integration + API)
-- [ ] Tenant-isolation test matrix across every endpoint
-- [ ] Financial calculation test suite re-run against edge cases (zero amounts, very large amounts, currency rounding)
+**Testing:** `server/tests/phase11/security.test.js` (new) — account/fund audit logging end-to-end; the pledge-overpayment guard at its exact boundary, deliberately using amounts (`100.01 × 3`) chosen to stress binary-fraction rounding, both for a payment that should succeed and one that should still correctly fail; oversized-input rejection. Cross-tenant/duplicate-key/auth/authz coverage already existed extensively across `tests/phase1`–`phase9` and was re-verified by code review rather than duplicated.
 
-**Acceptance criteria:** No known critical/high vulnerability in dependencies; every financial and access-control action produces an audit log entry; tenant isolation holds across 100% of endpoints, not just the ones tested per-phase.
+**Acceptance criteria:** Met in code — no known critical/high dependency vulnerability; every financial and access-control action produces an audit log entry (gap closed for accounts/funds); tenant isolation re-confirmed structurally sound — unverified against a live system.
 **Dependencies:** All of Phase 1–10.
 
 ---
 
-## PHASE 12 — Production Deployment + Commercial QA
+## PHASE 12 — Production Deployment + Commercial QA Preparation
 
-**Objectives:** Ship to a real VPS, serving real churches, with monitoring and backups in place.
+**Objectives:** Make the codebase deployment-ready and document the deployment procedure — not to actually deploy (explicitly out of scope this phase; deployment happens manually afterward).
+
+**Status: IMPLEMENTED (codebase + documentation). Infrastructure steps (DNS/TLS/live DB) explicitly NOT executed — PENDING, documented as such, never claimed otherwise.**
 
 **Database work:**
-- [ ] Production MySQL instance provisioned, secured (no public access beyond app server, strong credentials, least-privilege app DB user)
-- [ ] Automated backup schedule + tested restore procedure
+- [x] `server/scripts/setup-db.production.example.sql` (new) — production DB + least-privilege `clix_app` user creation template, mirrors the existing dev script's shape, adapted for a single production database and a real generated password (never committed filled-in)
+- [x] Backup procedure documented: daily `mysqldump` via cron, 14-day retention, restore command ([DEPLOYMENT.md](DEPLOYMENT.md) §7) — a cron one-liner, not a bespoke backup-management application, per this phase's own "do not build an unnecessary" instruction
+- [ ] **Actually provisioning a production MySQL instance / running the setup script for real** — PENDING, requires a real server
 
 **Backend work:**
-- [ ] PM2 process configuration
-- [ ] Environment-specific `.env` for production (secrets never in repo)
-- [ ] Health-check endpoint for monitoring
+- [x] `server/ecosystem.config.cjs` (new) — PM2 process config, `.cjs` extension deliberately (the package is ESM, PM2's loader is most reliable as plain CommonJS regardless). Contains no secrets — real config comes from `server/.env` via the `dotenv/config` import `env.js` already has; PM2 only sets `NODE_ENV=production`.
+- [x] `GET /health` re-confirmed already minimal and correct (no auth required, no internal state exposed) — no change needed, matches this phase's own "minimal response is sufficient" guidance
+- [x] Production logging re-confirmed correct after the Phase 11 fix (errors always logged server-side; PM2 captures stdout/stderr to `server/logs/`)
 
 **Frontend work:**
-- [ ] Production build pipeline, served via Nginx
+- [x] Production build re-verified this phase with `VITE_API_BASE_URL=https://treasurer.clixworks.co.tz/api/v1` set explicitly — the built output was grepped for `localhost:4000` (zero matches) and confirmed to contain `treasurer.clixworks.co.tz/api/v1` — the only "localhost" strings present are React's own internal fallback constant, unrelated to this app's config
 
-**Security work:**
-- [ ] Nginx reverse proxy + Let's Encrypt TLS
-- [ ] Cloudflare DNS/WAF configured
-- [ ] Final secrets rotation (dev secrets never reused in production)
-- [ ] Backup/incident-response runbook written
+**Security / infra work:**
+- [x] `deploy/nginx.conf.example` (new) — HTTP→HTTPS redirect, reverse proxy to the PM2-managed backend on `127.0.0.1:PORT`, static frontend serving with client-routing fallback, security headers, `trust proxy`-matching single-hop `X-Forwarded-*` handling, `/health` excluded from access logging
+- [x] Cloudflare DNS + TLS documented as **instructions only** — [DEPLOYMENT.md](DEPLOYMENT.md) §6 explicitly states nothing has been configured, names the two TLS paths (Cloudinary Origin CA or Certbot) without claiming either was executed
+- [x] Rollback basics documented — code rollback via git, schema rollback via the existing `npm run migrate:down`, data restore only as a last resort ([DEPLOYMENT.md](DEPLOYMENT.md) §10)
+
+**Cleanup / audit (this phase, repo-wide):**
+- [x] Production-domain sweep: every `localhost`/`127.0.0.1` reference in the repo accounted for (dev-only `.env.example` defaults with fail-fast production overrides; the Nginx template's *correct* internal reverse-proxy target; one CORS test fixture) — none are an actual production misconfiguration
+- [x] No old/demo domains found anywhere
+- [x] TODO/FIXME/console.log sweep: zero real markers found in application source (`console.log` exists only in CLI scripts — migration runner, seed runner, server startup banner — all legitimate operator-facing output, not application request-path logging); zero lorem-ipsum/placeholder/dummy-data strings
+- [x] Empty-database experience reviewed: every list page already had loading/empty/error states from the phase that built it; `formatMoney`/`formatDate` degrade to `—` rather than `NaN`/`undefined`; the new Dashboard explicitly handles the zero-financial-period case
+- [x] Demo data reviewed: the dev seed (`seedDevTenant.js`) already skips itself when `NODE_ENV=production` (confirmed in Phase 7/9 review, re-confirmed here) — production seeding only ever creates the permission/role catalog, never fake financial data
+- [x] Performance spot-check: one real N+1 found and fixed in Phase 10 (`listUsers`, now one batched query instead of one per user); no other N+1 pattern found on review
 
 **Testing:**
-- [ ] Production smoke tests (login, record a contribution, generate a report, on the live deployment)
-- [ ] Commercial QA: full walkthrough as each defined role (Treasurer, Pastor/Admin, Approver, Viewer) against a realistic seeded church
+- [x] `npm run lint` — frontend and backend, clean
+- [x] `npm run build` — clean, output verified against the production API URL (see above)
+- [x] `npm audit` — 0 / 2-moderate-accepted, unchanged from Phase 11
+- [ ] **Production smoke test against the live URL** — cannot happen without a real deployment; PENDING
+- [ ] **Commercial QA walkthrough executed against a live system** — the *code paths* for every listed workflow (register → login → configure → account/fund/category → income/contribution → receipt → pledge → pledge payment → expense → submit → approve → pay → transfer → budget → close period → reports → export → manage users → logout → login → refresh) were traced through the actual implementation and confirmed to exist and be wired correctly end-to-end; this is a code-level walkthrough, not a live user-driven one, and is reported as such
 
-**Acceptance criteria:** A real church can be onboarded (tenant provisioned), staff can log in and use every module, backups run and have been proven restorable, monitoring alerts on downtime, and the system has passed a full role-by-role commercial QA pass.
+**Acceptance criteria:** Codebase and documentation are deployment-ready; a real church cannot yet be onboarded because no live MySQL/production host exists in this environment — that gap is explicit, not hidden.
+**Dependencies:** All of Phase 1–11.
 **Dependencies:** All of Phase 1–11.
 
 ---

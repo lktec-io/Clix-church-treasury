@@ -147,6 +147,7 @@ Decisions required by the product brief before coding begins. Each will be expan
 | [FINANCIAL_ARCHITECTURE.md](FINANCIAL_ARCHITECTURE.md) | Ledger model, balance/fund/period/reversal rules |
 | [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md) | Coding conventions, dependency policy, definition of done |
 | [MASTER_TODO.md](MASTER_TODO.md) | Phase 0–12 execution plan with acceptance criteria |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment procedure — env vars, DB setup, PM2, Nginx, Cloudflare/SSL, backups, rollback |
 
 ---
 
