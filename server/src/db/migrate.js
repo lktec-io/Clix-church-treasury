@@ -16,7 +16,10 @@ async function ensureMigrationsTable(connection) {
   `);
 }
 
-async function listMigrationFiles(direction) {
+// Exported so migrateStatus.js can list pending/applied migrations using
+// the exact same file-discovery logic the runner itself uses, rather than
+// a second, potentially-drifting implementation.
+export async function listMigrationFiles(direction) {
   const suffix = `.${direction}.sql`;
   const files = await readdir(MIGRATIONS_DIR);
   return files
@@ -24,7 +27,7 @@ async function listMigrationFiles(direction) {
     .sort((a, b) => a.localeCompare(b));
 }
 
-function migrationName(filename) {
+export function migrationName(filename) {
   // "0001_create_tenants.up.sql" -> "0001_create_tenants"
   return filename.replace(/\.(up|down)\.sql$/, '');
 }

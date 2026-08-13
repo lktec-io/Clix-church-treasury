@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4005/api/v1';
 
 // The access token lives in memory only — never localStorage/sessionStorage,
 // so it can't be read by an XSS payload the way a stored token could

@@ -26,7 +26,7 @@ export const env = {
   nodeEnv,
   isProduction: nodeEnv === 'production',
   isTest,
-  port: Number(process.env.PORT ?? 4000),
+  port: Number(process.env.PORT ?? 4005),
   db: {
     host: required('DB_HOST'),
     port: Number(process.env.DB_PORT ?? 3306),

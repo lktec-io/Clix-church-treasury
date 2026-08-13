@@ -200,7 +200,8 @@ The one and only production domain for this product is **`https://treasurer.clix
 - **API:** `https://treasurer.clixworks.co.tz/api/v1` — same origin as the frontend. Nginx routes `/api/*` to this Node process (PM2-managed) and everything else to the built frontend files. Same-origin means the browser doesn't even need a CORS grant for the app's own requests; `CORS_ORIGINS` is still configured explicitly (never `*`) as defense-in-depth and for any future non-browser/separate-origin client (`server/.env.example`).
 - **Environment injection:** production secrets (DB credentials, `JWT_ACCESS_SECRET`) are injected directly into the server process's environment at deploy time (PM2 ecosystem config or the host's secret manager) — never written into a committed file. `server/.env.example` and the frontend's `.env.example` document every required variable name with a placeholder only.
 - **Fail-fast config:** `server/src/config/env.js` treats `CORS_ORIGINS` and `FRONTEND_URL` (along with the DB/JWT settings) as required — the server refuses to start rather than silently falling back to a development default if either is missing in production.
-- **Frontend API base URL:** `VITE_API_BASE_URL`, baked in at build time (Vite convention). Production build uses `https://treasurer.clixworks.co.tz/api/v1`; local dev uses `http://localhost:4000/api/v1`. See the frontend's `.env.example`.
+- **Frontend API base URL:** `VITE_API_BASE_URL`, baked in at build time (Vite convention). Production build uses `https://treasurer.clixworks.co.tz/api/v1`; local dev uses `http://localhost:4005/api/v1`. See the frontend's `.env.example`.
+- **Backend port:** fixed at `4005` in production (`PORT=4005`, never `4000` — see [DEPLOYMENT.md](DEPLOYMENT.md)), read from `env.port` (`server/src/config/env.js`), never hard-coded in application code.
 
 ---
 

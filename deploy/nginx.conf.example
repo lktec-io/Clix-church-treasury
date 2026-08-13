@@ -12,9 +12,10 @@
 #     producing `dist/`) has been copied to the server and its files are
 #     served directly by Nginx — the Node process never serves the frontend.
 #   - The backend (server/, started via PM2 — see ecosystem.config.cjs) is
-#     listening on 127.0.0.1:4000 (or whatever PORT is set to in server/.env)
-#     and is never exposed directly to the internet, only reached through
-#     this reverse proxy.
+#     listening on 127.0.0.1:4005 (PORT=4005 in server/.env — the fixed
+#     production port for this deployment, never 4000) and is never
+#     exposed directly to the internet, only reached through this reverse
+#     proxy.
 #   - TLS certificates already exist at the paths below (see docs/DEPLOYMENT.md
 #     for the Cloudflare/Let's Encrypt instructions — this file does not
 #     issue certificates itself).
@@ -60,7 +61,7 @@ server {
     # requests; CORS_ORIGINS is still configured server-side as
     # defense-in-depth (see server/.env.example).
     location /api/ {
-        proxy_pass http://127.0.0.1:4000;
+        proxy_pass http://127.0.0.1:4005;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -73,7 +74,7 @@ server {
     }
 
     location /health {
-        proxy_pass http://127.0.0.1:4000/health;
+        proxy_pass http://127.0.0.1:4005/health;
         proxy_set_header Host $host;
         access_log off;
     }

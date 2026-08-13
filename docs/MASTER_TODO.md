@@ -442,7 +442,27 @@ Checkboxes are updated as work genuinely completes (see [DEVELOPMENT_RULES.md](D
 
 **Acceptance criteria:** Codebase and documentation are deployment-ready; a real church cannot yet be onboarded because no live MySQL/production host exists in this environment — that gap is explicit, not hidden.
 **Dependencies:** All of Phase 1–11.
-**Dependencies:** All of Phase 1–11.
+
+---
+
+## Final Pre-GitHub / Contabo Deployment Readiness Pass
+
+A follow-up pass after Phase 12, specifically for the actual target deployment's fixed configuration — not a new phase, no new product features.
+
+**Status: IMPLEMENTED. FRESH DATABASE VERIFICATION: PENDING (no MySQL access in this environment — not asked for, not guessed, not fabricated).**
+
+- [x] **Port fixed at 4005 everywhere, 4000 fully retired from this project's convention** — `server/src/config/env.js`'s fallback default, both `.env.example` files (root + server), `src/api/client.js`'s dev fallback, `deploy/nginx.conf.example`'s two `proxy_pass` targets, `docs/API_ARCHITECTURE.md`. `server.js` already read `env.port` (never a hard-coded literal) — confirmed by actually importing it and observing `Clix Treasury API listening on port 4005 (development)`. The few remaining literal "4000" strings left in the repo are deliberate negative references ("never 4000") or an accurate historical record in this same file of a Phase 12 verification that ran before this pass — not live configuration.
+- [x] **Database configuration adapted to `DB_NAME=treasurer`, `DB_USER=root`** — required zero code changes: `server/src/config/db.js`/`env.js` already read `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` from the environment with no special-casing of the username. `server/scripts/setup-db.production.example.sql` rewritten to create only the `treasurer` database (root already exists — no `CREATE USER`, no password touched, none guessed, none requested). A restricted-user alternative is documented in the same file as an optional, non-blocking upgrade path, per this deployment's explicit instruction not to fight the root requirement.
+- [x] **Two new, genuinely missing capabilities added:** `npm run migrate:status` (`server/src/db/migrateStatus.js`) — lists every migration as applied (with timestamp) or pending, reusing the existing runner's own file-discovery logic rather than a second implementation; `npm run db:check` (`server/src/db/check.js`) — verifies connection, reports the connected database name, confirms the migration table and a representative sample of core tables exist, reports applied-migration count, prints `Schema status: READY`/`NOT READY`. Neither prints a credential; both were tested against the (currently unreachable) local dev database and fail cleanly with a clear, credential-free error rather than crashing or leaking anything.
+- [x] **`docs/DEPLOYMENT.md` rewritten** as a practical, project-specific, command-by-command Contabo walkthrough (VPS prerequisites through backup), using this deployment's actual fixed values throughout (port 4005, `treasurer`/`root`, the real `npm run migrate`/`migrate:status`/`seed`/`db:check` commands) rather than generic instructions. The GitHub repository URL is a `<YOUR_GITHUB_REPO_URL>` placeholder — none was invented.
+- [x] **JWT env var naming deliberately kept as the existing `JWT_ACCESS_SECRET`**, not renamed to `JWT_SECRET`, and no `JWT_REFRESH_SECRET` was added — refresh tokens are opaque random values, never JWTs, so a refresh-signing secret would be a dead, unused variable. This follows the deployment brief's own instruction to prefer "the exact existing variable naming convention if the project already uses a better established convention" over its example template.
+- [x] **Final security sweep re-run**: no `JWT_SECRET=`/`JWT_REFRESH_SECRET=`/`api_key`/hardcoded password found anywhere; `.gitignore` confirmed to exclude `.env`, `.env.*` (with `!.env.example` re-allowed), `node_modules`, `dist`, `logs`, `*.log`, and `coverage` (added this pass, defensively — no coverage output exists yet, costs nothing to exclude); `git ls-files` confirmed no `.env`, no `setup-db*.sql` (the real, filled-in versions), no `node_modules` are tracked.
+- [x] Frontend production build re-verified once more this pass with the new port default in place — `grep`ped for `localhost:4000`/`localhost:4005`/`127.0.0.1` in the build output (zero matches) and confirmed `treasurer.clixworks.co.tz/api/v1` is what's actually baked in.
+- [x] `npm run lint` (both packages), `npm run build` — all clean. `npm audit` unchanged from Phase 11 (0 frontend / 2 moderate, already investigated and accepted).
+- [ ] **`npm test` / a fresh migrate+seed+db:check run against a real `treasurer` database** — PENDING. The local dev database is equally unreachable in this environment (`ER_ACCESS_DENIED_ERROR`) — this was not worked around, not faked, and no password was requested.
+
+**Acceptance criteria:** the repository can be pushed to GitHub and cloned onto the Contabo VPS as-is; every step in `docs/DEPLOYMENT.md` uses a real, working project command; no application code needs to change to go from this repository state to a running production deployment at the fixed configuration specified.
+**Dependencies:** All of Phase 1–12.
 
 ---
 
