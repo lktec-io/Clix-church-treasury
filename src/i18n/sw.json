@@ -6,6 +6,7 @@
   "nav.expenses": "Matumizi",
   "nav.accounts": "Akaunti",
   "nav.funds": "Mifuko",
+  "nav.categories": "Aina za Fedha",
   "nav.transfers": "Uhamisho",
   "nav.pledges": "Ahadi",
   "nav.budgets": "Bajeti",
@@ -139,6 +140,12 @@
   "funds.deactivatedToast": "Mfuko umezimwa",
   "funds.activatedToast": "Mfuko umewashwa",
   "funds.restricted": "Una masharti",
+
+  "categories.title": "Aina za Fedha",
+  "categories.addNew": "Ongeza aina",
+  "categories.created": "Aina imeundwa",
+  "categories.empty": "Hakuna aina bado. Ongeza moja hapa chini kabla ya kusajili mapato au matumizi.",
+  "categories.emptyHint": "Hakuna aina bado — ongeza moja kwenye ukurasa wa",
 
   "transfers.title": "Uhamisho",
   "transfers.new": "Uhamisho mpya",

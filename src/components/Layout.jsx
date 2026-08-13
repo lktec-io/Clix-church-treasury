@@ -6,6 +6,7 @@ import {
   FiUsers,
   FiCreditCard,
   FiFolder,
+  FiTag,
   FiRepeat,
   FiTarget,
   FiClipboard,
@@ -49,6 +50,11 @@ const NAV_GROUPS = [
     items: [
       { to: '/accounts', icon: FiFolder, labelKey: 'nav.accounts', permission: 'accounts.view' },
       { to: '/funds', icon: FiFolder, labelKey: 'nav.funds', permission: 'funds.view' },
+      // dashboard.view (not a dedicated categories.view) — matches
+      // categories.routes.js's own GET permission exactly, which every
+      // role holds; categories are reference data every role needs to see
+      // in order to use the contribution/expense forms at all.
+      { to: '/categories', icon: FiTag, labelKey: 'nav.categories', permission: 'dashboard.view' },
       { to: '/budgets', icon: FiClipboard, labelKey: 'nav.budgets', permission: 'budget.view' },
       { to: '/financial-periods', icon: FiCalendar, labelKey: 'nav.financialPeriods', permission: 'financial_period.view' },
     ],

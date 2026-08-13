@@ -11,6 +11,7 @@ import ContributorsPage from './pages/ContributorsPage.jsx';
 import ExpensesPage from './pages/ExpensesPage.jsx';
 import AccountsPage from './pages/AccountsPage.jsx';
 import FundsPage from './pages/FundsPage.jsx';
+import CategoriesPage from './pages/CategoriesPage.jsx';
 import TransfersPage from './pages/TransfersPage.jsx';
 import PledgesPage from './pages/PledgesPage.jsx';
 import BudgetsPage from './pages/BudgetsPage.jsx';
@@ -34,6 +35,7 @@ function App() {
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/funds" element={<FundsPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/transfers" element={<TransfersPage />} />
           <Route path="/pledges" element={<PledgesPage />} />
           <Route path="/budgets" element={<BudgetsPage />} />

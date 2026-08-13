@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { expensesApi, accountsApi, fundsApi, categoriesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -171,6 +172,11 @@ export default function ExpensesPage() {
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
+                {categories.length === 0 && (
+                  <span className="field-error">
+                    {t('categories.emptyHint')} <Link to="/categories">{t('categories.title')}</Link>
+                  </span>
+                )}
               </div>
               <div className="field">
                 <label>{t('contributions.paymentMethod')}</label>

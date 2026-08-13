@@ -6,6 +6,7 @@
   "nav.expenses": "Expenses",
   "nav.accounts": "Accounts",
   "nav.funds": "Funds",
+  "nav.categories": "Categories",
   "nav.transfers": "Transfers",
   "nav.pledges": "Pledges",
   "nav.budgets": "Budgets",
@@ -139,6 +140,12 @@
   "funds.deactivatedToast": "Fund deactivated",
   "funds.activatedToast": "Fund activated",
   "funds.restricted": "Restricted",
+
+  "categories.title": "Categories",
+  "categories.addNew": "Add category",
+  "categories.created": "Category created",
+  "categories.empty": "No categories yet. Add one below before recording income or expenses.",
+  "categories.emptyHint": "No categories exist yet — add one on the",
 
   "transfers.title": "Transfers",
   "transfers.new": "New transfer",

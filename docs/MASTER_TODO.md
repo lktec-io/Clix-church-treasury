@@ -513,6 +513,24 @@ Reported against the live site: the browser called `http://localhost:4005/api/v1
 
 ---
 
+## Post-Launch Incident — Missing Categories Management (Blocking Income/Expense Recording)
+
+**Reported:** during the full-stack production audit that followed the localhost-URL and audit-serialization incidents above, the operator reported that data still could not be reliably recorded in multiple parts of the system even after those two fixes.
+
+**Root cause:** `categoryId` is a mandatory field on both `POST /contributions` and `POST /expenses` (enforced by `contributions.validator.js` / `expenses.validator.js`, and ultimately by a `NOT NULL` foreign key in the schema), and the `categories` module has had a working backend (`categories.routes.js` / `.controller.js` / `.service.js` / `.repository.js`) since Phase 4. **No frontend page, navigation entry, or create call for categories was ever built.** A freshly-registered tenant therefore starts with zero categories and had no way, anywhere in the UI, to create one — meaning every attempt to record a contribution or an expense was permanently blocked at the required-field level, independent of and in addition to the localhost/audit bugs already fixed. This was the dominant, highest-impact remaining defect found during the audit.
+
+**Fix:**
+- Added `src/pages/CategoriesPage.jsx` — list of existing categories plus a create form (type: income/expense, name), gated behind `PermissionGate permission="categories.manage"`, following the same structural pattern as `AccountsPage.jsx` / `FundsPage.jsx`.
+- Wired the page into `src/App.jsx` (`/categories` route) and `src/components/Layout.jsx` (new "Finance" group nav entry, gated on `dashboard.view` — matching `categories.routes.js`'s own GET permission, which every role holds, since categories are reference data every role needs to see to use the contribution/expense forms).
+- Added an inline empty-state hint with a direct link to `/categories` on both `src/pages/ContributionsPage.jsx` and `src/pages/ExpensesPage.jsx`, shown whenever the category dropdown has zero options, so the blocked state is now self-explanatory instead of a silent required-field dead end.
+- Added the required i18n keys (`nav.categories`, `categories.title`, `categories.addNew`, `categories.created`, `categories.empty`, `categories.emptyHint`) to both `src/i18n/en.json` and `src/i18n/sw.json`.
+
+**Verification:** confirmed `categories.manage` is granted to the Treasurer role (and to Super Administrator via the `ALL` wildcard), so the create form is reachable by the roles that need it. Re-ran `npm run lint` (root and `server/`, both clean) and a full `vite build` (clean, output verified to contain only `treasurer.clixworks.co.tz/api/v1`, zero `localhost` references). No backend change was required — the API endpoints already existed and were already correct.
+
+**Status: IMPLEMENTED (repository-side fix, verified by lint/build re-execution). LIVE VERIFICATION: PENDING — requires the operator to redeploy on the actual VPS; not fabricated, not assumed.**
+
+---
+
 ## Testing Strategy Summary
 
 | Layer | Tooling (to be finalized in Phase 1/2, not yet chosen) | Owning phases |

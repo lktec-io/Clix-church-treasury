@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi, pledgesApi, receiptsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -194,6 +195,11 @@ export default function ContributionsPage() {
                     </option>
                   ))}
                 </select>
+                {categories.length === 0 && (
+                  <span className="field-error">
+                    {t('categories.emptyHint')} <Link to="/categories">{t('categories.title')}</Link>
+                  </span>
+                )}
               </div>
               <div className="field">
                 <label>{t('contributions.paymentMethod')}</label>
