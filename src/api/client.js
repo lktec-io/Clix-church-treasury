@@ -1,6 +1,26 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4005/api/v1';
+// VITE_API_BASE_URL should always be set explicitly — .env.production
+// (committed, not a secret) sets it for every `vite build`, so this
+// fallback should never actually fire in a real deployment. It exists as
+// a second line of defense against the exact incident that already
+// happened once: a build run without that value present silently baked
+// in a hardcoded localhost URL, and the browser tried to reach a backend
+// port on the visitor's own machine instead of the real API.
+//
+// The fallback itself is mode-aware rather than a single hardcoded
+// value: `import.meta.env.DEV` is Vite's own build-time flag (true only
+// for `vite dev`, always false for any `vite build`, dev or prod mode).
+// In dev, default to the local backend port. In any built bundle where
+// the explicit URL is somehow still missing, derive same-origin instead
+// of guessing a port — this architecture always serves the frontend and
+// API from the same origin in production (Nginx routes /api/* to the
+// backend, see docs/API_ARCHITECTURE.md §Production), so same-origin is
+// the one fallback that is actually correct for a real deployment rather
+// than one that would silently point at the wrong host again.
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? 'http://localhost:4005/api/v1' : `${window.location.origin}/api/v1`);
 
 // The access token lives in memory only — never localStorage/sessionStorage,
 // so it can't be read by an XSS payload the way a stored token could

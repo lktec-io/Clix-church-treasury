@@ -17,6 +17,11 @@ coverage
 .env
 .env.*
 !.env.example
+# Exception: the frontend production API URL is not a secret (every Vite
+# VITE_-prefixed var is bundled into public JS regardless) and is
+# deliberately committed as a permanent source of truth for `vite build`
+# — see .env.production's own header comment for why.
+!.env.production
 server/scripts/setup-db.sql
 server/scripts/setup-db.production.sql
 

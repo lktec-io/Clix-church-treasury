@@ -81,8 +81,16 @@ server {
 
     # --- Frontend: static build output ---
     # CHANGE_ME — where the built frontend (`npm run build` output, i.e.
-    # the contents of `dist/`) actually lives on this server.
-    root /var/www/treasurer.clixworks.co.tz/dist;
+    # the contents of `dist/`) actually lives on this server. This
+    # deployment's actual production checkout is /var/www/treasurer (not a
+    # domain-named path) — if that's yours too, this should be
+    # /var/www/treasurer/dist. Whatever it is, it MUST be the exact same
+    # path your deploy step copies a fresh `dist/` into, every time — a
+    # mismatch here (root pointing at one path while deploys copy to
+    # another) means Nginx keeps serving a stale build forever regardless
+    # of how correct the new build is. Verify with `sudo nginx -T | grep
+    # -A3 'server_name treasurer'` against your actual deploy script.
+    root /var/www/treasurer/dist;
     index index.html;
 
     # Client-side routing (React Router) — any path not matching a real

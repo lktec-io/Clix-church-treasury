@@ -12,10 +12,11 @@
 | Database name | `treasurer` |
 | Database user | `root` (see §R.1 for the optional least-privilege alternative — not required) |
 | Database port | `3306` |
+| Git repository | `https://github.com/lktec-io/Clix-church-treasury.git` |
+| Production directory | `/var/www/treasurer` (intentionally not domain-named — this is not the git repo name either, that's expected) |
+| PM2 process name | `clix-treasury-api` |
 
 Target host: a single Contabo VPS running the Node backend (via PM2), MySQL 8, and Nginx (reverse proxy + static frontend serving).
-
-Repository URL below is a placeholder — `<YOUR_GITHUB_REPO_URL>` — substitute your actual GitHub URL once the repository is pushed; this document does not invent one.
 
 ---
 
@@ -77,10 +78,12 @@ git --version
 
 ```sh
 cd /var/www
-sudo git clone <YOUR_GITHUB_REPO_URL> clix-treasury
-sudo chown -R $USER:$USER clix-treasury
-cd clix-treasury
+sudo git clone https://github.com/lktec-io/Clix-church-treasury.git treasurer
+sudo chown -R $USER:$USER treasurer
+cd treasurer
 ```
+
+The directory is named `treasurer` (matching this deployment's actual, already-established production path, `/var/www/treasurer`) — it does not need to match the git repository's own name (`Clix-church-treasury`), and nothing in the application depends on the directory name.
 
 ---
 
@@ -191,8 +194,10 @@ Never prints `DB_PASSWORD` or any other secret. If `Schema status: NOT READY`, i
 ```sh
 cd ..              # back to the repo root
 npm ci
-VITE_API_BASE_URL=https://treasurer.clixworks.co.tz/api/v1 npm run build
+npm run build
 ```
+
+No inline `VITE_API_BASE_URL=...` is required — `.env.production` (repo root, committed, not a secret) sets it automatically for every `vite build`. **Production incident, fixed:** this used to depend on remembering to prefix the build command with the env var inline; a build run as plain `npm run build` with no persisted file to fall back on baked in a hardcoded `localhost` URL instead, which is exactly what reached production once. `.env.production` removes that failure mode — `npm run build` alone is now always correct. (The inline-var form still works too, e.g. to build against a staging URL, and overrides `.env.production` if given.)
 
 Produces `dist/`. Verify it baked in the right URL and nothing dev-related leaked in:
 ```sh
@@ -200,10 +205,10 @@ grep -r "localhost:4005\|localhost:4000" dist/   # expect NO matches
 grep -r "treasurer.clixworks.co.tz" dist/ | head -1   # expect a match
 ```
 
-Copy `dist/` to where Nginx will serve it from (matches §M's `root` directive):
+Copy `dist/` to where Nginx will serve it from (matches §M's `root` directive — **this deployment's actual production directory is `/var/www/treasurer`**, not a domain-named path; adjust if yours differs):
 ```sh
-sudo mkdir -p /var/www/treasurer.clixworks.co.tz
-sudo cp -r dist/* /var/www/treasurer.clixworks.co.tz/
+sudo mkdir -p /var/www/treasurer/dist
+sudo cp -r dist/* /var/www/treasurer/dist/
 ```
 
 ---
@@ -226,13 +231,15 @@ curl http://127.0.0.1:4005/health   # {"success":true,"data":{"status":"ok"}}
 
 Redeploying later:
 ```sh
-cd /var/www/clix-treasury
+cd /var/www/treasurer
 git pull
 cd server && npm ci --omit=dev && npm run migrate
-cd .. && npm ci && VITE_API_BASE_URL=https://treasurer.clixworks.co.tz/api/v1 npm run build
-sudo cp -r dist/* /var/www/treasurer.clixworks.co.tz/
+cd .. && npm ci && npm run build
+sudo cp -r dist/* /var/www/treasurer/dist/
 pm2 restart clix-treasury-api
 ```
+
+`npm run build` alone is correct here — no inline env var needed, `.env.production` (committed) handles it. **If you ever see a build that references `localhost:4005` again, the cause is a missing or overridden `.env.production`, not a missing inline variable** — check `cat .env.production` (repo root) shows `VITE_API_BASE_URL=https://treasurer.clixworks.co.tz/api/v1` before investigating anything else.
 
 ---
 
@@ -241,12 +248,12 @@ pm2 restart clix-treasury-api
 ```sh
 sudo apt install -y nginx
 sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/treasurer.clixworks.co.tz
-sudo nano /etc/nginx/sites-available/treasurer.clixworks.co.tz   # fill in the CHANGE_ME paths (§N covers the TLS ones)
+sudo nano /etc/nginx/sites-available/treasurer.clixworks.co.tz   # fill in the CHANGE_ME paths (§N covers the TLS ones) and set `root /var/www/treasurer/dist;`
 sudo ln -s /etc/nginx/sites-available/treasurer.clixworks.co.tz /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-The template reverse-proxies `/api/*` and `/health` to `127.0.0.1:4005` and serves `/var/www/treasurer.clixworks.co.tz` (matching §K) for everything else, with an `index.html` fallback for client-side routing.
+The template reverse-proxies `/api/*` and `/health` to `127.0.0.1:4005` and serves the built frontend for everything else, with an `index.html` fallback for client-side routing. **Verify what Nginx is actually configured to serve rather than assuming** — `sudo nginx -T | grep -A5 'server_name treasurer'` should show `root /var/www/treasurer/dist;` (or wherever `dist/` actually was copied in §K); if it points somewhere else, that's the deployed frontend, not whatever's sitting in the repo checkout.
 
 ---
 
@@ -341,7 +348,7 @@ This deployment intentionally uses `DB_USER=root` per its own requirement — th
 ```sh
 # On the VPS, after §A-D are done:
 cd /var/www
-git clone <YOUR_GITHUB_REPO_URL> clix-treasury && cd clix-treasury
+git clone https://github.com/lktec-io/Clix-church-treasury.git treasurer && cd treasurer
 
 cd server && cp .env.example .env && nano .env    # fill in real values (§F)
 npm ci --omit=dev
@@ -351,8 +358,8 @@ npm run seed                                                  # §I
 npm run db:check                                              # §J — expect "Schema status: READY"
 
 cd .. && npm ci
-VITE_API_BASE_URL=https://treasurer.clixworks.co.tz/api/v1 npm run build   # §K
-sudo mkdir -p /var/www/treasurer.clixworks.co.tz && sudo cp -r dist/* /var/www/treasurer.clixworks.co.tz/
+npm run build   # §K — no inline VITE_API_BASE_URL needed, .env.production handles it
+sudo mkdir -p /var/www/treasurer/dist && sudo cp -r dist/* /var/www/treasurer/dist/
 
 cd server && mkdir -p logs && pm2 start ecosystem.config.cjs && pm2 save && pm2 startup   # §L
 
