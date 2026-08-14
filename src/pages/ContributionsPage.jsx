@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { FiDollarSign, FiLayers, FiPlus, FiX } from 'react-icons/fi';
 import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi, pledgesApi, receiptsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -7,6 +8,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
+import EmptyState from '../components/ui/EmptyState.jsx';
 import { formatMoney, formatDate } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -168,7 +171,7 @@ export default function ContributionsPage() {
 
   return (
     <div>
-      <h1>{t('contributions.title')}</h1>
+      <PageHeader title={t('contributions.title')} subtitle={t('contributions.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="income.create">
@@ -177,18 +180,30 @@ export default function ContributionsPage() {
             <h2>{t('contributions.recordNew')}</h2>
           </div>
           <form onSubmit={handleSubmit}>
+            <div className="form-section">
+              <div className="form-section__title"><FiDollarSign aria-hidden="true" /> {t('contributions.section.amount')}</div>
+            </div>
             <div className="form-grid">
-              <div className="field">
+              <div className="field field--full field--amount">
                 <label>{t('common.amount')}</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={form.amount}
-                  onChange={handleChange('amount')}
-                  required
-                />
+                <div className="currency-input">
+                  <span className="currency-input__prefix">TZS</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={form.amount}
+                    onChange={handleChange('amount')}
+                    required
+                  />
+                </div>
               </div>
+            </div>
+
+            <div className="form-section">
+              <div className="form-section__title"><FiLayers aria-hidden="true" /> {t('contributions.section.details')}</div>
+            </div>
+            <div className="form-grid">
               <div className="field">
                 <label>{t('contributions.account')}</label>
                 <select value={form.accountId} onChange={handleChange('accountId')} required>
@@ -281,56 +296,78 @@ export default function ContributionsPage() {
                 <label>{t('common.notes')}</label>
                 <textarea rows={2} value={form.notes} onChange={handleChange('notes')} />
               </div>
-              <div className="field field--full">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showBreakdown}
-                    onChange={(e) => {
-                      setShowBreakdown(e.target.checked);
-                      if (!e.target.checked) setItems([]);
-                      else if (items.length === 0) addItem();
-                    }}
-                  />{' '}
-                  {t('contributions.addBreakdown')}
-                </label>
-              </div>
-              {showBreakdown && (
-                <div className="field field--full">
-                  {items.map((item, index) => (
-                    <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      <input
-                        placeholder={t('contributions.itemPurpose')}
-                        value={item.purpose}
-                        onChange={updateItem(index, 'purpose')}
-                        style={{ flex: 2 }}
-                        required
-                      />
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        value={item.amount}
-                        onChange={updateItem(index, 'amount')}
-                        style={{ flex: 1 }}
-                        required
-                      />
-                      <button type="button" className="btn btn--secondary btn--sm" onClick={() => removeItem(index)}>
-                        {t('common.cancel')}
-                      </button>
-                    </div>
-                  ))}
-                  <button type="button" className="btn btn--secondary btn--sm" onClick={addItem}>
-                    {t('contributions.addItem')}
-                  </button>
-                  {itemsMismatch && (
-                    <div className="field-error" style={{ marginTop: 8 }}>
-                      {t('contributions.itemsMismatch')} ({itemsTotal} ≠ {form.amount})
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
+
+            <div className="form-section">
+              <div className="form-section__title"><FiLayers aria-hidden="true" /> {t('contributions.section.breakdown')}</div>
+            </div>
+            <label className="field-hint" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: showBreakdown ? 12 : 0 }}>
+              <input
+                type="checkbox"
+                checked={showBreakdown}
+                onChange={(e) => {
+                  setShowBreakdown(e.target.checked);
+                  if (!e.target.checked) setItems([]);
+                  else if (items.length === 0) addItem();
+                }}
+              />
+              {t('contributions.addBreakdown')}
+            </label>
+            {showBreakdown && (
+              <div className="card" style={{ background: 'var(--bg-muted)', boxShadow: 'none', padding: 14 }}>
+                {items.map((item, index) => (
+                  <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                    <input
+                      placeholder={t('contributions.itemPurpose')}
+                      value={item.purpose}
+                      onChange={updateItem(index, 'purpose')}
+                      style={{ flex: 2, background: 'var(--surface)' }}
+                      required
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={item.amount}
+                      onChange={updateItem(index, 'amount')}
+                      style={{ flex: 1, background: 'var(--surface)' }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => removeItem(index)}
+                      aria-label={t('common.cancel')}
+                    >
+                      <FiX aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn--secondary btn--sm" onClick={addItem} style={{ marginTop: 4 }}>
+                  <FiPlus aria-hidden="true" /> {t('contributions.addItem')}
+                </button>
+                {items.length > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginTop: 12,
+                      paddingTop: 10,
+                      borderTop: '1px solid var(--border)',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <span>{t('reports.total')}</span>
+                    <span className="tabular-nums">{itemsTotal ?? '0.00'}</span>
+                  </div>
+                )}
+                {itemsMismatch && (
+                  <div className="field-error" style={{ marginTop: 8 }}>
+                    {t('contributions.itemsMismatch')} ({itemsTotal} ≠ {form.amount})
+                  </div>
+                )}
+              </div>
+            )}
             <div className="form-actions">
               <button type="submit" className="btn btn--primary" disabled={submitting || itemsMismatch}>
                 {submitting ? t('common.loading') : t('common.record')}
@@ -347,14 +384,18 @@ export default function ContributionsPage() {
         {loading ? (
           <div className="empty-state">{t('common.loading')}</div>
         ) : contributions.length === 0 ? (
-          <div className="empty-state">{t('common.noResults')}</div>
+          <EmptyState
+            icon={FiDollarSign}
+            title={t('contributions.empty.title')}
+            message={t('contributions.empty.message')}
+          />
         ) : (
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
                   <th>{t('common.date')}</th>
-                  <th>{t('common.amount')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('common.amount')}</th>
                   {contributions.some((c) => c.contributor) && <th>{t('contributions.contributor')}</th>}
                   <th>{t('contributions.paymentMethod')}</th>
                   <th>{t('common.status')}</th>
@@ -365,7 +406,7 @@ export default function ContributionsPage() {
                 {contributions.map((c) => (
                   <tr key={c.id}>
                     <td>{formatDate(c.contribution_date)}</td>
-                    <td>{formatMoney(c.amount)}</td>
+                    <td className="is-amount">{formatMoney(c.amount)}</td>
                     {contributions.some((row) => row.contributor) && <td>{c.contributor?.full_name ?? '—'}</td>}
                     <td>{t(`paymentMethod.${c.payment_method}`)}</td>
                     <td>

@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiSearch, FiUsers, FiUserPlus, FiKey, FiRotateCcw } from 'react-icons/fi';
 import { contributorsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
+import EmptyState from '../components/ui/EmptyState.jsx';
 
 function emptyForm() {
   return { fullName: '', phone: '', email: '', memberNumber: '' };
@@ -20,6 +23,7 @@ export default function ContributorsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState(null);
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,15 +97,28 @@ export default function ContributorsPage() {
     }
   };
 
+  const filteredContributors = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return contributors;
+    return contributors.filter(
+      (c) =>
+        c.full_name?.toLowerCase().includes(q) ||
+        c.phone?.toLowerCase().includes(q) ||
+        c.member_number?.toLowerCase().includes(q)
+    );
+  }, [contributors, search]);
+
   return (
     <div>
-      <h1>{t('contributors.title')}</h1>
+      <PageHeader title={t('contributors.title')} subtitle={t('contributors.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="contributors.manage">
         <div className="card">
           <div className="card__header">
-            <h2>{t('contributors.addNew')}</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FiUserPlus aria-hidden="true" /> {t('contributors.addNew')}
+            </h2>
           </div>
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
@@ -132,10 +149,31 @@ export default function ContributorsPage() {
       </PermissionGate>
 
       <div className="card">
+        <div className="card__header">
+          <h2>{t('contributors.title')}</h2>
+        </div>
+        <div className="field" style={{ position: 'relative', marginBottom: 16, maxWidth: 320 }}>
+          <FiSearch
+            aria-hidden="true"
+            style={{ position: 'absolute', left: 12, top: 34, color: 'var(--text-muted)' }}
+          />
+          <input
+            type="search"
+            placeholder={t('contributors.searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ paddingLeft: 36 }}
+            aria-label={t('contributors.searchPlaceholder')}
+          />
+        </div>
         {loading ? (
           <div className="empty-state">{t('common.loading')}</div>
-        ) : contributors.length === 0 ? (
-          <div className="empty-state">{t('common.noResults')}</div>
+        ) : filteredContributors.length === 0 ? (
+          <EmptyState
+            icon={FiUsers}
+            title={t('contributors.empty.title')}
+            message={search ? t('common.noResults') : t('contributors.empty.message')}
+          />
         ) : (
           <div className="table-wrap">
             <table className="data-table">
@@ -152,9 +190,9 @@ export default function ContributorsPage() {
                 </tr>
               </thead>
               <tbody>
-                {contributors.map((c) => (
+                {filteredContributors.map((c) => (
                   <tr key={c.id}>
-                    <td>{c.full_name}</td>
+                    <td style={{ fontWeight: 600 }}>{c.full_name}</td>
                     <td>{c.phone ?? '—'}</td>
                     <td>{c.email ?? '—'}</td>
                     <td>{c.member_number ?? '—'}</td>
@@ -173,7 +211,7 @@ export default function ContributorsPage() {
                             title={!c.phone ? t('contributors.phoneRequiredHint') : undefined}
                             onClick={() => handleEnablePortal(c)}
                           >
-                            {t('contributors.enablePortal')}
+                            <FiKey aria-hidden="true" /> {t('contributors.enablePortal')}
                           </button>
                         ) : (
                           <button
@@ -182,7 +220,7 @@ export default function ContributorsPage() {
                             disabled={actioningId === c.id}
                             onClick={() => handleResetPin(c)}
                           >
-                            {t('contributors.resetPin')}
+                            <FiRotateCcw aria-hidden="true" /> {t('contributors.resetPin')}
                           </button>
                         )}
                       </td>

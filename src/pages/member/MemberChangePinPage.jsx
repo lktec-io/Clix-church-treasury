@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { FiLock } from 'react-icons/fi';
 import { memberAuthApi } from '../../api/memberEndpoints.js';
 import { unwrapApiError } from '../../api/client.js';
 import { useMemberAuth } from '../../context/MemberAuthContext.jsx';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 import { useToast } from '../../components/Toast.jsx';
+import PageHeader from '../../components/ui/PageHeader.jsx';
 
 export default function MemberChangePinPage() {
   const { t } = useLocale();
@@ -37,10 +39,16 @@ export default function MemberChangePinPage() {
 
   return (
     <div>
-      <h1>{t('member.changePin.title')}</h1>
+      <PageHeader title={t('member.changePin.title')} />
       {session?.mustChangePin && <div className="alert alert--warning">{t('member.changePin.required')}</div>}
       {error && <div className="alert alert--error">{error}</div>}
       <div className="card">
+        <div className="card__header">
+          <span className="stat-tile__icon" style={{ marginBottom: 0 }}>
+            <FiLock aria-hidden="true" />
+          </span>
+          <h2 style={{ marginBottom: 0 }}>{t('member.changePin.title')}</h2>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
             <div className="field">

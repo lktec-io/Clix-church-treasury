@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { FiShield } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { authApi } from '../api/endpoints.js';
@@ -56,8 +58,17 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-card__brand">{t('app.name')}</div>
+      <motion.div
+        className="auth-card"
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+      >
+        <div className="auth-card__brand">
+          <span className="auth-card__brand-mark">
+            <FiShield aria-hidden="true" />
+          </span>
+          {t('app.name')}
+        </div>
         <div className="auth-card__subtitle">{t('auth.register.subtitle')}</div>
         {error && <div className="alert alert--error">{error}</div>}
         <form onSubmit={handleSubmit}>
@@ -123,7 +134,7 @@ export default function RegisterPage() {
         <p className="auth-card__subtitle" style={{ marginTop: 16, marginBottom: 0 }}>
           {t('auth.register.haveAccount')} <Link to="/login">{t('auth.login.submit')}</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

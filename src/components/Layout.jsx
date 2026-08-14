@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiHome,
   FiDollarSign,
@@ -20,6 +21,8 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useMediaQuery } from '../hooks/useMediaQuery.js';
+import PageTransition from './ui/PageTransition.jsx';
 
 // Grouped to match the product's real workflow shape (docs/MASTER_TODO.md
 // Phase 10 §10.5), adapted to what actually exists: Income and
@@ -74,20 +77,32 @@ const NAV_GROUPS = [
   },
 ];
 
+const drawerVariants = {
+  hidden: { x: '-100%' },
+  visible: { x: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
+  exit: { x: '-100%', transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } },
+};
+const overlayVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { session, logout, hasPermission } = useAuth();
   const { t, locale, setLocale } = useLocale();
   const navigate = useNavigate();
+  const isDesktop = useMediaQuery('(min-width: 900px)');
 
   // Mobile slide-in sidebar must not let the page scroll underneath it
   // (docs/MASTER_TODO.md Phase 10 §10.6: "body scroll lock").
   useEffect(() => {
-    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+    document.body.style.overflow = sidebarOpen && !isDesktop ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [sidebarOpen]);
+  }, [sidebarOpen, isDesktop]);
 
   const handleLogout = async () => {
     await logout();
@@ -99,58 +114,93 @@ export default function Layout() {
     items: group.items.filter((item) => item.permission === null || hasPermission(item.permission)),
   })).filter((group) => group.items.length > 0);
 
-  return (
-    <div className="app-shell">
-      {sidebarOpen && <div className="app-overlay" onClick={() => setSidebarOpen(false)} />}
-      <nav className={`app-sidebar${sidebarOpen ? ' is-open' : ''}`} aria-label="Primary">
-        <div className="app-sidebar__brand">
+  const sidebarContent = (
+    <>
+      <div className="app-sidebar__brand">
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="app-sidebar__brand-mark">C</span>
           {t('app.name')}
-          <button
-            type="button"
-            className="app-sidebar__close"
-            onClick={() => setSidebarOpen(false)}
-            aria-label={t('nav.closeMenu')}
+        </span>
+        <button
+          type="button"
+          className="app-sidebar__close"
+          onClick={() => setSidebarOpen(false)}
+          aria-label={t('nav.closeMenu')}
+        >
+          <FiX aria-hidden="true" />
+        </button>
+      </div>
+      <div className="app-sidebar__nav">
+        {visibleGroups.map((group, i) => (
+          <div className="app-sidebar__group" key={i}>
+            {group.labelKey && <div className="app-sidebar__group-label">{t(group.labelKey)}</div>}
+            {group.items.map(({ to, icon: Icon, labelKey, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
+              >
+                <Icon aria-hidden="true" />
+                {t(labelKey)}
+              </NavLink>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="app-sidebar__footer">
+        <div>{session?.user?.full_name}</div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value)}
+            aria-label="Language"
+            style={{ fontSize: 12, padding: '2px 4px' }}
           >
-            <FiX aria-hidden="true" />
+            <option value="en">EN</option>
+            <option value="sw">SW</option>
+          </select>
+          <button type="button" className="btn btn--secondary btn--sm" onClick={handleLogout}>
+            <FiLogOut aria-hidden="true" /> {t('nav.logout')}
           </button>
         </div>
-        <div className="app-sidebar__nav">
-          {visibleGroups.map((group, i) => (
-            <div className="app-sidebar__group" key={i}>
-              {group.labelKey && <div className="app-sidebar__group-label">{t(group.labelKey)}</div>}
-              {group.items.map(({ to, icon: Icon, labelKey, end }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  onClick={() => setSidebarOpen(false)}
-                  className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
-                >
-                  <Icon aria-hidden="true" />
-                  {t(labelKey)}
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </div>
-        <div className="app-sidebar__footer">
-          <div>{session?.user?.full_name}</div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <select
-              value={locale}
-              onChange={(e) => setLocale(e.target.value)}
-              aria-label="Language"
-              style={{ fontSize: 12, padding: '2px 4px' }}
-            >
-              <option value="en">EN</option>
-              <option value="sw">SW</option>
-            </select>
-            <button type="button" className="btn btn--secondary btn--sm" onClick={handleLogout}>
-              <FiLogOut aria-hidden="true" /> {t('nav.logout')}
-            </button>
-          </div>
-        </div>
-      </nav>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="app-shell">
+      {isDesktop ? (
+        <nav className="app-sidebar" aria-label="Primary">
+          {sidebarContent}
+        </nav>
+      ) : (
+        <AnimatePresence>
+          {sidebarOpen && (
+            <>
+              <motion.div
+                className="app-overlay"
+                variants={overlayVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                onClick={() => setSidebarOpen(false)}
+              />
+              <motion.nav
+                className="app-sidebar"
+                aria-label="Primary"
+                variants={drawerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                {sidebarContent}
+              </motion.nav>
+            </>
+          )}
+        </AnimatePresence>
+      )}
 
       <div className="app-main">
         <header className="app-topbar">
@@ -166,7 +216,7 @@ export default function Layout() {
           <div className="app-topbar__title">{t('app.name')}</div>
         </header>
         <main className="app-content">
-          <Outlet />
+          <PageTransition />
         </main>
       </div>
     </div>

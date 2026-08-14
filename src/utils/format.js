@@ -10,6 +10,15 @@ export function formatMoney(amountString) {
   return `${negative ? '-' : ''}${withSeparators}.${frac}`;
 }
 
+// TZS is this product's one and only base currency default
+// (tenants.base_currency, docs/PROJECT_ARCHITECTURE.md) — no per-tenant
+// currency is fetched/displayed elsewhere in the frontend today, so this
+// is a fixed label, not a computed/fabricated value.
+export function formatCurrency(amountString) {
+  if (amountString === null || amountString === undefined) return '—';
+  return `TZS ${formatMoney(amountString)}`;
+}
+
 // Same integer-cents approach as the backend's money.js#sumMoney — needed
 // here only for display-side aggregation (e.g. grouping a member's
 // contributions by month on MemberHistoryPage.jsx); the source of truth

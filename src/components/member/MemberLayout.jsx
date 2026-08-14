@@ -1,7 +1,8 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { FiHome, FiClock, FiFileText, FiLock, FiLogOut } from 'react-icons/fi';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { FiHome, FiClock, FiFileText, FiLock, FiLogOut, FiHeart } from 'react-icons/fi';
 import { useMemberAuth } from '../../context/MemberAuthContext.jsx';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
+import PageTransition from '../ui/PageTransition.jsx';
 
 // Deliberately much simpler than the staff Layout.jsx — no multi-group
 // sidebar, since a member only ever needs four destinations. Bottom tab
@@ -20,6 +21,7 @@ export default function MemberLayout() {
   const { session, logout } = useMemberAuth();
   const { t, locale, setLocale } = useLocale();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
@@ -29,7 +31,10 @@ export default function MemberLayout() {
   return (
     <div className="member-shell">
       <header className="member-topbar">
-        <div className="member-topbar__title">{t('app.name')}</div>
+        <div className="member-topbar__title">
+          <FiHeart aria-hidden="true" />
+          {t('app.name')}
+        </div>
         <div className="member-topbar__actions">
           <select
             value={locale}
@@ -46,14 +51,12 @@ export default function MemberLayout() {
         </div>
       </header>
 
-      {session?.contributor && (
-        <div className="member-greeting">
-          {t('member.greeting', { name: session.contributor.full_name })}
-        </div>
+      {session?.contributor && location.pathname === '/member/dashboard' && (
+        <div className="member-greeting">{t('member.greeting', { name: session.contributor.full_name.split(' ')[0] })}</div>
       )}
 
       <main className="member-content">
-        <Outlet />
+        <PageTransition />
       </main>
 
       <nav className="member-tabbar" aria-label={t('member.nav.label')}>

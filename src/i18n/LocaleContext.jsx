@@ -4,7 +4,11 @@ import sw from './sw.json';
 
 const DICTIONARIES = { en, sw };
 const STORAGE_KEY = 'clix.locale';
-const DEFAULT_LOCALE = 'en';
+// Swahili is the default experience for this Tanzanian church product
+// (docs/MASTER_TODO.md premium-UI pass §3) — English remains fully
+// available via the locale switcher in Layout.jsx/MemberLayout.jsx, and a
+// user's explicit choice is still what readStoredLocale() honors above.
+const DEFAULT_LOCALE = 'sw';
 
 const LocaleContext = createContext(null);
 

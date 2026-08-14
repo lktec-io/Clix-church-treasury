@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { FiHeart } from 'react-icons/fi';
 import { useMemberAuth } from '../../context/MemberAuthContext.jsx';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 import { MEMBER_TENANT_SLUG_KEY } from '../../components/member/memberTenantSlug.js';
@@ -41,8 +43,17 @@ export default function MemberLoginPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-card__brand">{t('app.name')}</div>
+      <motion.div
+        className="auth-card"
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+      >
+        <div className="auth-card__brand">
+          <span className="auth-card__brand-mark">
+            <FiHeart aria-hidden="true" />
+          </span>
+          {t('app.name')}
+        </div>
         <div className="auth-card__subtitle">{t('member.login.subtitle')}</div>
         {error && <div className="alert alert--error">{error}</div>}
         <form onSubmit={handleSubmit}>
@@ -85,7 +96,7 @@ export default function MemberLoginPage() {
             {submitting ? t('common.loading') : t('member.login.submit')}
           </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

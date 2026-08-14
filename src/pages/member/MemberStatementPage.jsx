@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { FiHeart, FiGift, FiLayers, FiDownload, FiFileText } from 'react-icons/fi';
 import { memberApi } from '../../api/memberEndpoints.js';
 import { unwrapApiError } from '../../api/client.js';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
-import { formatMoney } from '../../utils/format.js';
+import EmptyState from '../../components/ui/EmptyState.jsx';
+import { SkeletonCard } from '../../components/ui/Skeleton.jsx';
+import { formatMoney, formatCurrency } from '../../utils/format.js';
 
 const now = new Date();
 const CURRENT_YEAR = now.getFullYear();
@@ -48,70 +52,81 @@ export default function MemberStatementPage() {
 
   return (
     <div>
-      <div className="form-grid">
-        <div className="field">
-          <label htmlFor="year">{t('member.history.year')}</label>
-          <select id="year" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-            {YEAR_OPTIONS.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+      <div className="card">
+        <div className="card__header">
+          <h2>{t('member.statement.title')}</h2>
         </div>
-        <div className="field">
-          <label htmlFor="month">{t('member.statement.month')}</label>
-          <select id="month" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-            {MONTH_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {String(m).padStart(2, '0')}
-              </option>
-            ))}
-          </select>
+        <div className="form-grid">
+          <div className="field">
+            <label htmlFor="year">{t('member.history.year')}</label>
+            <select id="year" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+              {YEAR_OPTIONS.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="month">{t('member.statement.month')}</label>
+            <select id="month" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+              {MONTH_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {String(m).padStart(2, '0')}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {error && <div className="alert alert--error">{error}</div>}
 
       {loading ? (
-        <div className="empty-state">{t('common.loading')}</div>
+        <SkeletonCard lines={4} />
       ) : (
-        <div className="card">
-          <div className="card__header">
-            <h2>{t('member.statement.title')}</h2>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <tbody>
-                <tr>
-                  <td>{t('categories.tithe')}</td>
-                  <td>{formatMoney(statement?.tithe)}</td>
-                </tr>
-                <tr>
-                  <td>{t('categories.offering')}</td>
-                  <td>{formatMoney(statement?.offering)}</td>
-                </tr>
-                <tr>
-                  <td>{t('categories.other')}</td>
-                  <td>{formatMoney(statement?.other)}</td>
-                </tr>
-                <tr>
-                  <td>
-                    <strong>{t('member.statement.grandTotal')}</strong>
-                  </td>
-                  <td>
-                    <strong>{formatMoney(statement?.total)}</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn--primary" onClick={handleDownload} disabled={downloading}>
-              {downloading ? t('common.loading') : t('member.statement.download')}
+        <>
+          <motion.div
+            className="hero-card"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+          >
+            <div className="hero-card__label">{t('member.statement.grandTotal')}</div>
+            <div className="hero-card__value tabular-nums">{formatCurrency(statement?.total)}</div>
+            <div className="hero-card__breakdown">
+              <div className="hero-card__breakdown-item">
+                <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <FiHeart aria-hidden="true" /> {t('categories.tithe')}
+                </span>
+                <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement?.tithe)}</span>
+              </div>
+              <div className="hero-card__breakdown-item">
+                <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <FiGift aria-hidden="true" /> {t('categories.offering')}
+                </span>
+                <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement?.offering)}</span>
+              </div>
+              <div className="hero-card__breakdown-item">
+                <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <FiLayers aria-hidden="true" /> {t('categories.other')}
+                </span>
+                <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement?.other)}</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {statement?.contributions?.length === 0 && (
+            <div className="card">
+              <EmptyState icon={FiFileText} message={t('member.statement.empty')} />
+            </div>
+          )}
+
+          <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+            <button type="button" className="btn btn--accent" onClick={handleDownload} disabled={downloading}>
+              <FiDownload aria-hidden="true" /> {downloading ? t('common.loading') : t('member.statement.download')}
             </button>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

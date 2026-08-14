@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { FiHeart, FiGift, FiLayers, FiClock } from 'react-icons/fi';
 import { memberApi } from '../../api/memberEndpoints.js';
 import { unwrapApiError } from '../../api/client.js';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
-import { formatMoney, formatDate } from '../../utils/format.js';
+import EmptyState from '../../components/ui/EmptyState.jsx';
+import { SkeletonCard, SkeletonStatGrid } from '../../components/ui/Skeleton.jsx';
+import { formatMoney, formatCurrency, formatDate } from '../../utils/format.js';
 
 const now = new Date();
+
+const cardEntrance = {
+  initial: { opacity: 0, y: 10 },
+  animate: (i) => ({ opacity: 1, y: 0, transition: { duration: 0.28, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] } }),
+};
 
 export default function MemberDashboardPage() {
   const { t } = useLocale();
@@ -37,53 +46,55 @@ export default function MemberDashboardPage() {
     load();
   }, [load]);
 
-  if (loading) return <div className="empty-state">{t('common.loading')}</div>;
+  if (loading) {
+    return (
+      <div>
+        <SkeletonStatGrid count={2} />
+        <SkeletonCard lines={3} />
+        <SkeletonCard lines={3} />
+      </div>
+    );
+  }
 
   return (
     <div>
       {error && <div className="alert alert--error">{error}</div>}
 
-      <div className="stat-grid">
-        <div className="stat-tile">
-          <div className="stat-tile__label">{t('member.dashboard.thisMonth')}</div>
-          <div className="stat-tile__value">{formatMoney(statement?.total)}</div>
-        </div>
-        <div className="stat-tile">
-          <div className="stat-tile__label">{t('member.dashboard.thisYear')}</div>
-          <div className="stat-tile__value">{formatMoney(yearTotal?.total)}</div>
-        </div>
-      </div>
+      <motion.div className="hero-card" custom={0} variants={cardEntrance} initial="initial" animate="animate">
+        <div className="hero-card__label">{t('member.dashboard.thisYear')}</div>
+        <div className="hero-card__value tabular-nums">{formatCurrency(yearTotal?.total)}</div>
+        <div className="hero-card__meta">{t('member.dashboard.thisMonth')}: {formatMoney(statement?.total)}</div>
+      </motion.div>
 
-      <div className="card">
+      <motion.div className="card" custom={1} variants={cardEntrance} initial="initial" animate="animate">
         <div className="card__header">
           <h2>{t('member.dashboard.breakdown')}</h2>
         </div>
-        <div className="table-wrap">
-          <table className="data-table">
-            <tbody>
-              <tr>
-                <td>{t('categories.tithe')}</td>
-                <td>{formatMoney(statement?.tithe)}</td>
-              </tr>
-              <tr>
-                <td>{t('categories.offering')}</td>
-                <td>{formatMoney(statement?.offering)}</td>
-              </tr>
-              <tr>
-                <td>{t('categories.other')}</td>
-                <td>{formatMoney(statement?.other)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="stat-grid">
+          <div className="stat-tile">
+            <span className="stat-tile__icon"><FiHeart aria-hidden="true" /></span>
+            <div className="stat-tile__label">{t('categories.tithe')}</div>
+            <div className="stat-tile__value tabular-nums">{formatMoney(statement?.tithe)}</div>
+          </div>
+          <div className="stat-tile">
+            <span className="stat-tile__icon"><FiGift aria-hidden="true" /></span>
+            <div className="stat-tile__label">{t('categories.offering')}</div>
+            <div className="stat-tile__value tabular-nums">{formatMoney(statement?.offering)}</div>
+          </div>
+          <div className="stat-tile">
+            <span className="stat-tile__icon"><FiLayers aria-hidden="true" /></span>
+            <div className="stat-tile__label">{t('categories.other')}</div>
+            <div className="stat-tile__value tabular-nums">{formatMoney(statement?.other)}</div>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="card">
+      <motion.div className="card" custom={2} variants={cardEntrance} initial="initial" animate="animate">
         <div className="card__header">
           <h2>{t('member.dashboard.recent')}</h2>
         </div>
         {recent.length === 0 ? (
-          <div className="empty-state">{t('common.noResults')}</div>
+          <EmptyState icon={FiClock} title={t('member.dashboard.emptyTitle')} message={t('member.dashboard.emptyMessage')} />
         ) : (
           <div className="table-wrap">
             <table className="data-table">
@@ -91,7 +102,7 @@ export default function MemberDashboardPage() {
                 <tr>
                   <th>{t('common.date')}</th>
                   <th>{t('contributions.category')}</th>
-                  <th>{t('common.amount')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('common.amount')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,14 +110,14 @@ export default function MemberDashboardPage() {
                   <tr key={c.id}>
                     <td>{formatDate(c.contribution_date)}</td>
                     <td>{c.category_name ?? '—'}</td>
-                    <td>{formatMoney(c.amount)}</td>
+                    <td className="is-amount">{formatMoney(c.amount)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

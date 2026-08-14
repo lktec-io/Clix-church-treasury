@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { FiShield } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 
@@ -30,8 +32,17 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-card__brand">{t('app.name')}</div>
+      <motion.div
+        className="auth-card"
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+      >
+        <div className="auth-card__brand">
+          <span className="auth-card__brand-mark">
+            <FiShield aria-hidden="true" />
+          </span>
+          {t('app.name')}
+        </div>
         <div className="auth-card__subtitle">{t('auth.login.subtitle')}</div>
         {error && <div className="alert alert--error">{error}</div>}
         <form onSubmit={handleSubmit}>
@@ -74,7 +85,7 @@ export default function LoginPage() {
         <p className="auth-card__subtitle" style={{ marginTop: 16, marginBottom: 0 }}>
           {t('auth.login.needAccount')} <Link to="/register">{t('auth.register.submit')}</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

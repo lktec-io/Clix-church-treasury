@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { FiDollarSign, FiCheckCircle, FiXCircle, FiClock } from 'react-icons/fi';
 import { memberApi } from '../../api/memberEndpoints.js';
 import { unwrapApiError } from '../../api/client.js';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
+import EmptyState from '../../components/ui/EmptyState.jsx';
+import { SkeletonCard } from '../../components/ui/Skeleton.jsx';
 import { formatMoney, formatDate, sumMoneyStrings } from '../../utils/format.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -17,8 +21,13 @@ function groupByMonth(contributions) {
   return [...groups.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
 }
 
+const listEntrance = {
+  initial: { opacity: 0, y: 8 },
+  animate: (i) => ({ opacity: 1, y: 0, transition: { duration: 0.22, delay: Math.min(i, 8) * 0.03, ease: [0.22, 1, 0.36, 1] } }),
+};
+
 export default function MemberHistoryPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [year, setYear] = useState(CURRENT_YEAR);
   const [contributions, setContributions] = useState([]);
   const [error, setError] = useState(null);
@@ -46,10 +55,11 @@ export default function MemberHistoryPage() {
   }, [year, load]);
 
   const groups = groupByMonth(contributions);
+  let rowIndex = 0;
 
   return (
     <div>
-      <div className="field" style={{ maxWidth: 160 }}>
+      <div className="field" style={{ maxWidth: 160, marginBottom: 16 }}>
         <label htmlFor="year">{t('member.history.year')}</label>
         <select id="year" value={year} onChange={(e) => setYear(Number(e.target.value))}>
           {YEAR_OPTIONS.map((y) => (
@@ -63,36 +73,45 @@ export default function MemberHistoryPage() {
       {error && <div className="alert alert--error">{error}</div>}
 
       {loading ? (
-        <div className="empty-state">{t('common.loading')}</div>
+        <SkeletonCard lines={4} />
       ) : groups.length === 0 ? (
-        <div className="empty-state">{t('common.noResults')}</div>
+        <div className="card">
+          <EmptyState icon={FiClock} title={t('member.history.emptyTitle')} message={t('member.history.emptyMessage')} />
+        </div>
       ) : (
         groups.map(([monthKey, monthContributions]) => (
-          <div className="card" key={monthKey}>
-            <div className="card__header">
-              <h2>{monthKey}</h2>
-              <span className="badge badge--success">{formatMoney(sumMoneyStrings(monthContributions.map((c) => c.amount)))}</span>
+          <div className="timeline-group" key={monthKey}>
+            <div className="timeline-group__label">
+              {new Date(`${monthKey}-01`).toLocaleDateString(locale === 'sw' ? 'sw-TZ' : undefined, { month: 'long', year: 'numeric' })}
+              {' · '}
+              {formatMoney(sumMoneyStrings(monthContributions.map((c) => c.amount)))}
             </div>
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>{t('common.date')}</th>
-                    <th>{t('contributions.category')}</th>
-                    <th>{t('common.amount')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthContributions.map((c) => (
-                    <tr key={c.id}>
-                      <td>{formatDate(c.contribution_date)}</td>
-                      <td>{c.category_name ?? '—'}</td>
-                      <td>{formatMoney(c.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {monthContributions.map((c) => {
+              const i = rowIndex++;
+              const isReversed = c.status === 'reversed';
+              return (
+                <motion.div className="timeline-item" key={c.id} custom={i} variants={listEntrance} initial="initial" animate="animate">
+                  <span className="timeline-item__icon" style={isReversed ? { background: 'var(--color-danger-bg)', color: 'var(--color-danger)' } : undefined}>
+                    {isReversed ? <FiXCircle aria-hidden="true" /> : <FiDollarSign aria-hidden="true" />}
+                  </span>
+                  <div className="timeline-item__body">
+                    <div className="timeline-item__title">{c.category_name ?? t('contributions.category')}</div>
+                    <div className="timeline-item__meta">
+                      {formatDate(c.contribution_date)}
+                      {' · '}
+                      {isReversed ? (
+                        <span style={{ color: 'var(--color-danger)' }}>{t('contributions.reversed')}</span>
+                      ) : (
+                        <span style={{ color: 'var(--color-success)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          <FiCheckCircle aria-hidden="true" size={11} /> {t('member.history.confirmed')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="timeline-item__amount tabular-nums">{formatMoney(c.amount)}</div>
+                </motion.div>
+              );
+            })}
           </div>
         ))
       )}

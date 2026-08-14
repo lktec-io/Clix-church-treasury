@@ -1,7 +1,21 @@
 import { createContext, useCallback, useContext, useRef, useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 
 const ConfirmContext = createContext(null);
+
+// opacity 0 -> 1, scale 0.96 -> 1, ~200ms — the exact entrance spec'd for
+// every modal in this app (docs/MASTER_TODO.md premium-UI pass §30).
+const overlayVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.18 } },
+  exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+const modalVariants = {
+  initial: { opacity: 0, scale: 0.96, y: 8 },
+  animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, scale: 0.97, transition: { duration: 0.15 } },
+};
 
 // Promise-based confirmation modal shared by every destructive/irreversible
 // action (docs: Phase 10 "confirmation dialogs must explain the action
@@ -74,47 +88,60 @@ export function ConfirmProvider({ children }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      {request && (
-        <div className="modal-overlay" onMouseDown={handleCancel}>
-          <div
-            className="modal"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="confirm-dialog-title"
-            ref={dialogRef}
-            onMouseDown={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {request && (
+          <motion.div
+            className="modal-overlay"
+            variants={overlayVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            onMouseDown={handleCancel}
           >
-            <h2 id="confirm-dialog-title">{request.title}</h2>
-            {request.message && <p className="modal__message">{request.message}</p>}
-            {request.requireReason && (
-              <div className="field">
-                <label htmlFor="confirm-reason">{t('common.reason')}</label>
-                <textarea
-                  id="confirm-reason"
-                  rows={3}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  autoFocus
-                />
+            <motion.div
+              className="modal"
+              variants={modalVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="confirm-dialog-title"
+              ref={dialogRef}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <h2 id="confirm-dialog-title">{request.title}</h2>
+              {request.message && <p className="modal__message">{request.message}</p>}
+              {request.requireReason && (
+                <div className="field">
+                  <label htmlFor="confirm-reason">{t('common.reason')}</label>
+                  <textarea
+                    id="confirm-reason"
+                    rows={3}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+              )}
+              <div className="modal__actions">
+                <button type="button" className="btn btn--secondary" onClick={handleCancel}>
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  ref={confirmButtonRef}
+                  className={`btn ${request.tone === 'danger' ? 'btn--danger' : 'btn--primary'}`}
+                  onClick={handleConfirm}
+                  disabled={confirmDisabled}
+                >
+                  {request.confirmLabel ?? t('common.confirm')}
+                </button>
               </div>
-            )}
-            <div className="modal__actions">
-              <button type="button" className="btn btn--secondary" onClick={handleCancel}>
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                ref={confirmButtonRef}
-                className={`btn ${request.tone === 'danger' ? 'btn--danger' : 'btn--primary'}`}
-                onClick={handleConfirm}
-                disabled={confirmDisabled}
-              >
-                {request.confirmLabel ?? t('common.confirm')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </ConfirmContext.Provider>
   );
 }

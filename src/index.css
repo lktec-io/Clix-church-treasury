@@ -1,11 +1,33 @@
+/* CircularTtf is a licensed commercial typeface (Lineto) — this repo does
+   not (and must not) bundle the binary. Drop the licensed file at
+   public/fonts/circular-std-font.ttf to activate it; until then the
+   fallback stack below (a premium, widely-available system sans-serif
+   ramp) keeps the product looking deliberate rather than broken. Never
+   fall back to `serif` for a financial product — that reads as an error,
+   not a design choice. */
+@font-face {
+  font-family: 'CircularTtf';
+  src: local('Circular'), url('/fonts/circular-std-font.ttf') format('truetype');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 :root {
-  /* Placeholder brand palette — swap for real Clix Digital Works brand
-     colors when available. Chosen for a trustworthy, professional
-     financial-product feel: deep blue primary, green for inflows, red
-     for outflows, neutral grays for everything else. */
-  --color-primary: #1e5f8c;
-  --color-primary-dark: #164a6e;
-  --color-primary-light: #eaf2f7;
+  /* ---------- Brand: Deep Navy (trust) + Warm Gold (premium/financial) ----------
+     Placeholder brand palette — swap for real Clix Digital Works brand
+     colors when available. Navy carries authority/trust (sidebar, nav,
+     headings, primary actions); gold is reserved for financial emphasis
+     (featured totals, tithe/contribution highlights) — never used as a
+     general accent so it keeps its meaning. */
+  --color-primary: #12395e;
+  --color-primary-dark: #0b2740;
+  --color-primary-light: #e9eff5;
+  --color-primary-soft: #eef4fa;
+
+  --color-accent: #b8862f;
+  --color-accent-dark: #96691f;
+  --color-accent-light: #fbf1de;
+
   --color-success: #1a7f4e;
   --color-success-bg: #e7f6ee;
   --color-danger: #b3261e;
@@ -15,18 +37,38 @@
 
   --text: #33363b;
   --text-muted: #6b7280;
-  --text-heading: #14171a;
-  --bg: #f6f7f9;
+  --text-heading: #101828;
+  --bg: #f5f6f8;
+  --bg-muted: #eef0f3;
   --surface: #ffffff;
+  --surface-raised: #ffffff;
   --border: #e2e5e9;
   --border-strong: #c9ced6;
-  --shadow: 0 1px 2px rgba(20, 23, 26, 0.06), 0 1px 3px rgba(20, 23, 26, 0.08);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --radius: 8px;
-  --radius-sm: 6px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 2px 8px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12), 0 2px 6px rgba(16, 24, 40, 0.06);
+  --shadow: var(--shadow-sm);
 
-  font: 15px/1.5 var(--sans);
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-fast: 0.15s;
+  --motion-base: 0.25s;
+  --motion-slow: 0.35s;
+
+  --font-primary: 'CircularTtf', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --sans: var(--font-primary);
+
+  font: 15px/1.55 var(--font-primary);
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
@@ -38,9 +80,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-primary: #5b9bd1;
-    --color-primary-dark: #7fb3de;
-    --color-primary-light: #16283a;
+    --color-primary: #6ea3d6;
+    --color-primary-dark: #8fb8e0;
+    --color-primary-light: #17293c;
+    --color-primary-soft: #1a2c3f;
+
+    --color-accent: #d6ac5f;
+    --color-accent-dark: #e6c37f;
+    --color-accent-light: #2e2410;
+
     --color-success: #4ade80;
     --color-success-bg: #10291b;
     --color-danger: #f47068;
@@ -51,11 +99,17 @@
     --text: #d4d6d9;
     --text-muted: #9aa0a8;
     --text-heading: #f3f4f6;
-    --bg: #14161a;
-    --surface: #1c1f24;
-    --border: #2b2f36;
-    --border-strong: #3a3f47;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --bg: #10131a;
+    --bg-muted: #171b24;
+    --surface: #1a1e27;
+    --surface-raised: #1f2430;
+    --border: #2b2f3a;
+    --border-strong: #3a3f4c;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+    --shadow: var(--shadow-sm);
   }
 }
 
@@ -63,8 +117,21 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+button,
+input,
+textarea,
+select,
+table,
+th,
+td {
+  font-family: var(--font-primary);
+}
+
 body {
   margin: 0;
+  background: var(--bg);
 }
 
 #root {
@@ -76,14 +143,15 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--sans);
-  font-weight: 600;
+  font-family: var(--font-primary);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text-heading);
   margin: 0 0 4px;
 }
 
 h1 {
-  font-size: 22px;
+  font-size: 24px;
 }
 h2 {
   font-size: 17px;
@@ -106,4 +174,22 @@ select,
 textarea {
   font: inherit;
   color: inherit;
+}
+
+/* Financial figures always read as tabular numerals so amounts in a
+   column align digit-for-digit — a small detail that reads as "built by
+   people who take money seriously" (docs/MASTER_TODO.md premium-UI pass). */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
