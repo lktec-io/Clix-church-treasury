@@ -13,20 +13,29 @@
 }
 
 :root {
-  /* ---------- Brand: Deep Navy (trust) + Warm Gold (premium/financial) ----------
-     Placeholder brand palette — swap for real Clix Digital Works brand
-     colors when available. Navy carries authority/trust (sidebar, nav,
-     headings, primary actions); gold is reserved for financial emphasis
-     (featured totals, tithe/contribution highlights) — never used as a
-     general accent so it keeps its meaning. */
-  --color-primary: #12395e;
-  --color-primary-dark: #0b2740;
+  /* ---------- Clix brand: Navy + Green + sparing Orange ----------
+     Actual Clix Digital Works brand identity (not a placeholder). Navy
+     carries authority/trust (sidebar, topbar, primary actions, headings).
+     Green is the recognizable Clix accent — active states, CTAs, positive
+     financial emphasis, the sidebar's glass active-indicator. Orange is
+     used sparingly (warnings, one or two selected-highlight moments) and
+     must never dominate a screen. --color-primary-rgb backs the
+     translucent glass sidebar (App.css), since backdrop-filter needs an
+     rgba(), not a var() alone. */
+  --color-primary: #0f3358;
+  --color-primary-rgb: 15, 51, 88;
+  --color-primary-dark: #0a2340;
   --color-primary-light: #e9eff5;
   --color-primary-soft: #eef4fa;
 
-  --color-accent: #b8862f;
-  --color-accent-dark: #96691f;
-  --color-accent-light: #fbf1de;
+  --color-accent: #1a9d63;
+  --color-accent-dark: #147a4d;
+  --color-accent-light: #e5f6ec;
+  --color-accent-rgb: 26, 157, 99;
+
+  --color-highlight: #e0812f;
+  --color-highlight-dark: #c06a1e;
+  --color-highlight-light: #fdf0e2;
 
   --color-success: #1a7f4e;
   --color-success-bg: #e7f6ee;
@@ -81,13 +90,19 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --color-primary: #6ea3d6;
+    --color-primary-rgb: 10, 22, 36;
     --color-primary-dark: #8fb8e0;
     --color-primary-light: #17293c;
     --color-primary-soft: #1a2c3f;
 
-    --color-accent: #d6ac5f;
-    --color-accent-dark: #e6c37f;
-    --color-accent-light: #2e2410;
+    --color-accent: #35c584;
+    --color-accent-dark: #5fe0a3;
+    --color-accent-light: #103a26;
+    --color-accent-rgb: 53, 197, 132;
+
+    --color-highlight: #f2a15c;
+    --color-highlight-dark: #f7b87c;
+    --color-highlight-light: #3a2510;
 
     --color-success: #4ade80;
     --color-success-bg: #10291b;

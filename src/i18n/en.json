@@ -21,6 +21,8 @@
   "nav.group.administration": "Administration",
   "nav.toggleMenu": "Toggle navigation",
   "nav.closeMenu": "Close navigation",
+  "nav.collapseMenu": "Collapse menu",
+  "nav.expandMenu": "Expand menu",
 
   "common.save": "Save",
   "common.cancel": "Cancel",
@@ -111,8 +113,9 @@
   "contributions.addItem": "Add line",
   "contributions.itemsMismatch": "Breakdown lines must add up to the total amount",
   "contributions.sms.sent": "SMS confirmation sent to the contributor",
-  "contributions.sms.failed": "SMS confirmation could not be sent — the contribution was still saved",
+  "contributions.sms.failed": "The contribution was saved successfully, but the SMS could not be sent.",
   "contributions.sms.skipped_no_provider": "Contribution saved. SMS sending is not configured yet.",
+  "contributions.retrySms": "Try Sending SMS Again",
 
   "contributors.title": "Contributors",
   "contributors.addNew": "Add contributor",
@@ -301,8 +304,13 @@
   "users.status.disabled": "Disabled",
 
   "memberStatements.title": "Member Statements",
+  "memberStatements.subtitle": "Generate and send a member's monthly giving statement.",
   "memberStatements.generate": "Generate",
   "memberStatements.sendSms": "Send by SMS",
+  "memberStatements.sms.sent": "Statement sent by SMS",
+  "memberStatements.sms.failed": "The statement could not be sent by SMS. You can still download the PDF.",
+  "memberStatements.sms.skipped_no_provider": "SMS sending is not configured yet — download the PDF instead.",
+  "memberStatements.selectPrompt": "Select a member, year, and month, then generate their statement.",
 
   "member.language": "Language",
   "member.greeting": "Welcome, {{name}}",

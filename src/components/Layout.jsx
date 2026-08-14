@@ -18,6 +18,8 @@ import {
   FiX,
   FiLogOut,
   FiUserCheck,
+  FiChevronsLeft,
+  FiChevronsRight,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -77,6 +79,10 @@ const NAV_GROUPS = [
   },
 ];
 
+const SIDEBAR_WIDTH = 240;
+const SIDEBAR_WIDTH_COLLAPSED = 76;
+const COLLAPSE_STORAGE_KEY = 'clix.sidebarCollapsed';
+
 const drawerVariants = {
   hidden: { x: '-100%' },
   visible: { x: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
@@ -90,6 +96,13 @@ const overlayVariants = {
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSE_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const { session, logout, hasPermission } = useAuth();
   const { t, locale, setLocale } = useLocale();
   const navigate = useNavigate();
@@ -104,6 +117,18 @@ export default function Layout() {
     };
   }, [sidebarOpen, isDesktop]);
 
+  const toggleCollapsed = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(COLLAPSE_STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        // Non-fatal — collapse state just won't persist across reloads.
+      }
+      return next;
+    });
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/login', { replace: true });
@@ -114,21 +139,34 @@ export default function Layout() {
     items: group.items.filter((item) => item.permission === null || hasPermission(item.permission)),
   })).filter((group) => group.items.length > 0);
 
+  const isCollapsedDesktop = isDesktop && collapsed;
+
   const sidebarContent = (
     <>
       <div className="app-sidebar__brand">
-        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <span className="app-sidebar__brand-mark">C</span>
-          {t('app.name')}
+          <span>{t('app.name')}</span>
         </span>
-        <button
-          type="button"
-          className="app-sidebar__close"
-          onClick={() => setSidebarOpen(false)}
-          aria-label={t('nav.closeMenu')}
-        >
-          <FiX aria-hidden="true" />
-        </button>
+        {isDesktop ? (
+          <button
+            type="button"
+            className="app-sidebar__collapse-btn"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? t('nav.expandMenu') : t('nav.collapseMenu')}
+          >
+            {collapsed ? <FiChevronsRight aria-hidden="true" /> : <FiChevronsLeft aria-hidden="true" />}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="app-sidebar__close"
+            onClick={() => setSidebarOpen(false)}
+            aria-label={t('nav.closeMenu')}
+          >
+            <FiX aria-hidden="true" />
+          </button>
+        )}
       </div>
       <div className="app-sidebar__nav">
         {visibleGroups.map((group, i) => (
@@ -139,32 +177,46 @@ export default function Layout() {
                 key={to}
                 to={to}
                 end={end}
+                title={isCollapsedDesktop ? t(labelKey) : undefined}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
               >
                 <Icon aria-hidden="true" />
-                {t(labelKey)}
+                <span>{t(labelKey)}</span>
               </NavLink>
             ))}
           </div>
         ))}
       </div>
       <div className="app-sidebar__footer">
-        <div>{session?.user?.full_name}</div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value)}
-            aria-label="Language"
-            style={{ fontSize: 12, padding: '2px 4px' }}
-          >
-            <option value="en">EN</option>
-            <option value="sw">SW</option>
-          </select>
-          <button type="button" className="btn btn--secondary btn--sm" onClick={handleLogout}>
-            <FiLogOut aria-hidden="true" /> {t('nav.logout')}
-          </button>
+        <div className="app-sidebar__footer-details">
+          <div>{session?.user?.full_name}</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value)}
+              aria-label="Language"
+              style={{ fontSize: 12, padding: '2px 4px' }}
+            >
+              <option value="en">EN</option>
+              <option value="sw">SW</option>
+            </select>
+            <button type="button" className="btn btn--secondary btn--sm" onClick={handleLogout}>
+              <FiLogOut aria-hidden="true" /> {t('nav.logout')}
+            </button>
+          </div>
         </div>
+        {isCollapsedDesktop && (
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={handleLogout}
+            aria-label={t('nav.logout')}
+            style={{ background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.15)', color: '#fff' }}
+          >
+            <FiLogOut aria-hidden="true" />
+          </button>
+        )}
       </div>
     </>
   );
@@ -172,9 +224,14 @@ export default function Layout() {
   return (
     <div className="app-shell">
       {isDesktop ? (
-        <nav className="app-sidebar" aria-label="Primary">
+        <motion.nav
+          className={`app-sidebar${collapsed ? ' is-collapsed' : ''}`}
+          aria-label="Primary"
+          animate={{ width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        >
           {sidebarContent}
-        </nav>
+        </motion.nav>
       ) : (
         <AnimatePresence>
           {sidebarOpen && (

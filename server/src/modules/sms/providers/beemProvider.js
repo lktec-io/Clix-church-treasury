@@ -12,24 +12,36 @@ import { env } from '../../../config/env.js';
 // requirements against Beem's current developer dashboard/docs before
 // relying on this in production, and check delivery with a real test
 // message first. Uses Node's built-in `fetch` — no new dependency.
+const REQUEST_TIMEOUT_MS = 10_000;
+
 export async function sendViaBeem({ phone, body }) {
   const { apiKey, secretKey, senderId, apiUrl } = env.sms.beem;
   const auth = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      source_addr: senderId,
-      schedule_time: '',
-      encoding: 0,
-      message: body,
-      recipients: [{ recipient_id: 1, dest_addr: phone }],
-    }),
-  });
+  let response;
+  try {
+    response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        source_addr: senderId,
+        schedule_time: '',
+        encoding: 0,
+        message: body,
+        recipients: [{ recipient_id: 1, dest_addr: phone }],
+      }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    // Network failure, DNS failure, or the timeout above firing — never a
+    // thrown error the caller has to handle specially (sms.service.js's own
+    // try/catch would also catch this, but resolving to the same shape here
+    // keeps every non-2xx/network outcome uniform for the caller).
+    return { status: 'failed', errorMessage: `Could not reach Beem API: ${error.message}` };
+  }
 
   const payload = await response.json().catch(() => null);
 

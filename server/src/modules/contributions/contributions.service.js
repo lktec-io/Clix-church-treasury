@@ -9,6 +9,7 @@ import { recordAuditLog } from '../audit/auditLog.service.js';
 import { pledgesRepository } from '../pledges/pledges.repository.js';
 import { syncPledgeStatus } from '../pledges/pledges.service.js';
 import { issueReceiptForContribution } from '../receipts/receipts.service.js';
+import { receiptsRepository } from '../receipts/receipts.repository.js';
 import { addMoney, compareMoney } from '../financial/money.js';
 import { formatMoney } from '../financial/moneyFormat.js';
 import { contributorsRepository } from '../contributors/contributors.repository.js';
@@ -17,6 +18,40 @@ import { categoriesRepository } from '../categories/categories.repository.js';
 import { sendSms } from '../sms/sms.service.js';
 
 export { enrichWithContributorInfo } from '../contributors/contributorEnrichment.js';
+
+// Shared by recordContribution's post-commit SMS attempt and the standalone
+// resend-sms endpoint (contributions.controller.js#resendSms) — same
+// lookups, same template, same params, so "try again" sends literally the
+// same confirmation, not a different message. Returns null (no SMS
+// attempted, not an error) when the contribution has no contributor or the
+// contributor has no phone on file.
+async function sendContributionConfirmationSms(tenantId, contribution) {
+  if (!contribution.contributor_id) return null;
+  const [contributor, tenant, category] = await Promise.all([
+    contributorsRepository.findById(tenantId, contribution.contributor_id),
+    tenantsRepository.findById(tenantId),
+    categoriesRepository.findById(tenantId, contribution.category_id),
+  ]);
+  if (!contributor?.phone) return null;
+
+  const receipt = contribution.receipt ?? (await receiptsRepository.findByContributionId(tenantId, contribution.id));
+
+  return sendSms(tenantId, {
+    contributorId: contributor.id,
+    phone: contributor.phone,
+    templateKey: 'contribution_confirmation',
+    locale: contributor.locale ?? tenant?.locale_default ?? 'en',
+    params: {
+      churchName: tenant?.name,
+      memberName: contributor.full_name,
+      amount: `${tenant?.base_currency ?? ''} ${formatMoney(contribution.amount)}`.trim(),
+      date: contribution.contribution_date,
+      reference: receipt?.receipt_number ?? category?.name ?? '',
+    },
+    relatedType: 'contributions',
+    relatedId: contribution.id,
+  });
+}
 
 // Records a contribution AND posts its ledger entry atomically — one DB
 // transaction, so there is never a contribution row with no matching
@@ -124,35 +159,26 @@ export async function recordContribution(tenantId, data, actorUserId) {
   // SMS confirmation happens strictly after the transaction above has
   // committed — a slow or failed SMS must never be able to roll back a
   // valid, already-posted contribution (sendSms() itself also never
-  // throws, as defense in depth). Silently skipped when the contributor
-  // has no phone on file or wasn't specified — this is not an error.
-  if (result.contributor_id) {
-    const [contributor, tenant, category] = await Promise.all([
-      contributorsRepository.findById(tenantId, result.contributor_id),
-      tenantsRepository.findById(tenantId),
-      categoriesRepository.findById(tenantId, result.category_id),
-    ]);
-    if (contributor?.phone) {
-      const sms = await sendSms(tenantId, {
-        contributorId: contributor.id,
-        phone: contributor.phone,
-        templateKey: 'contribution_confirmation',
-        locale: contributor.locale ?? tenant?.locale_default ?? 'en',
-        params: {
-          churchName: tenant?.name,
-          memberName: contributor.full_name,
-          amount: `${tenant?.base_currency ?? ''} ${formatMoney(result.amount)}`.trim(),
-          date: result.contribution_date,
-          reference: result.receipt?.receipt_number ?? category?.name ?? '',
-        },
-        relatedType: 'contributions',
-        relatedId: result.id,
-      });
-      return { ...result, sms };
-    }
-  }
+  // throws, as defense in depth). Returns null (not an error) when the
+  // contribution has no contributor or the contributor has no phone.
+  const sms = await sendContributionConfirmationSms(tenantId, result);
+  return { ...result, sms };
+}
 
-  return { ...result, sms: null };
+// Staff-triggered "Jaribu Kutuma SMS Tena" (try sending SMS again) —
+// re-sends the exact same confirmation message a fresh recordContribution
+// call would have sent, without touching the already-posted financial
+// record at all. Exists because SMS failure must be recoverable without a
+// treasurer having to re-enter the whole contribution (docs/MASTER_TODO.md:
+// "provide a secondary action where appropriate").
+export async function resendContributionSms(tenantId, contributionId) {
+  const contribution = await contributionsRepository.findById(tenantId, contributionId);
+  if (!contribution) throw notFound('Contribution not found');
+  const sms = await sendContributionConfirmationSms(tenantId, contribution);
+  if (!sms) {
+    throw new AppError('NO_PHONE', 'This contributor has no phone number on file to send an SMS to', { status: 409 });
+  }
+  return sms;
 }
 
 export async function listContributions(tenantId, filters) {

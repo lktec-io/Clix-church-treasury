@@ -21,6 +21,8 @@
   "nav.group.administration": "Usimamizi",
   "nav.toggleMenu": "Fungua/funga menyu",
   "nav.closeMenu": "Funga menyu",
+  "nav.collapseMenu": "Punguza menyu",
+  "nav.expandMenu": "Panua menyu",
 
   "common.save": "Hifadhi",
   "common.cancel": "Ghairi",
@@ -110,9 +112,10 @@
   "contributions.itemPurpose": "Kusudi (mfano: Ujenzi wa Kanisa)",
   "contributions.addItem": "Ongeza mstari",
   "contributions.itemsMismatch": "Jumla ya mistari ya mchanganuo lazima ilingane na kiasi jumla",
-  "contributions.sms.sent": "SMS ya uthibitisho imetumwa kwa mchangiaji",
-  "contributions.sms.failed": "SMS ya uthibitisho imeshindikana kutumwa — mchango umehifadhiwa",
+  "contributions.sms.sent": "SMS imetumwa kikamilifu.",
+  "contributions.sms.failed": "Mchango umehifadhiwa kikamilifu, lakini SMS haikutumwa.",
   "contributions.sms.skipped_no_provider": "Mchango umehifadhiwa. Utumaji wa SMS bado haujawekwa.",
+  "contributions.retrySms": "Jaribu Kutuma SMS Tena",
 
   "contributors.title": "Wachangiaji",
   "contributors.addNew": "Ongeza mchangiaji",
@@ -301,8 +304,13 @@
   "users.status.disabled": "Amezimwa",
 
   "memberStatements.title": "Taarifa za Wachangiaji",
+  "memberStatements.subtitle": "Tengeneza na tuma taarifa ya matoleo ya mwezi kwa muumini.",
   "memberStatements.generate": "Tengeneza",
   "memberStatements.sendSms": "Tuma kwa SMS",
+  "memberStatements.sms.sent": "Taarifa imetumwa kwa SMS",
+  "memberStatements.sms.failed": "Imeshindikana kutuma taarifa kwa SMS. Bado unaweza kupakua PDF.",
+  "memberStatements.sms.skipped_no_provider": "Utumaji wa SMS bado haujawekwa — pakua PDF badala yake.",
+  "memberStatements.selectPrompt": "Chagua muumini, mwaka, na mwezi, kisha tengeneza taarifa yake.",
 
   "member.language": "Lugha",
   "member.greeting": "Karibu, {{name}}",

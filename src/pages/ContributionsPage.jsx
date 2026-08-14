@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiDollarSign, FiLayers, FiPlus, FiX } from 'react-icons/fi';
+import { FiDollarSign, FiLayers, FiPlus, FiX, FiRefreshCw } from 'react-icons/fi';
 import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi, pledgesApi, receiptsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -61,6 +61,8 @@ export default function ContributionsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [smsNotice, setSmsNotice] = useState(null); // { contributionId, status } | null
+  const [resendingSms, setResendingSms] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -120,6 +122,7 @@ export default function ContributionsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setSmsNotice(null);
     setSubmitting(true);
     try {
       const result = await contributionsApi.create({
@@ -137,17 +140,32 @@ export default function ContributionsPage() {
       await loadAll();
       toast.success(t('contributions.recorded'));
       // SMS delivery never blocks or reverses the save above (server/src/
-      // modules/contributions/contributions.service.js) — this is purely
-      // an informational follow-up toast, shown or not depending on
-      // whether the contributor had a phone number on file at all.
+      // modules/contributions/contributions.service.js) — the contribution
+      // toast above already fired unconditionally. This is a *separate*,
+      // secondary notice: an inline banner (not another toast, which would
+      // auto-dismiss and hide the retry action) so a failed send is both
+      // honest and recoverable without re-entering the whole contribution.
       if (result.sms) {
-        const tone = { sent: 'success', failed: 'warning', skipped_no_provider: 'info' }[result.sms.status] ?? 'info';
-        toast[tone](t(`contributions.sms.${result.sms.status}`));
+        setSmsNotice({ contributionId: result.id, status: result.sms.status });
       }
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRetrySms = async () => {
+    if (!smsNotice) return;
+    setResendingSms(true);
+    try {
+      const { sms } = await contributionsApi.resendSms(smsNotice.contributionId);
+      setSmsNotice({ contributionId: smsNotice.contributionId, status: sms.status });
+      if (sms.status === 'sent') toast.success(t('contributions.sms.sent'));
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    } finally {
+      setResendingSms(false);
     }
   };
 
@@ -173,6 +191,16 @@ export default function ContributionsPage() {
     <div>
       <PageHeader title={t('contributions.title')} subtitle={t('contributions.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
+      {smsNotice && smsNotice.status !== 'sent' && (
+        <div className={`alert ${smsNotice.status === 'failed' ? 'alert--warning' : 'alert--info'}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <span>{t(`contributions.sms.${smsNotice.status}`)}</span>
+          {smsNotice.status === 'failed' && (
+            <button type="button" className="btn btn--secondary btn--sm" onClick={handleRetrySms} disabled={resendingSms}>
+              <FiRefreshCw aria-hidden="true" /> {resendingSms ? t('common.loading') : t('contributions.retrySms')}
+            </button>
+          )}
+        </div>
+      )}
 
       <PermissionGate permission="income.create">
         <div className="card">

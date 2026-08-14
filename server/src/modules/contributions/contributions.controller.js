@@ -89,3 +89,12 @@ export async function reverse(req, res, next) {
     next(err);
   }
 }
+
+export async function resendSms(req, res, next) {
+  try {
+    const sms = await contributionsService.resendContributionSms(req.tenantId, req.params.id);
+    res.json({ success: true, data: { sms } });
+  } catch (err) {
+    next(err);
+  }
+}

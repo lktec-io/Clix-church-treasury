@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { FiSend, FiDownload, FiFileText, FiHeart, FiGift, FiLayers } from 'react-icons/fi';
 import { contributorsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { formatMoney } from '../utils/format.js';
+import PageHeader from '../components/ui/PageHeader.jsx';
+import EmptyState from '../components/ui/EmptyState.jsx';
+import { formatMoney, formatCurrency } from '../utils/format.js';
 
 const now = new Date();
 const CURRENT_YEAR = now.getFullYear();
@@ -15,6 +19,13 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 // the exact same GET /contributors/:id/statement the member portal's own
 // dashboard calls, just with a contributor picker instead of the session's
 // own identity.
+//
+// SMS result messages here are deliberately their OWN i18n keys
+// (memberStatements.sms.*), not a reuse of contributions.sms.* — sending a
+// monthly statement is a different action from confirming a just-recorded
+// contribution, and reusing the contribution wording ("the contribution
+// was still saved") on this page made an unrelated action look like a
+// contribution-recording error.
 export default function MemberStatementsPage() {
   const { t, locale } = useLocale();
   const toast = useToast();
@@ -27,12 +38,18 @@ export default function MemberStatementsPage() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    contributorsApi
-      .list()
-      .then(setContributors)
-      .catch((err) => setError(unwrapApiError(err).message));
+  const loadContributors = useCallback(async () => {
+    try {
+      setContributors(await contributorsApi.list());
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    }
   }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadContributors();
+  }, [loadContributors]);
 
   const handleGenerate = useCallback(async () => {
     if (!contributorId) return;
@@ -63,7 +80,7 @@ export default function MemberStatementsPage() {
     try {
       const result = await contributorsApi.sendStatementSms(contributorId, year, month);
       const tone = { sent: 'success', failed: 'warning', skipped_no_provider: 'info' }[result.sms.status] ?? 'info';
-      toast[tone](t(`contributions.sms.${result.sms.status}`));
+      toast[tone](t(`memberStatements.sms.${result.sms.status}`));
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -73,7 +90,7 @@ export default function MemberStatementsPage() {
 
   return (
     <div>
-      <h1>{t('memberStatements.title')}</h1>
+      <PageHeader title={t('memberStatements.title')} subtitle={t('memberStatements.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <div className="card">
@@ -112,50 +129,56 @@ export default function MemberStatementsPage() {
         </div>
         <div className="form-actions">
           <button type="button" className="btn btn--primary" onClick={handleGenerate} disabled={!contributorId || loading}>
-            {loading ? t('common.loading') : t('memberStatements.generate')}
+            <FiFileText aria-hidden="true" /> {loading ? t('common.loading') : t('memberStatements.generate')}
           </button>
         </div>
       </div>
 
-      {statement && (
+      {!statement && !loading && (
         <div className="card">
-          <div className="card__header">
-            <h2>{t('member.statement.title')}</h2>
+          <EmptyState icon={FiFileText} message={t('memberStatements.selectPrompt')} />
+        </div>
+      )}
+
+      {statement && (
+        <motion.div
+          className="hero-card"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+        >
+          <div className="hero-card__label">{t('member.statement.grandTotal')}</div>
+          <div className="hero-card__value tabular-nums">{formatCurrency(statement.total)}</div>
+          <div className="hero-card__breakdown">
+            <div className="hero-card__breakdown-item">
+              <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <FiHeart aria-hidden="true" /> {t('categories.tithe')}
+              </span>
+              <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement.tithe)}</span>
+            </div>
+            <div className="hero-card__breakdown-item">
+              <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <FiGift aria-hidden="true" /> {t('categories.offering')}
+              </span>
+              <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement.offering)}</span>
+            </div>
+            <div className="hero-card__breakdown-item">
+              <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <FiLayers aria-hidden="true" /> {t('categories.other')}
+              </span>
+              <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement.other)}</span>
+            </div>
           </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <tbody>
-                <tr>
-                  <td>{t('categories.tithe')}</td>
-                  <td>{formatMoney(statement.tithe)}</td>
-                </tr>
-                <tr>
-                  <td>{t('categories.offering')}</td>
-                  <td>{formatMoney(statement.offering)}</td>
-                </tr>
-                <tr>
-                  <td>{t('categories.other')}</td>
-                  <td>{formatMoney(statement.other)}</td>
-                </tr>
-                <tr>
-                  <td>
-                    <strong>{t('member.statement.grandTotal')}</strong>
-                  </td>
-                  <td>
-                    <strong>{formatMoney(statement.total)}</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="form-actions" style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="btn btn--secondary" onClick={handleDownload} disabled={busy}>
-              {t('member.statement.download')}
-            </button>
-            <button type="button" className="btn btn--secondary" onClick={handleSendSms} disabled={busy}>
-              {t('memberStatements.sendSms')}
-            </button>
-          </div>
+        </motion.div>
+      )}
+
+      {statement && (
+        <div className="form-actions" style={{ justifyContent: 'flex-start', gap: 8 }}>
+          <button type="button" className="btn btn--accent" onClick={handleDownload} disabled={busy}>
+            <FiDownload aria-hidden="true" /> {t('member.statement.download')}
+          </button>
+          <button type="button" className="btn btn--secondary" onClick={handleSendSms} disabled={busy}>
+            <FiSend aria-hidden="true" /> {t('memberStatements.sendSms')}
+          </button>
         </div>
       )}
     </div>

@@ -1,14 +1,26 @@
 /* ---------- App shell ---------- */
+/* A subtle navy-to-canvas gradient behind the whole shell — without this,
+   a translucent + backdrop-blur sidebar sitting in normal flex flow (not
+   overlapping content) has nothing but a flat color to blur, and
+   glassmorphism reads as "just a dark box." The gradient is what the
+   glass panel actually picks up. */
 .app-shell {
   display: flex;
   min-height: 100svh;
   width: 100%;
+  background:
+    radial-gradient(1200px 600px at -10% -10%, rgba(var(--color-primary-rgb), 0.16), transparent 60%),
+    radial-gradient(900px 500px at 110% 0%, rgba(var(--color-accent-rgb), 0.1), transparent 55%),
+    var(--bg);
 }
 
 .app-sidebar {
   width: 240px;
   flex-shrink: 0;
-  background: var(--color-primary);
+  overflow: hidden;
+  background: rgba(var(--color-primary-rgb), 0.78);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
@@ -21,10 +33,12 @@
 
 @media (min-width: 900px) {
   .app-sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    height: 100svh;
   }
   .app-main {
-    margin-left: 0;
+    min-width: 0;
   }
 }
 
@@ -39,6 +53,7 @@
   letter-spacing: -0.01em;
   color: #ffffff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
 }
 
 .app-sidebar__brand-mark {
@@ -48,10 +63,32 @@
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--color-primary-dark);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+  color: #ffffff;
   font-weight: 800;
   flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 4px 10px rgba(var(--color-accent-rgb), 0.35);
+}
+
+.app-sidebar__collapse-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.app-sidebar__collapse-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 900px) {
+  .app-sidebar__collapse-btn {
+    display: inline-flex;
+  }
 }
 
 .app-sidebar__close {
@@ -83,11 +120,13 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
 }
 
 .app-sidebar__nav {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 14px 12px;
   display: flex;
   flex-direction: column;
@@ -118,21 +157,26 @@
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
   transition: background var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
 }
 
 .app-sidebar__link svg {
   font-size: 17px;
   flex-shrink: 0;
+  transition: transform var(--motion-fast) var(--ease-premium);
 }
 
 .app-sidebar__link:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
+.app-sidebar__link:hover svg {
+  transform: translateX(1px);
+}
 
 .app-sidebar__link.is-active {
-  background: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(90deg, rgba(var(--color-accent-rgb), 0.28), rgba(var(--color-accent-rgb), 0.08));
   color: #fff;
   font-weight: 600;
 }
@@ -147,6 +191,19 @@
   height: 18px;
   border-radius: 2px;
   background: var(--color-accent);
+  box-shadow: 0 0 8px rgba(var(--color-accent-rgb), 0.7);
+}
+
+/* Collapsed = icon rail only. JS toggles this class (Layout.jsx); the
+   width itself is animated by Framer Motion so it can't jump. */
+.app-sidebar.is-collapsed .app-sidebar__group-label,
+.app-sidebar.is-collapsed .app-sidebar__link span,
+.app-sidebar.is-collapsed .app-sidebar__brand > span:not(.app-sidebar__brand-mark),
+.app-sidebar.is-collapsed .app-sidebar__footer-details {
+  display: none;
+}
+.app-sidebar.is-collapsed .app-sidebar__link {
+  justify-content: center;
 }
 
 .app-sidebar__footer {
@@ -154,6 +211,8 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 13px;
   color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .app-sidebar__footer > div:first-child {
@@ -174,7 +233,9 @@
   align-items: center;
   gap: 12px;
   padding: 14px 24px;
-  background: var(--surface);
+  background: rgba(var(--color-primary-rgb), 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -206,6 +267,8 @@
   position: fixed;
   inset: 0;
   background: rgba(10, 14, 20, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   z-index: 15;
 }
 
@@ -615,13 +678,16 @@
   background: var(--color-primary-dark);
 }
 
+/* Orange — used sparingly, only for this one secondary-CTA button variant
+   (e.g. "Download PDF" on statements/receipts), never as the dominant
+   color anywhere on screen (docs/MASTER_TODO.md Clix brand pass §C). */
 .btn--accent {
-  background: var(--color-accent);
+  background: var(--color-highlight);
   color: #fff;
   box-shadow: var(--shadow-sm);
 }
 .btn--accent:hover:not(:disabled) {
-  background: var(--color-accent-dark);
+  background: var(--color-highlight-dark);
 }
 
 .btn--secondary {
@@ -837,6 +903,10 @@ table.data-table {
   background: var(--color-warning-bg);
   color: var(--color-warning);
 }
+.alert--info {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
 
 /* ---------- Toasts (entrance/exit handled by Framer Motion in Toast.jsx) ---------- */
 .toast-stack {
@@ -1042,7 +1112,10 @@ table.data-table {
   justify-content: space-between;
   gap: 12px;
   padding: 14px 20px;
-  background: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.85);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
   position: sticky;
   top: 0;
@@ -1101,10 +1174,18 @@ table.data-table {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
   border-top: 1px solid var(--border);
   box-shadow: 0 -4px 16px rgba(16, 24, 40, 0.06);
   z-index: 10;
+}
+
+@media (prefers-color-scheme: dark) {
+  .member-tabbar {
+    background: rgba(26, 30, 39, 0.82);
+  }
 }
 
 @media (min-width: 900px) {

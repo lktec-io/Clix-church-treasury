@@ -9,5 +9,6 @@ export function contributionsRoutes() {
   router.get('/:id', requirePermission('income.view'), contributionsController.get);
   router.patch('/:id', requirePermission('income.update'), contributionsController.update);
   router.post('/:id/reverse', requirePermission('income.reverse'), contributionsController.reverse);
+  router.post('/:id/resend-sms', requirePermission('income.create'), contributionsController.resendSms);
   return router;
 }

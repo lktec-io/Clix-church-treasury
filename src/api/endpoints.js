@@ -54,6 +54,7 @@ export const contributionsApi = {
   list: (params) => apiClient.get('/contributions', { params }).then(unwrap),
   create: (body) => apiClient.post('/contributions', body).then(unwrap),
   reverse: (id, reason) => apiClient.post(`/contributions/${id}/reverse`, { reason }).then(unwrap),
+  resendSms: (id) => apiClient.post(`/contributions/${id}/resend-sms`).then(unwrap),
 };
 
 export const expensesApi = {
