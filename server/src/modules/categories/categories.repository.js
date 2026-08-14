@@ -13,8 +13,8 @@ class CategoriesRepository extends TenantScopedRepository {
     return rows[0] ?? null;
   }
 
-  async create(tenantId, { type, name }, connection) {
-    return this.insert(tenantId, { type, name, is_active: true }, connection);
+  async create(tenantId, { type, name, reportGroup = null }, connection) {
+    return this.insert(tenantId, { type, name, report_group: reportGroup, is_active: true }, connection);
   }
 }
 

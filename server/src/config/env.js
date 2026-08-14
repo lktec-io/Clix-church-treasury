@@ -60,4 +60,18 @@ export const env = {
   // Phase 7+), but present now so it's configured once, correctly, ahead
   // of that need rather than improvised later.
   frontendUrl: required('FRONTEND_URL'),
+  // Real SMS sending only turns on once BEEM_API_KEY/BEEM_SECRET_KEY are
+  // both set — until then `provider` resolves to 'noop', which logs and
+  // records every attempt in sms_log without making a network call
+  // (server/src/modules/sms/sms.service.js). Never required at startup:
+  // an unconfigured deployment must still boot and record contributions.
+  sms: {
+    provider: process.env.BEEM_API_KEY && process.env.BEEM_SECRET_KEY ? 'beem' : 'noop',
+    beem: {
+      apiKey: process.env.BEEM_API_KEY ?? '',
+      secretKey: process.env.BEEM_SECRET_KEY ?? '',
+      senderId: process.env.BEEM_SENDER_ID ?? '',
+      apiUrl: process.env.BEEM_API_URL ?? 'https://apisms.beem.africa/v1/send',
+    },
+  },
 };

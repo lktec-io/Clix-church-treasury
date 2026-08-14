@@ -1,5 +1,5 @@
 import * as categoriesService from './categories.service.js';
-import { validateCreateCategory } from './categories.validator.js';
+import { validateCreateCategory, validateUpdateCategory } from './categories.validator.js';
 
 export async function list(req, res, next) {
   try {
@@ -24,6 +24,16 @@ export async function create(req, res, next) {
     const data = validateCreateCategory(req.body ?? {});
     const category = await categoriesService.createCategory(req.tenantId, data);
     res.status(201).json({ success: true, data: category });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function update(req, res, next) {
+  try {
+    const updates = validateUpdateCategory(req.body ?? {});
+    const category = await categoriesService.updateCategory(req.tenantId, req.params.id, updates);
+    res.json({ success: true, data: category });
   } catch (err) {
     next(err);
   }

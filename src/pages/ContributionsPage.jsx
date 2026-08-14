@@ -27,6 +27,18 @@ function emptyForm() {
   };
 }
 
+// Integer-cents sum for the live "items must add up to the total" check —
+// same reasoning as utils/format.js#sumMoneyStrings, kept local here since
+// it's only ever applied to the handful of rows a treasurer is actively
+// typing into, not a general-purpose report total.
+function sumItems(items) {
+  const cents = items.reduce((sum, item) => {
+    const [whole, frac = ''] = String(item.amount || '0').split('.');
+    return sum + (Number(whole) || 0) * 100 + Number(frac.padEnd(2, '0').slice(0, 2) || '0');
+  }, 0);
+  return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
+}
+
 export default function ContributionsPage() {
   const { t } = useLocale();
   const { hasPermission } = useAuth();
@@ -39,6 +51,8 @@ export default function ContributionsPage() {
   const [contributors, setContributors] = useState([]);
   const [pledges, setPledges] = useState([]);
   const [form, setForm] = useState(emptyForm());
+  const [items, setItems] = useState([]);
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -93,22 +107,40 @@ export default function ContributionsPage() {
 
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
+  const addItem = () => setItems((rows) => [...rows, { purpose: '', amount: '' }]);
+  const removeItem = (index) => setItems((rows) => rows.filter((_, i) => i !== index));
+  const updateItem = (index, field) => (e) =>
+    setItems((rows) => rows.map((row, i) => (i === index ? { ...row, [field]: e.target.value } : row)));
+  const itemsTotal = items.length > 0 ? sumItems(items) : null;
+  const itemsMismatch = items.length > 0 && form.amount && itemsTotal !== Number(form.amount).toFixed(2);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await contributionsApi.create({
+      const result = await contributionsApi.create({
         ...form,
         accountId: Number(form.accountId),
         fundId: Number(form.fundId),
         categoryId: Number(form.categoryId),
         contributorId: form.contributorId ? Number(form.contributorId) : null,
         pledgeId: form.pledgeId ? Number(form.pledgeId) : null,
+        items: items.length > 0 ? items : undefined,
       });
       setForm(emptyForm());
+      setItems([]);
+      setShowBreakdown(false);
       await loadAll();
       toast.success(t('contributions.recorded'));
+      // SMS delivery never blocks or reverses the save above (server/src/
+      // modules/contributions/contributions.service.js) — this is purely
+      // an informational follow-up toast, shown or not depending on
+      // whether the contributor had a phone number on file at all.
+      if (result.sms) {
+        const tone = { sent: 'success', failed: 'warning', skipped_no_provider: 'info' }[result.sms.status] ?? 'info';
+        toast[tone](t(`contributions.sms.${result.sms.status}`));
+      }
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -249,9 +281,58 @@ export default function ContributionsPage() {
                 <label>{t('common.notes')}</label>
                 <textarea rows={2} value={form.notes} onChange={handleChange('notes')} />
               </div>
+              <div className="field field--full">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showBreakdown}
+                    onChange={(e) => {
+                      setShowBreakdown(e.target.checked);
+                      if (!e.target.checked) setItems([]);
+                      else if (items.length === 0) addItem();
+                    }}
+                  />{' '}
+                  {t('contributions.addBreakdown')}
+                </label>
+              </div>
+              {showBreakdown && (
+                <div className="field field--full">
+                  {items.map((item, index) => (
+                    <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      <input
+                        placeholder={t('contributions.itemPurpose')}
+                        value={item.purpose}
+                        onChange={updateItem(index, 'purpose')}
+                        style={{ flex: 2 }}
+                        required
+                      />
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        value={item.amount}
+                        onChange={updateItem(index, 'amount')}
+                        style={{ flex: 1 }}
+                        required
+                      />
+                      <button type="button" className="btn btn--secondary btn--sm" onClick={() => removeItem(index)}>
+                        {t('common.cancel')}
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn--secondary btn--sm" onClick={addItem}>
+                    {t('contributions.addItem')}
+                  </button>
+                  {itemsMismatch && (
+                    <div className="field-error" style={{ marginTop: 8 }}>
+                      {t('contributions.itemsMismatch')} ({itemsTotal} ≠ {form.amount})
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="form-actions">
-              <button type="submit" className="btn btn--primary" disabled={submitting}>
+              <button type="submit" className="btn btn--primary" disabled={submitting || itemsMismatch}>
                 {submitting ? t('common.loading') : t('common.record')}
               </button>
             </div>

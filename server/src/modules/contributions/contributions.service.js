@@ -1,6 +1,7 @@
 import { withTransaction } from '../../config/db.js';
 import { notFound, AppError } from '../../errors/AppError.js';
 import { contributionsRepository } from './contributions.repository.js';
+import { contributionItemsRepository } from './contributionItems.repository.js';
 import { postLedgerEntry } from '../financial/financialEngine.service.js';
 import { transactionsRepository } from '../financial/transactions.repository.js';
 import { getOpenPeriod } from '../financial/financialPeriods.service.js';
@@ -9,6 +10,11 @@ import { pledgesRepository } from '../pledges/pledges.repository.js';
 import { syncPledgeStatus } from '../pledges/pledges.service.js';
 import { issueReceiptForContribution } from '../receipts/receipts.service.js';
 import { addMoney, compareMoney } from '../financial/money.js';
+import { formatMoney } from '../financial/moneyFormat.js';
+import { contributorsRepository } from '../contributors/contributors.repository.js';
+import { tenantsRepository } from '../tenants/tenants.repository.js';
+import { categoriesRepository } from '../categories/categories.repository.js';
+import { sendSms } from '../sms/sms.service.js';
 
 export { enrichWithContributorInfo } from '../contributors/contributorEnrichment.js';
 
@@ -20,7 +26,7 @@ export { enrichWithContributorInfo } from '../contributors/contributorEnrichment
 // received (docs/FINANCIAL_ARCHITECTURE.md §8 draws this line for expenses,
 // not income).
 export async function recordContribution(tenantId, data, actorUserId) {
-  return withTransaction(async (connection) => {
+  const result = await withTransaction(async (connection) => {
     const openPeriod = await getOpenPeriod(tenantId, connection);
     if (!openPeriod) throw notFound('No open financial period to post this contribution against');
 
@@ -85,6 +91,13 @@ export async function recordContribution(tenantId, data, actorUserId) {
     // .service.js's transfer() for the same pattern).
     await transactionsRepository.update(tenantId, transaction.id, { reference_id: contribution.id }, connection);
 
+    // Optional receipt/statement-level breakdown — see contribution_items
+    // migration (0028) for why this doesn't touch the ledger. Already
+    // validated to sum to data.amount by contributions.validator.js.
+    const items = data.items
+      ? await contributionItemsRepository.insertMany(tenantId, contribution.id, data.items, connection)
+      : [];
+
     if (data.pledgeId) {
       await syncPledgeStatus(tenantId, data.pledgeId, connection);
     }
@@ -105,8 +118,41 @@ export async function recordContribution(tenantId, data, actorUserId) {
       connection
     );
 
-    return { ...contribution, transaction, receipt };
+    return { ...contribution, transaction, receipt, items };
   });
+
+  // SMS confirmation happens strictly after the transaction above has
+  // committed — a slow or failed SMS must never be able to roll back a
+  // valid, already-posted contribution (sendSms() itself also never
+  // throws, as defense in depth). Silently skipped when the contributor
+  // has no phone on file or wasn't specified — this is not an error.
+  if (result.contributor_id) {
+    const [contributor, tenant, category] = await Promise.all([
+      contributorsRepository.findById(tenantId, result.contributor_id),
+      tenantsRepository.findById(tenantId),
+      categoriesRepository.findById(tenantId, result.category_id),
+    ]);
+    if (contributor?.phone) {
+      const sms = await sendSms(tenantId, {
+        contributorId: contributor.id,
+        phone: contributor.phone,
+        templateKey: 'contribution_confirmation',
+        locale: contributor.locale ?? tenant?.locale_default ?? 'en',
+        params: {
+          churchName: tenant?.name,
+          memberName: contributor.full_name,
+          amount: `${tenant?.base_currency ?? ''} ${formatMoney(result.amount)}`.trim(),
+          date: result.contribution_date,
+          reference: result.receipt?.receipt_number ?? category?.name ?? '',
+        },
+        relatedType: 'contributions',
+        relatedId: result.id,
+      });
+      return { ...result, sms };
+    }
+  }
+
+  return { ...result, sms: null };
 }
 
 export async function listContributions(tenantId, filters) {

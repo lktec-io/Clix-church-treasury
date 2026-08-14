@@ -18,7 +18,12 @@ import axios from 'axios';
 // backend, see docs/API_ARCHITECTURE.md §Production), so same-origin is
 // the one fallback that is actually correct for a real deployment rather
 // than one that would silently point at the wrong host again.
-const baseURL =
+// Exported so memberClient.js (the member-portal's separate axios instance)
+// can share the exact same origin-resolution logic without duplicating it —
+// both clients ultimately talk to the same API host, just different
+// sub-paths (/auth/* vs /member/auth/*), and each needs its own token
+// state/refresh flow (see memberClient.js for why they can't share one).
+export const baseURL =
   import.meta.env.VITE_API_BASE_URL ??
   (import.meta.env.DEV ? 'http://localhost:4005/api/v1' : `${window.location.origin}/api/v1`);
 

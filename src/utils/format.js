@@ -10,6 +10,23 @@ export function formatMoney(amountString) {
   return `${negative ? '-' : ''}${withSeparators}.${frac}`;
 }
 
+// Same integer-cents approach as the backend's money.js#sumMoney — needed
+// here only for display-side aggregation (e.g. grouping a member's
+// contributions by month on MemberHistoryPage.jsx); the source of truth
+// for every total shown elsewhere in the app is still the backend's own
+// calculation, never recomputed from scratch on the frontend.
+export function sumMoneyStrings(values) {
+  const toCents = (v) => {
+    const [whole, frac = ''] = String(v).split('.');
+    const sign = whole.startsWith('-') ? -1 : 1;
+    return sign * (Math.abs(Number(whole)) * 100 + Number(frac.padEnd(2, '0').slice(0, 2)));
+  };
+  const cents = values.reduce((sum, v) => sum + toCents(v), 0);
+  const sign = cents < 0 ? '-' : '';
+  const abs = Math.abs(cents);
+  return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
+}
+
 export function formatDate(value) {
   if (!value) return '—';
   const date = new Date(value);

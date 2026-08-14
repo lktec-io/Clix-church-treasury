@@ -5,9 +5,13 @@ import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import { authenticate } from './middleware/authenticate.js';
 import { tenantContext } from './middleware/tenantContext.js';
+import { authenticateMember } from './middleware/authenticateMember.js';
+import { memberContext } from './middleware/memberContext.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { apiRateLimiter } from './middleware/rateLimit.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+import { memberAuthRoutes } from './modules/memberAuth/memberAuth.routes.js';
+import { memberRoutes } from './modules/memberAuth/member.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { accountsRoutes } from './modules/accounts/accounts.routes.js';
@@ -47,6 +51,14 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
   });
 
   app.use('/api/v1/auth', authRoutes({ authenticate: auth, tenantContext }));
+
+  // Member self-service portal — a fully parallel auth/middleware chain
+  // (authenticateMember/memberContext, never authenticate/tenantContext)
+  // for the second subject type (contributors, not users). See
+  // docs/MASTER_TODO.md's member-portal plan for why this is a separate
+  // chain rather than an extension of the staff one.
+  app.use('/api/v1/member/auth', memberAuthRoutes({ authenticateMember, memberContext }));
+  app.use('/api/v1/member', apiRateLimiter, authenticateMember, memberContext, memberRoutes());
 
   app.use('/api/v1/users', apiRateLimiter, auth, tenantContext, usersRoutes());
   app.use('/api/v1/audit-logs', apiRateLimiter, auth, tenantContext, auditRoutes());

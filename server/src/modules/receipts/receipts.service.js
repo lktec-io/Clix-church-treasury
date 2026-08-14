@@ -3,6 +3,7 @@ import { nowSql } from '../../db/time.js';
 import { receiptsRepository } from './receipts.repository.js';
 import { generateReceiptNumber } from './receiptNumber.js';
 import { contributionsRepository } from '../contributions/contributions.repository.js';
+import { contributionItemsRepository } from '../contributions/contributionItems.repository.js';
 import { transactionsRepository } from '../financial/transactions.repository.js';
 import { tenantsRepository } from '../tenants/tenants.repository.js';
 import { churchSettingsRepository } from '../tenants/churchSettings.repository.js';
@@ -56,7 +57,7 @@ export async function getReceiptRenderData(tenantId, receiptId, { canViewContrib
   const contribution = await contributionsRepository.findById(tenantId, receipt.contribution_id);
   if (!contribution) throw notFound('Contribution behind this receipt no longer exists');
 
-  const [transaction, tenant, churchSettings, account, fund, category, issuedBy] = await Promise.all([
+  const [transaction, tenant, churchSettings, account, fund, category, issuedBy, items] = await Promise.all([
     transactionsRepository.findById(tenantId, contribution.transaction_id),
     tenantsRepository.findById(tenantId),
     churchSettingsRepository.findByTenantId(tenantId),
@@ -64,6 +65,7 @@ export async function getReceiptRenderData(tenantId, receiptId, { canViewContrib
     fundsRepository.findById(tenantId, contribution.fund_id),
     categoriesRepository.findById(tenantId, contribution.category_id),
     usersRepository.findById(tenantId, receipt.issued_by_user_id),
+    contributionItemsRepository.findByContributionId(tenantId, contribution.id),
   ]);
 
   const contributor =
@@ -71,5 +73,5 @@ export async function getReceiptRenderData(tenantId, receiptId, { canViewContrib
       ? await contributorsRepository.findById(tenantId, contribution.contributor_id)
       : null;
 
-  return { receipt, contribution, transaction, tenant, churchSettings, account, fund, category, issuedBy, contributor };
+  return { receipt, contribution, transaction, tenant, churchSettings, account, fund, category, issuedBy, contributor, items };
 }

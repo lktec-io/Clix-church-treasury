@@ -20,6 +20,7 @@ const LABELS = {
     transactionNumber: 'Transaction No.',
     generatedOn: 'Generated on',
     thankYou: 'Thank you for your contribution.',
+    breakdown: 'Breakdown',
   },
   sw: {
     receipt: 'Stakabadhi',
@@ -38,6 +39,7 @@ const LABELS = {
     transactionNumber: 'Namba ya Muamala',
     generatedOn: 'Imetengenezwa tarehe',
     thankYou: 'Asante kwa mchango wako.',
+    breakdown: 'Mchanganuo',
   },
 };
 

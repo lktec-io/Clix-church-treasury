@@ -13,5 +13,6 @@ export function categoriesRoutes() {
   router.get('/', requirePermission('dashboard.view'), categoriesController.list);
   router.post('/', requirePermission('categories.manage'), categoriesController.create);
   router.get('/:id', requirePermission('dashboard.view'), categoriesController.get);
+  router.patch('/:id', requirePermission('categories.manage'), categoriesController.update);
   return router;
 }

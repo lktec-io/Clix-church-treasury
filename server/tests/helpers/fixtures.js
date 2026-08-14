@@ -9,6 +9,7 @@ import { categoriesRepository } from '../../src/modules/categories/categories.re
 import { financialPeriodsRepository } from '../../src/modules/financial/financialPeriods.repository.js';
 import { contributorsRepository } from '../../src/modules/contributors/contributors.repository.js';
 import { pool } from '../../src/config/db.js';
+import { nowSql } from '../../src/db/time.js';
 
 let counter = 0;
 
@@ -76,6 +77,25 @@ export async function createTestContributor(tenantId, overrides = {}) {
     fullName: uniqueName('Contributor'),
     ...overrides,
   });
+}
+
+// Sets up a contributor with member-portal access already enabled and a
+// known PIN, bypassing the real enrollment SMS flow — same test technique
+// as createTestUserWithRole's fixed password hash above (enrollment.
+// service.js deliberately never returns the raw PIN it generates, so tests
+// that need to log in as a member must seed one directly).
+export async function createTestMemberContributor(tenantId, { pin = '1234', ...overrides } = {}) {
+  const contributor = await createTestContributor(tenantId, { phone: '+255700000000', ...overrides });
+  const pinHash = await bcrypt.hash(pin, 4);
+  const updated = await contributorsRepository.update(tenantId, contributor.id, {
+    member_number: contributor.member_number ?? uniqueName('M'),
+    pin_hash: pinHash,
+    must_change_pin: false,
+    failed_pin_attempts: 0,
+    pin_locked_until: null,
+    portal_enabled_at: nowSql(),
+  });
+  return { ...updated, rawPin: pin };
 }
 
 // Bundles account + fund + open period, the trio every ledger posting needs.

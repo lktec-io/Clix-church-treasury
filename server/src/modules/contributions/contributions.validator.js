@@ -1,8 +1,45 @@
 import { validationError } from '../../errors/AppError.js';
 import { isValidPaymentMethod, PAYMENT_METHODS } from '../financial/paymentMethods.js';
-import { isPositiveMoneyString } from '../financial/money.js';
+import { isPositiveMoneyString, sumMoney, compareMoney } from '../financial/money.js';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_ITEMS = 20;
+
+// Optional receipt/statement-level breakdown (e.g. "Sadaka ya Kambi = 5,000"
+// + "Ujenzi wa Kambi = 5,000" under one 10,000 payment) — see
+// contribution_items migration (0028) for why this doesn't carry its own
+// category_id. Returns null when no items were supplied, so a contribution
+// with no breakdown behaves exactly as it did before this validator gained
+// this branch.
+function validateItems(rawItems, totalAmount, fields) {
+  if (rawItems === undefined || rawItems === null) return null;
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    fields.items = 'must be a non-empty array if provided';
+    return null;
+  }
+  if (rawItems.length > MAX_ITEMS) {
+    fields.items = `must contain at most ${MAX_ITEMS} items`;
+    return null;
+  }
+  const items = [];
+  for (let i = 0; i < rawItems.length; i += 1) {
+    const item = rawItems[i] ?? {};
+    if (typeof item.purpose !== 'string' || item.purpose.trim().length === 0 || item.purpose.length > 150) {
+      fields.items = `item ${i}: purpose is required and must be at most 150 characters`;
+      return null;
+    }
+    if (!isPositiveMoneyString(item.amount)) {
+      fields.items = `item ${i}: amount must be a positive decimal string with at most 2 places`;
+      return null;
+    }
+    items.push({ purpose: item.purpose.trim(), amount: item.amount });
+  }
+  if (isPositiveMoneyString(totalAmount) && compareMoney(sumMoney(items.map((i) => i.amount)), totalAmount) !== 0) {
+    fields.items = `item amounts must sum to the total amount (${totalAmount})`;
+    return null;
+  }
+  return items;
+}
 
 export function validateCreateContribution(body) {
   const fields = {};
@@ -34,6 +71,8 @@ export function validateCreateContribution(body) {
     else if (body.notes.length > 500) fields.notes = 'must be at most 500 characters';
   }
 
+  const items = validateItems(body.items, body.amount, fields);
+
   if (Object.keys(fields).length > 0) {
     throw validationError('Invalid contribution payload', fields);
   }
@@ -49,6 +88,7 @@ export function validateCreateContribution(body) {
     contributionDate: body.contributionDate,
     reference: body.reference?.trim() || null,
     notes: body.notes?.trim() || null,
+    items,
   };
 }
 

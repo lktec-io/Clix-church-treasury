@@ -8,7 +8,7 @@ import { receiptLabels } from './receiptLabels.js';
 // (docs/MASTER_TODO.md Phase 7: "avoid unnecessarily decorative design").
 export function renderReceiptPdf(data, stream, locale = 'en') {
   const t = receiptLabels(locale);
-  const { receipt, contribution, transaction, tenant, churchSettings, account, fund, category, issuedBy, contributor } = data;
+  const { receipt, contribution, transaction, tenant, churchSettings, account, fund, category, issuedBy, contributor, items } = data;
 
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   doc.pipe(stream);
@@ -45,6 +45,20 @@ export function renderReceiptPdf(data, stream, locale = 'en') {
   if (contribution.reference) row(t.reference, contribution.reference);
   if (contribution.notes) row(t.description, contribution.notes);
   row(t.recordedBy, issuedBy?.full_name);
+
+  // Optional itemized breakdown (contribution_items, migration 0028) — the
+  // client's own sample receipt ("Sadaka ya Kambi = 5,000 / Ujenzi wa
+  // Kambi = 5,000") is exactly this layout. Omitted entirely when the
+  // contribution has no items, so a plain contribution's receipt is
+  // unchanged from before.
+  if (items && items.length > 0) {
+    doc.moveDown(1);
+    doc.fontSize(10).font('Helvetica-Bold').text(t.breakdown ?? 'Breakdown');
+    doc.moveDown(0.3);
+    for (const item of items) {
+      doc.fontSize(10).font('Helvetica').text(`${item.purpose}  =  ${formatMoney(item.amount)}`);
+    }
+  }
 
   doc.moveDown(2);
   doc.fontSize(10).font('Helvetica-Oblique').text(t.thankYou, { align: 'center' });

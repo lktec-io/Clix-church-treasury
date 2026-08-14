@@ -27,11 +27,27 @@ export const fundsApi = {
 export const categoriesApi = {
   list: (type) => apiClient.get('/categories', { params: type ? { type } : {} }).then(unwrap),
   create: (body) => apiClient.post('/categories', body).then(unwrap),
+  update: (id, body) => apiClient.patch(`/categories/${id}`, body).then(unwrap),
 };
 
 export const contributorsApi = {
   list: () => apiClient.get('/contributors').then(unwrap),
   create: (body) => apiClient.post('/contributors', body).then(unwrap),
+  enablePortalAccess: (id) => apiClient.post(`/contributors/${id}/portal-access`).then(unwrap),
+  resetPin: (id) => apiClient.post(`/contributors/${id}/portal-access/reset-pin`).then(unwrap),
+  statement: (id, year, month) =>
+    apiClient.get(`/contributors/${id}/statement`, { params: { year, month } }).then(unwrap),
+  sendStatementSms: (id, year, month) =>
+    apiClient.post(`/contributors/${id}/statement/send-sms`, { year, month }).then(unwrap),
+  async openStatementPdf(id, year, month, locale) {
+    const res = await apiClient.get(`/contributors/${id}/statement/pdf`, {
+      params: { year, month, ...(locale ? { locale } : {}) },
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
 };
 
 export const contributionsApi = {

@@ -12,6 +12,7 @@ import {
   FiClipboard,
   FiCalendar,
   FiBarChart2,
+  FiSend,
   FiMenu,
   FiX,
   FiLogOut,
@@ -64,6 +65,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/pledges', icon: FiTarget, labelKey: 'nav.pledges', permission: 'pledges.view' },
       { to: '/reports', icon: FiBarChart2, labelKey: 'nav.reports', permission: 'reports.view' },
+      { to: '/member-statements', icon: FiSend, labelKey: 'nav.memberStatements', permission: 'contributors.view' },
     ],
   },
   {

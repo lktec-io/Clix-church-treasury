@@ -3,6 +3,7 @@ import { categoriesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 
 // Genuinely missing until now: income.view/expense.create both require a
@@ -12,18 +13,22 @@ import PermissionGate from '../components/PermissionGate.jsx';
 // a freshly-registered tenant had no category to select and could not
 // record a contribution or expense at all. This page closes that gap,
 // following the same list+create pattern as AccountsPage/FundsPage.
+const REPORT_GROUPS = ['', 'tithe', 'offering', 'other'];
+
 function emptyForm() {
-  return { type: 'income', name: '' };
+  return { type: 'income', name: '', reportGroup: '' };
 }
 
 export default function CategoriesPage() {
   const { t } = useLocale();
+  const { hasPermission } = useAuth();
   const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(emptyForm());
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [savingGroupId, setSavingGroupId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,7 +53,7 @@ export default function CategoriesPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await categoriesApi.create(form);
+      await categoriesApi.create({ ...form, reportGroup: form.reportGroup || null });
       setForm(emptyForm());
       await load();
       toast.success(t('categories.created'));
@@ -56,6 +61,25 @@ export default function CategoriesPage() {
       setError(unwrapApiError(err).message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // The Zaka/Sadaka/Matoleo-Mengine split on every member statement is
+  // driven entirely by this field (contributions/statement.service.js) —
+  // exposing it as an inline, editable selector on already-existing
+  // categories matters just as much as setting it at creation time, since
+  // every tenant that registered before this feature existed has
+  // categories with report_group still NULL.
+  const handleReportGroupChange = async (category, reportGroup) => {
+    setSavingGroupId(category.id);
+    setError(null);
+    try {
+      await categoriesApi.update(category.id, { reportGroup: reportGroup || null });
+      await load();
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    } finally {
+      setSavingGroupId(null);
     }
   };
 
@@ -82,6 +106,18 @@ export default function CategoriesPage() {
                 <label>{t('common.name')}</label>
                 <input value={form.name} onChange={handleChange('name')} required />
               </div>
+              {form.type === 'income' && (
+                <div className="field">
+                  <label>{t('categories.reportGroup')}</label>
+                  <select value={form.reportGroup} onChange={handleChange('reportGroup')}>
+                    {REPORT_GROUPS.map((g) => (
+                      <option key={g || 'none'} value={g}>
+                        {g ? t(`categories.reportGroup.${g}`) : t('categories.reportGroup.none')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="form-actions">
               <button type="submit" className="btn btn--primary" disabled={submitting}>
@@ -104,6 +140,7 @@ export default function CategoriesPage() {
                 <tr>
                   <th>{t('common.name')}</th>
                   <th>{t('budgets.type')}</th>
+                  <th>{t('categories.reportGroup')}</th>
                   <th>{t('common.status')}</th>
                 </tr>
               </thead>
@@ -112,6 +149,27 @@ export default function CategoriesPage() {
                   <tr key={c.id}>
                     <td>{c.name}</td>
                     <td>{c.type === 'income' ? t('nav.contributions') : t('nav.expenses')}</td>
+                    <td>
+                      {c.type !== 'income' ? (
+                        '—'
+                      ) : hasPermission('categories.manage') ? (
+                        <select
+                          value={c.report_group ?? ''}
+                          disabled={savingGroupId === c.id}
+                          onChange={(e) => handleReportGroupChange(c, e.target.value)}
+                        >
+                          {REPORT_GROUPS.map((g) => (
+                            <option key={g || 'none'} value={g}>
+                              {g ? t(`categories.reportGroup.${g}`) : t('categories.reportGroup.none')}
+                            </option>
+                          ))}
+                        </select>
+                      ) : c.report_group ? (
+                        t(`categories.reportGroup.${c.report_group}`)
+                      ) : (
+                        t('categories.reportGroup.none')
+                      )}
+                    </td>
                     <td>
                       <span className={`badge ${c.is_active ? 'badge--success' : 'badge--neutral'}`}>
                         {c.is_active ? t('common.active') : t('common.inactive')}

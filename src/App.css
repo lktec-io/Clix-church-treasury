@@ -582,3 +582,111 @@ table.data-table {
   flex-direction: column;
   gap: 14px;
 }
+
+/* ---------- Member portal ---------- */
+/* Deliberately simpler than .app-shell above: no sidebar, a slim top bar,
+   and a bottom tab bar for mobile — this is the primary way members will
+   actually use it (docs/MASTER_TODO.md's member-portal plan: "mobile-first").
+   Reuses the same --surface/--border/--text-* custom properties and the
+   same ~900px breakpoint convention as the staff shell rather than
+   introducing a second design system. */
+.member-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  width: 100%;
+  padding-bottom: 64px; /* leave room for the fixed bottom tab bar */
+}
+
+@media (min-width: 900px) {
+  .member-shell {
+    padding-bottom: 0;
+  }
+}
+
+.member-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.member-topbar__title {
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.member-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-topbar__locale {
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.member-greeting {
+  padding: 10px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.member-content {
+  flex: 1;
+  padding: 0 20px 20px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.member-tabbar {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+}
+
+@media (min-width: 900px) {
+  .member-tabbar {
+    position: static;
+    max-width: 640px;
+    margin: 0 auto 20px;
+    border-top: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px;
+    gap: 6px;
+  }
+}
+
+.member-tabbar__link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.member-tabbar__link svg {
+  font-size: 18px;
+}
+
+.member-tabbar__link.is-active {
+  color: var(--color-primary);
+}

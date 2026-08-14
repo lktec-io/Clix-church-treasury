@@ -34,8 +34,18 @@ export function LocaleProvider({ children }) {
   // one dictionary never breaks rendering — it just surfaces the untranslated
   // key visibly, which is easy to spot and fix (docs/DEVELOPMENT_RULES.md
   // §5: no hardcoded strings, but a missing key must never crash the page).
+  // Optional second argument does `{{name}}`-style interpolation (mirrors
+  // the backend's sms/smsTemplates.js#renderTemplate) — added for the
+  // member portal's "Welcome, {{name}}" greeting; every pre-existing
+  // `t('key')` call with no second argument is unaffected.
   const t = useCallback(
-    (key) => DICTIONARIES[locale]?.[key] ?? DICTIONARIES[DEFAULT_LOCALE]?.[key] ?? key,
+    (key, params) => {
+      const template = DICTIONARIES[locale]?.[key] ?? DICTIONARIES[DEFAULT_LOCALE]?.[key] ?? key;
+      if (!params) return template;
+      return template.replace(/\{\{(\w+)\}\}/g, (_match, paramKey) =>
+        params[paramKey] !== undefined && params[paramKey] !== null ? String(params[paramKey]) : ''
+      );
+    },
     [locale]
   );
 

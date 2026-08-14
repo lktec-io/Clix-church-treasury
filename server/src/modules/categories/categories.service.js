@@ -29,3 +29,9 @@ export async function createCategory(tenantId, data) {
     throw error;
   }
 }
+
+export async function updateCategory(tenantId, id, updates) {
+  const updated = await categoriesRepository.update(tenantId, id, updates);
+  if (!updated) throw notFound('Category not found');
+  return updated;
+}
