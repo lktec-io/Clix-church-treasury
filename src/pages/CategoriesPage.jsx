@@ -5,6 +5,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 
 // Genuinely missing until now: income.view/expense.create both require a
 // categoryId (server/src/modules/contributions/contributions.validator.js,
@@ -85,7 +86,7 @@ export default function CategoriesPage() {
 
   return (
     <div>
-      <h1>{t('categories.title')}</h1>
+      <PageHeader title={t('categories.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="categories.manage">

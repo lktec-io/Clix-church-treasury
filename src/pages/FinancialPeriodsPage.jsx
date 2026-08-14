@@ -5,6 +5,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 import { formatMoney } from '../utils/format.js';
 
 function emptyForm() {
@@ -106,7 +107,7 @@ export default function FinancialPeriodsPage() {
 
   return (
     <div>
-      <h1>{t('financialPeriods.title')}</h1>
+      <PageHeader title={t('financialPeriods.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="financial_period.manage">

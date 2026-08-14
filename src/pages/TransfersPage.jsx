@@ -4,6 +4,7 @@ import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 import { formatMoney, formatDate } from '../utils/format.js';
 
 function emptyForm() {
@@ -70,7 +71,7 @@ export default function TransfersPage() {
 
   return (
     <div>
-      <h1>{t('transfers.title')}</h1>
+      <PageHeader title={t('transfers.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="transfers.create">

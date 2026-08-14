@@ -5,6 +5,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 
 const TYPES = ['cash', 'bank', 'mobile_money'];
 
@@ -80,7 +81,7 @@ export default function AccountsPage() {
 
   return (
     <div>
-      <h1>{t('accounts.title')}</h1>
+      <PageHeader title={t('accounts.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="accounts.manage">

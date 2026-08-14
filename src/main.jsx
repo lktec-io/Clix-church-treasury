@@ -1,6 +1,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+// Self-hosted Poppins (SIL Open Font License — freely bundleable, unlike
+// the licensed CircularTtf this design system specified previously and
+// could never actually load in this environment). Only the weights the
+// design system uses (index.css's --font-weight-* scale).
+import '@fontsource/poppins/400.css'
+import '@fontsource/poppins/500.css'
+import '@fontsource/poppins/600.css'
+import '@fontsource/poppins/700.css'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'

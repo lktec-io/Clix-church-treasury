@@ -5,6 +5,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 
 export default function FundsPage() {
   const { t } = useLocale();
@@ -77,7 +78,7 @@ export default function FundsPage() {
 
   return (
     <div>
-      <h1>{t('funds.title')}</h1>
+      <PageHeader title={t('funds.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="funds.manage">

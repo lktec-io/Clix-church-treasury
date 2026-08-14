@@ -65,7 +65,7 @@
   border-radius: var(--radius-sm);
   background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
   color: #ffffff;
-  font-weight: 800;
+  font-weight: 700;
   flex-shrink: 0;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 4px 10px rgba(var(--color-accent-rgb), 0.35);
 }
@@ -437,7 +437,7 @@
 
 .hero-card__value {
   font-size: 34px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   margin-top: 4px;
   color: #fff;
@@ -1067,7 +1067,7 @@ table.data-table {
   border-radius: var(--radius-sm);
   background: var(--color-primary);
   color: var(--color-accent-light, #fff);
-  font-weight: 800;
+  font-weight: 700;
   flex-shrink: 0;
 }
 

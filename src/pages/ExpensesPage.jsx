@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 import { formatMoney } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -128,7 +129,7 @@ export default function ExpensesPage() {
 
   return (
     <div>
-      <h1>{t('expenses.title')}</h1>
+      <PageHeader title={t('expenses.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="expense.create">

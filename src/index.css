@@ -1,17 +1,3 @@
-/* CircularTtf is a licensed commercial typeface (Lineto) — this repo does
-   not (and must not) bundle the binary. Drop the licensed file at
-   public/fonts/circular-std-font.ttf to activate it; until then the
-   fallback stack below (a premium, widely-available system sans-serif
-   ramp) keeps the product looking deliberate rather than broken. Never
-   fall back to `serif` for a financial product — that reads as an error,
-   not a design choice. */
-@font-face {
-  font-family: 'CircularTtf';
-  src: local('Circular'), url('/fonts/circular-std-font.ttf') format('truetype');
-  font-weight: 400 700;
-  font-display: swap;
-}
-
 :root {
   /* ---------- Clix brand: Navy + Green + sparing Orange ----------
      Actual Clix Digital Works brand identity (not a placeholder). Navy
@@ -74,10 +60,19 @@
   --motion-base: 0.25s;
   --motion-slow: 0.35s;
 
-  --font-primary: 'CircularTtf', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  /* Poppins, self-hosted via @fontsource/poppins (main.jsx) — SIL Open
+     Font License, freely bundleable, unlike the previously-specified
+     CircularTtf which this project could never legally obtain and load.
+     Weights 400/500/600/700 only, per the design brief's "avoid excessive
+     800/900 weight" instruction. */
+  --font-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --sans: var(--font-primary);
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
 
-  font: 15px/1.55 var(--font-primary);
+  font: 400 15px/1.6 var(--font-primary);
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);

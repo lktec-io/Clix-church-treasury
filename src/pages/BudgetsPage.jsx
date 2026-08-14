@@ -4,6 +4,7 @@ import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 import { formatMoney } from '../utils/format.js';
 
 function emptyForm(periodId) {
@@ -101,7 +102,7 @@ export default function BudgetsPage() {
 
   return (
     <div>
-      <h1>{t('budgets.title')}</h1>
+      <PageHeader title={t('budgets.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <div className="card">

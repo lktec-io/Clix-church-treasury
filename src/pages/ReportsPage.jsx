@@ -4,6 +4,7 @@ import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 import { formatMoney, formatDate } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -195,7 +196,7 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <h1>{t('reports.title')}</h1>
+      <PageHeader title={t('reports.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <div className="card">

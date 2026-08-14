@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 
 function emptyForm() {
   return { email: '', fullName: '' };
@@ -110,7 +111,7 @@ export default function UsersPage() {
 
   return (
     <div>
-      <h1>{t('users.title')}</h1>
+      <PageHeader title={t('users.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="users.manage">
