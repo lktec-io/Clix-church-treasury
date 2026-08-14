@@ -116,6 +116,7 @@
   "contributions.sms.failed": "The contribution was saved successfully, but the SMS could not be sent.",
   "contributions.sms.skipped_no_provider": "Contribution saved. SMS sending is not configured yet.",
   "contributions.retrySms": "Try Sending SMS Again",
+  "contributions.sms.reason": "Reason: {{reason}}",
 
   "contributors.title": "Contributors",
   "contributors.addNew": "Add contributor",

@@ -69,5 +69,10 @@ export async function sendSms(
     related_id: relatedId,
   });
 
-  return { status: result.status };
+  // errorMessage is always either Beem's own rejection text, this
+  // module's own phone-format text, or a network-error message — never a
+  // credential/secret (those never flow through `result`) — so it's safe
+  // to hand back to callers for staff-facing display (client requirement:
+  // "for staff users, surface a concise reason where safe").
+  return { status: result.status, errorMessage: result.errorMessage ?? null };
 }

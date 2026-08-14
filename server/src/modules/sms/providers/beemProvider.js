@@ -46,10 +46,13 @@ export async function sendViaBeem({ phone, body }) {
   const payload = await response.json().catch(() => null);
 
   if (!response.ok || !payload || payload.successful !== true) {
-    return {
-      status: 'failed',
-      errorMessage: payload?.message ?? `Beem API returned HTTP ${response.status}`,
-    };
+    // Both the HTTP status and Beem's own message text, when Beem sends
+    // one — a bare "Invalid Authentication Parameters" alone doesn't tell
+    // an operator whether that was a 401 (credentials wrong/expired) or a
+    // 400 (malformed request accepted-looking creds); the status code
+    // narrows that down without exposing the credentials themselves.
+    const detail = payload?.message ? `HTTP ${response.status} — ${payload.message}` : `HTTP ${response.status}`;
+    return { status: 'failed', errorMessage: `Beem API: ${detail}` };
   }
 
   return { status: 'sent', providerMessageId: payload.request_id ? String(payload.request_id) : null };

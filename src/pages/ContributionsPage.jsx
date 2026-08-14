@@ -146,7 +146,7 @@ export default function ContributionsPage() {
       // auto-dismiss and hide the retry action) so a failed send is both
       // honest and recoverable without re-entering the whole contribution.
       if (result.sms) {
-        setSmsNotice({ contributionId: result.id, status: result.sms.status });
+        setSmsNotice({ contributionId: result.id, status: result.sms.status, reason: result.sms.errorMessage });
       }
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -160,7 +160,7 @@ export default function ContributionsPage() {
     setResendingSms(true);
     try {
       const { sms } = await contributionsApi.resendSms(smsNotice.contributionId);
-      setSmsNotice({ contributionId: smsNotice.contributionId, status: sms.status });
+      setSmsNotice({ contributionId: smsNotice.contributionId, status: sms.status, reason: sms.errorMessage });
       if (sms.status === 'sent') toast.success(t('contributions.sms.sent'));
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -192,13 +192,20 @@ export default function ContributionsPage() {
       <PageHeader title={t('contributions.title')} subtitle={t('contributions.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
       {smsNotice && smsNotice.status !== 'sent' && (
-        <div className={`alert ${smsNotice.status === 'failed' ? 'alert--warning' : 'alert--info'}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <span>{t(`contributions.sms.${smsNotice.status}`)}</span>
-          {smsNotice.status === 'failed' && (
-            <button type="button" className="btn btn--secondary btn--sm" onClick={handleRetrySms} disabled={resendingSms}>
-              <FiRefreshCw aria-hidden="true" /> {resendingSms ? t('common.loading') : t('contributions.retrySms')}
-            </button>
-          )}
+        <div className={`alert ${smsNotice.status === 'failed' ? 'alert--warning' : 'alert--info'}`} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span>{t(`contributions.sms.${smsNotice.status}`)}</span>
+            {smsNotice.status === 'failed' && (
+              <button type="button" className="btn btn--secondary btn--sm" onClick={handleRetrySms} disabled={resendingSms}>
+                <FiRefreshCw aria-hidden="true" /> {resendingSms ? t('common.loading') : t('contributions.retrySms')}
+              </button>
+            )}
+          </div>
+          {/* Staff-only page — safe to show the concrete (non-secret) reason
+              a treasurer would need to know whether this is a "contact IT
+              about the SMS provider" situation vs. "this contributor's
+              phone number is wrong" situation. */}
+          {smsNotice.reason && <span style={{ fontSize: 12, opacity: 0.85 }}>{t('contributions.sms.reason', { reason: smsNotice.reason })}</span>}
         </div>
       )}
 

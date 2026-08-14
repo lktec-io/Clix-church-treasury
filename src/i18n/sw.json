@@ -116,6 +116,7 @@
   "contributions.sms.failed": "Mchango umehifadhiwa kikamilifu, lakini SMS haikutumwa.",
   "contributions.sms.skipped_no_provider": "Mchango umehifadhiwa. Utumaji wa SMS bado haujawekwa.",
   "contributions.retrySms": "Jaribu Kutuma SMS Tena",
+  "contributions.sms.reason": "Sababu: {{reason}}",
 
   "contributors.title": "Wachangiaji",
   "contributors.addNew": "Ongeza mchangiaji",
