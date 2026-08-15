@@ -13,6 +13,16 @@ class ContributionsRepository extends TenantScopedRepository {
     return rows[0] ?? null;
   }
 
+  async findByIdempotencyKey(tenantId, idempotencyKey, connection) {
+    assertTenantId(tenantId);
+    if (!idempotencyKey) return null;
+    const [rows] = await this.runner(connection).query(
+      'SELECT * FROM contributions WHERE tenant_id = ? AND idempotency_key = ? LIMIT 1',
+      [tenantId, idempotencyKey]
+    );
+    return rows[0] ?? null;
+  }
+
   async search(tenantId, { contributorId, pledgeId, fundId, paymentMethod, dateFrom, dateTo, limit = 50, offset = 0 } = {}, connection) {
     assertTenantId(tenantId);
     const conditions = ['tenant_id = ?'];

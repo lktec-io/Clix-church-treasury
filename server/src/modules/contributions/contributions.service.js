@@ -61,7 +61,29 @@ async function sendContributionConfirmationSms(tenantId, contribution) {
 // received (docs/FINANCIAL_ARCHITECTURE.md §8 draws this line for expenses,
 // not income).
 export async function recordContribution(tenantId, data, actorUserId) {
-  const result = await withTransaction(async (connection) => {
+  // Duplicate-submission guard: a double-click, a slow-network retry, or a
+  // treasurer resubmitting after an ambiguous timeout must never post the
+  // same payment twice. If the caller sent an idempotencyKey and a
+  // contribution with that key already exists, return it as-is instead of
+  // doing any financial work — deliberately checked before opening the
+  // transaction, so a duplicate request never even acquires the open-period
+  // read or a ledger row. See contributions.controller.js#create — this is
+  // an early-return, not an error; the caller's request did succeed, just
+  // on the first attempt.
+  if (data.idempotencyKey) {
+    const existing = await contributionsRepository.findByIdempotencyKey(tenantId, data.idempotencyKey);
+    if (existing) {
+      const [items, receipt] = await Promise.all([
+        contributionItemsRepository.findByContributionId(tenantId, existing.id),
+        receiptsRepository.findByContributionId(tenantId, existing.id),
+      ]);
+      return { ...existing, receipt, items, sms: null, deduplicated: true };
+    }
+  }
+
+  let result;
+  try {
+    result = await withTransaction(async (connection) => {
     const openPeriod = await getOpenPeriod(tenantId, connection);
     if (!openPeriod) throw notFound('No open financial period to post this contribution against');
 
@@ -114,6 +136,7 @@ export async function recordContribution(tenantId, data, actorUserId) {
         payment_method: data.paymentMethod,
         contribution_date: data.contributionDate,
         reference: data.reference,
+        idempotency_key: data.idempotencyKey ?? null,
         notes: data.notes,
         status: 'posted',
         recorded_by_user_id: actorUserId,
@@ -154,7 +177,31 @@ export async function recordContribution(tenantId, data, actorUserId) {
     );
 
     return { ...contribution, transaction, receipt, items };
-  });
+    });
+  } catch (error) {
+    // Backstop for the narrow race window the pre-check above can't close
+    // on its own (two requests carrying the same idempotencyKey arriving
+    // close enough together that both pass the pre-check before either
+    // commits) — same pattern already used for member-number/category
+    // uniqueness elsewhere in this codebase. The UNIQUE index is the real
+    // guarantee; this only turns a genuine collision into "here's the
+    // contribution that already exists" instead of a raw 500.
+    if (
+      data.idempotencyKey &&
+      error.code === 'ER_DUP_ENTRY' &&
+      error.message?.includes('uq_contributions_tenant_idempotency')
+    ) {
+      const existing = await contributionsRepository.findByIdempotencyKey(tenantId, data.idempotencyKey);
+      if (existing) {
+        const [items, receipt] = await Promise.all([
+          contributionItemsRepository.findByContributionId(tenantId, existing.id),
+          receiptsRepository.findByContributionId(tenantId, existing.id),
+        ]);
+        return { ...existing, receipt, items, sms: null, deduplicated: true };
+      }
+    }
+    throw error;
+  }
 
   // SMS confirmation happens strictly after the transaction above has
   // committed — a slow or failed SMS must never be able to roll back a

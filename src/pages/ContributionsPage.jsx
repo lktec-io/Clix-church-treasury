@@ -63,6 +63,12 @@ export default function ContributionsPage() {
   const [hasMore, setHasMore] = useState(false);
   const [smsNotice, setSmsNotice] = useState(null); // { contributionId, status } | null
   const [resendingSms, setResendingSms] = useState(false);
+  // One key per logical attempt, not per click — regenerated only after a
+  // successful save, so a double-click, a slow-network retry, or resubmitting
+  // after an ambiguous timeout all carry the SAME key and the backend
+  // (contributions.service.js#recordContribution) returns the original
+  // contribution instead of posting the payment twice.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -133,10 +139,12 @@ export default function ContributionsPage() {
         contributorId: form.contributorId ? Number(form.contributorId) : null,
         pledgeId: form.pledgeId ? Number(form.pledgeId) : null,
         items: items.length > 0 ? items : undefined,
+        idempotencyKey,
       });
       setForm(emptyForm());
       setItems([]);
       setShowBreakdown(false);
+      setIdempotencyKey(crypto.randomUUID()); // this logical attempt is done — the next Save is a new one
       await loadAll();
       toast.success(t('contributions.recorded'));
       // SMS delivery never blocks or reverses the save above (server/src/
@@ -351,12 +359,13 @@ export default function ContributionsPage() {
             {showBreakdown && (
               <div className="card" style={{ background: 'var(--bg-muted)', boxShadow: 'none', padding: 14 }}>
                 {items.map((item, index) => (
-                  <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                  <div key={index} className="breakdown-row">
                     <input
                       placeholder={t('contributions.itemPurpose')}
                       value={item.purpose}
                       onChange={updateItem(index, 'purpose')}
-                      style={{ flex: 2, background: 'var(--surface)' }}
+                      className="breakdown-row__purpose"
+                      style={{ background: 'var(--surface)' }}
                       required
                     />
                     <input
@@ -365,7 +374,8 @@ export default function ContributionsPage() {
                       placeholder="0.00"
                       value={item.amount}
                       onChange={updateItem(index, 'amount')}
-                      style={{ flex: 1, background: 'var(--surface)' }}
+                      className="breakdown-row__amount"
+                      style={{ background: 'var(--surface)' }}
                       required
                     />
                     <button

@@ -70,6 +70,11 @@ export function validateCreateContribution(body) {
     if (typeof body.notes !== 'string') fields.notes = 'must be a string';
     else if (body.notes.length > 500) fields.notes = 'must be at most 500 characters';
   }
+  if (body.idempotencyKey !== undefined && body.idempotencyKey !== null) {
+    if (typeof body.idempotencyKey !== 'string' || body.idempotencyKey.length > 100) {
+      fields.idempotencyKey = 'must be a string of at most 100 characters if provided';
+    }
+  }
 
   const items = validateItems(body.items, body.amount, fields);
 
@@ -88,6 +93,7 @@ export function validateCreateContribution(body) {
     contributionDate: body.contributionDate,
     reference: body.reference?.trim() || null,
     notes: body.notes?.trim() || null,
+    idempotencyKey: body.idempotencyKey?.trim() || null,
     items,
   };
 }
