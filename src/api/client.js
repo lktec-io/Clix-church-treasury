@@ -105,12 +105,42 @@ apiClient.interceptors.response.use(
 // Normalizes the {success, data} / {success, error} envelope
 // (docs/API_ARCHITECTURE.md §4) into a plain thrown Error with .code/.fields
 // for callers that don't want to inspect the raw Axios error shape.
+//
+// The backend's own errorHandler.js already redacts internal error text
+// in production for anything that isn't a deliberate AppError (SQL errors,
+// stack traces, etc. become "An unexpected error occurred") — so
+// `apiError.message` below is always safe to show as-is. The one gap that
+// redaction can't cover is a request that never got an HTTP response at
+// all (server unreachable, CORS failure, DNS failure, timeout) — Axios's
+// own error in that case is something like "Network Error", which reads
+// as a developer message, not something a treasurer should see after
+// trying to save a contribution.
 export function unwrapApiError(error) {
   const apiError = error?.response?.data?.error;
   if (apiError) {
     const err = new Error(apiError.message);
     err.code = apiError.code;
     err.fields = apiError.fields;
+    return err;
+  }
+  if (!error?.response) {
+    // client.js is a plain module, not a component — it has no useLocale()
+    // to call — but the locale preference itself is just localStorage
+    // (i18n/LocaleContext.jsx's own persistence key), so reading it
+    // directly here is how this one message stays bilingual without
+    // threading React context through an Axios interceptor.
+    let locale = 'en';
+    try {
+      locale = localStorage.getItem('clix.locale') ?? 'en';
+    } catch {
+      // Non-fatal — falls back to English.
+    }
+    const message =
+      locale === 'sw'
+        ? 'Imeshindwa kufikia seva. Tafadhali angalia mtandao wako na ujaribu tena.'
+        : 'Could not reach the server. Please check your connection and try again.';
+    const err = new Error(message);
+    err.code = 'NETWORK_ERROR';
     return err;
   }
   return error;

@@ -622,6 +622,35 @@
   justify-content: flex-end;
 }
 
+/* Contribution breakdown rows (ContributionsPage.jsx) — side by side on
+   desktop, stacked on narrow phones rather than three cramped columns
+   (docs/MASTER_TODO.md mobile-first pass: "contribution breakdown layout"
+   was explicitly called out). */
+.breakdown-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.breakdown-row__purpose {
+  flex: 2;
+}
+.breakdown-row__amount {
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .breakdown-row {
+    flex-wrap: wrap;
+  }
+  .breakdown-row__purpose {
+    flex-basis: 100%;
+  }
+  .breakdown-row__amount {
+    flex: 1;
+  }
+}
+
 /* Amount field emphasis — the single most important number on any
    recording form gets its own visual weight (premium-UI pass §19). */
 .field--amount input {
