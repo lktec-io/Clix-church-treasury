@@ -478,7 +478,7 @@ export default function ContributionsPage() {
                         {c.status === 'reversed' ? t('contributions.reversed') : t('common.active')}
                       </span>
                     </td>
-                    <td style={{ display: 'flex', gap: 6 }}>
+                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <PermissionGate permission="receipts.view">
                         <button
                           type="button"

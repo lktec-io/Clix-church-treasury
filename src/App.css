@@ -242,8 +242,16 @@
   z-index: 10;
 }
 
+@media (max-width: 480px) {
+  .app-topbar {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+}
+
 .app-topbar__menu-btn {
   display: inline-flex;
+  flex-shrink: 0;
   background: none;
   border: none;
   font-size: 20px;
@@ -261,6 +269,10 @@
   font-weight: 700;
   color: var(--text-heading);
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-overlay {
@@ -283,7 +295,22 @@
   padding: 24px;
   max-width: 1140px;
   width: 100%;
+  min-width: 0;
   margin: 0 auto;
+}
+
+/* Mobile-first spacing rhythm: desktop breathes at 24px, mobile stays
+   comfortable but tighter (docs/MASTER_TODO.md mobile-first pass §10 —
+   "mobile should have tighter but comfortable spacing"). */
+@media (max-width: 480px) {
+  .app-content {
+    padding: 14px;
+  }
+}
+@media (min-width: 481px) and (max-width: 899px) {
+  .app-content {
+    padding: 18px;
+  }
 }
 
 /* ---------- Cards / surfaces ---------- */
@@ -293,7 +320,15 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   padding: 20px;
+  min-width: 0;
   transition: box-shadow var(--motion-base) var(--ease-premium);
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 14px;
+    border-radius: var(--radius-sm);
+  }
 }
 
 .card + .card {
@@ -304,8 +339,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   margin-bottom: 16px;
+}
+
+.card__header h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .page-header {
@@ -348,6 +389,11 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+}
+
+.stat-tile__value {
+  overflow-wrap: anywhere;
 }
 
 .stat-tile__icon {
@@ -414,6 +460,17 @@
   margin-bottom: 16px;
   position: relative;
   overflow: hidden;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .hero-card {
+    padding: 18px 16px;
+  }
+  .hero-card__value {
+    font-size: 26px;
+    overflow-wrap: anywhere;
+  }
 }
 
 .hero-card::after {
@@ -463,6 +520,11 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+}
+
+.hero-card__breakdown-value {
+  overflow-wrap: anywhere;
 }
 
 .hero-card__breakdown-label {
@@ -502,6 +564,11 @@
   cursor: pointer;
   font: inherit;
   text-align: left;
+  min-width: 0;
+}
+
+.quick-action__label {
+  overflow-wrap: anywhere;
 }
 
 .quick-action__icon {
@@ -617,9 +684,24 @@
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 18px;
   justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  /* A row of 3-4 export/action buttons (e.g. ReportsPage's Run + PDF +
+     Excel + CSV) reads better as full-width stacked buttons than as
+     awkward wrapped fragments on a phone (docs/MASTER_TODO.md mobile-first
+     pass §5: "form action buttons ... stack when necessary"). */
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-actions .btn {
+    width: 100%;
+  }
 }
 
 /* Contribution breakdown rows (ContributionsPage.jsx) — side by side on
@@ -1035,13 +1117,28 @@ table.data-table {
   z-index: 110;
 }
 
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+  }
+}
+
 .modal {
   width: 100%;
   max-width: 440px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: 26px;
+}
+
+@media (max-width: 480px) {
+  .modal {
+    padding: 18px;
+    border-radius: var(--radius);
+  }
 }
 
 .modal__message {
@@ -1139,7 +1236,7 @@ table.data-table {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 14px 20px;
   background: rgba(var(--color-primary-rgb), 0.85);
   backdrop-filter: blur(16px) saturate(160%);
@@ -1151,17 +1248,28 @@ table.data-table {
   z-index: 10;
 }
 
+@media (max-width: 480px) {
+  .member-topbar {
+    padding: 12px 14px;
+  }
+}
+
 .member-topbar__title {
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .member-topbar__actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .member-topbar__locale {

@@ -140,7 +140,7 @@ export default function AccountsPage() {
                       </span>
                     </td>
                     <PermissionGate permission="accounts.manage">
-                      <td style={{ display: 'flex', gap: 6 }}>
+                      <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleRename(a)}>
                           {t('common.rename')}
                         </button>
