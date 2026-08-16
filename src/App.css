@@ -635,6 +635,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .field--full {
@@ -650,6 +651,15 @@
 .field input,
 .field select,
 .field textarea {
+  /* Explicit width, not just flex-stretch from .field's column layout — a
+     <select> whose widest <option> is a long name (e.g. the pledge picker's
+     "{name} — Remaining: {amount}") can size itself off that option's
+     intrinsic content width in some browsers, ignoring the stretched cross
+     size. width:100% + max-width:100% removes that ambiguity everywhere a
+     .field is used, on every page. */
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 10px 12px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -848,8 +858,14 @@
 }
 
 /* ---------- Tables ---------- */
+/* The ONE place a wide table is allowed to scroll — horizontally, inside
+   itself, never the page (docs/MASTER_TODO.md mobile-first pass: "the
+   page itself must never horizontally scroll"). -webkit-overflow-scrolling
+   gives iOS Safari real momentum scrolling instead of a stiff drag. */
 .table-wrap {
+  width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table.data-table {
