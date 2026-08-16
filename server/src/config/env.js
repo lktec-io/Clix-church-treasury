@@ -1,4 +1,17 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+
+// `override: true` is deliberate, not the default. Plain `dotenv/config`
+// (or `dotenv.config()` with no options) never overwrites a variable that
+// already exists in process.env — so if BEEM_API_KEY/BEEM_SECRET_KEY (or
+// anything else) was ever set directly in the host shell, in PM2's saved
+// daemon environment (`pm2 save`), or inherited from systemd, editing
+// server/.env afterward would silently do nothing: no error, no warning,
+// the stale value just wins forever, indistinguishable from ".env changes
+// aren't taking effect." That is the exact class of bug behind "edited
+// .env, restarted, still get a Beem 401" — the documented design intent
+// (ecosystem.config.cjs, .env.example) is that server/.env is the one and
+// only source of real configuration in production, so it must always win.
+dotenv.config({ override: true });
 
 function required(name) {
   const value = process.env[name];
