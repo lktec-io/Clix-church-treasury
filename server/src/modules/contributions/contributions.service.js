@@ -19,6 +19,23 @@ import { sendSms } from '../sms/sms.service.js';
 
 export { enrichWithContributorInfo } from '../contributors/contributorEnrichment.js';
 
+// Builds the exact same response shape recordContribution's normal success
+// path returns ({...contribution, transaction, receipt, items}) for an
+// idempotency-deduplicated request — both the pre-check and the
+// ER_DUP_ENTRY backstop below hit this. A caller (frontend or a future
+// API consumer) must see one consistent contract regardless of whether
+// this was the first attempt or a detected duplicate; `deduplicated: true`
+// is the only difference, added on top so a caller CAN distinguish the
+// two if it cares, without the base shape ever changing underneath it.
+async function loadContributionResponse(tenantId, contribution) {
+  const [transaction, items, receipt] = await Promise.all([
+    transactionsRepository.findById(tenantId, contribution.transaction_id),
+    contributionItemsRepository.findByContributionId(tenantId, contribution.id),
+    receiptsRepository.findByContributionId(tenantId, contribution.id),
+  ]);
+  return { ...contribution, transaction, receipt, items, sms: null, deduplicated: true };
+}
+
 // Shared by recordContribution's post-commit SMS attempt and the standalone
 // resend-sms endpoint (contributions.controller.js#resendSms) — same
 // lookups, same template, same params, so "try again" sends literally the
@@ -73,11 +90,7 @@ export async function recordContribution(tenantId, data, actorUserId) {
   if (data.idempotencyKey) {
     const existing = await contributionsRepository.findByIdempotencyKey(tenantId, data.idempotencyKey);
     if (existing) {
-      const [items, receipt] = await Promise.all([
-        contributionItemsRepository.findByContributionId(tenantId, existing.id),
-        receiptsRepository.findByContributionId(tenantId, existing.id),
-      ]);
-      return { ...existing, receipt, items, sms: null, deduplicated: true };
+      return loadContributionResponse(tenantId, existing);
     }
   }
 
@@ -193,11 +206,7 @@ export async function recordContribution(tenantId, data, actorUserId) {
     ) {
       const existing = await contributionsRepository.findByIdempotencyKey(tenantId, data.idempotencyKey);
       if (existing) {
-        const [items, receipt] = await Promise.all([
-          contributionItemsRepository.findByContributionId(tenantId, existing.id),
-          receiptsRepository.findByContributionId(tenantId, existing.id),
-        ]);
-        return { ...existing, receipt, items, sms: null, deduplicated: true };
+        return loadContributionResponse(tenantId, existing);
       }
     }
     throw error;

@@ -10,7 +10,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
-import { formatMoney, formatDate } from '../utils/format.js';
+import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
 const PAGE_SIZE = 50;
@@ -36,7 +36,7 @@ function emptyForm() {
 // typing into, not a general-purpose report total.
 function sumItems(items) {
   const cents = items.reduce((sum, item) => {
-    const [whole, frac = ''] = String(item.amount || '0').split('.');
+    const [whole, frac = ''] = sanitizeAmountInput(item.amount || '0').split('.');
     return sum + (Number(whole) || 0) * 100 + Number(frac.padEnd(2, '0').slice(0, 2) || '0');
   }, 0);
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
@@ -123,7 +123,8 @@ export default function ContributionsPage() {
   const updateItem = (index, field) => (e) =>
     setItems((rows) => rows.map((row, i) => (i === index ? { ...row, [field]: e.target.value } : row)));
   const itemsTotal = items.length > 0 ? sumItems(items) : null;
-  const itemsMismatch = items.length > 0 && form.amount && itemsTotal !== Number(form.amount).toFixed(2);
+  const itemsMismatch =
+    items.length > 0 && form.amount && itemsTotal !== Number(sanitizeAmountInput(form.amount)).toFixed(2);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -133,12 +134,14 @@ export default function ContributionsPage() {
     try {
       const result = await contributionsApi.create({
         ...form,
+        amount: sanitizeAmountInput(form.amount),
         accountId: Number(form.accountId),
         fundId: Number(form.fundId),
         categoryId: Number(form.categoryId),
         contributorId: form.contributorId ? Number(form.contributorId) : null,
         pledgeId: form.pledgeId ? Number(form.pledgeId) : null,
-        items: items.length > 0 ? items : undefined,
+        items:
+          items.length > 0 ? items.map((item) => ({ ...item, amount: sanitizeAmountInput(item.amount) })) : undefined,
         idempotencyKey,
       });
       setForm(emptyForm());
@@ -154,7 +157,12 @@ export default function ContributionsPage() {
       // auto-dismiss and hide the retry action) so a failed send is both
       // honest and recoverable without re-entering the whole contribution.
       if (result.sms) {
-        setSmsNotice({ contributionId: result.id, status: result.sms.status, reason: result.sms.errorMessage });
+        setSmsNotice({
+          contributionId: result.id,
+          status: result.sms.status,
+          reasonCode: result.sms.reasonCode,
+          reason: result.sms.errorMessage,
+        });
       }
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -168,7 +176,12 @@ export default function ContributionsPage() {
     setResendingSms(true);
     try {
       const { sms } = await contributionsApi.resendSms(smsNotice.contributionId);
-      setSmsNotice({ contributionId: smsNotice.contributionId, status: sms.status, reason: sms.errorMessage });
+      setSmsNotice({
+        contributionId: smsNotice.contributionId,
+        status: sms.status,
+        reasonCode: sms.reasonCode,
+        reason: sms.errorMessage,
+      });
       if (sms.status === 'sent') toast.success(t('contributions.sms.sent'));
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -213,7 +226,13 @@ export default function ContributionsPage() {
               a treasurer would need to know whether this is a "contact IT
               about the SMS provider" situation vs. "this contributor's
               phone number is wrong" situation. */}
-          {smsNotice.reason && <span style={{ fontSize: 12, opacity: 0.85 }}>{t('contributions.sms.reason', { reason: smsNotice.reason })}</span>}
+          {smsNotice.reasonCode ? (
+            <span style={{ fontSize: 12, opacity: 0.85 }}>{t(`contributions.sms.reasonCode.${smsNotice.reasonCode}`)}</span>
+          ) : (
+            smsNotice.reason && (
+              <span style={{ fontSize: 12, opacity: 0.85 }}>{t('contributions.sms.reason', { reason: smsNotice.reason })}</span>
+            )
+          )}
         </div>
       )}
 

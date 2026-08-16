@@ -5,7 +5,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
-import { formatMoney, formatDate } from '../utils/format.js';
+import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 function emptyForm() {
   return { fromAccountId: '', toAccountId: '', fromFundId: '', toFundId: '', amount: '', description: '' };
@@ -54,6 +54,7 @@ export default function TransfersPage() {
     try {
       await transfersApi.create({
         ...form,
+        amount: sanitizeAmountInput(form.amount),
         fromAccountId: Number(form.fromAccountId),
         toAccountId: Number(form.toAccountId),
         fromFundId: Number(form.fromFundId),

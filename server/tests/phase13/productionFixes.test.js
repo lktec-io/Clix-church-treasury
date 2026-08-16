@@ -69,13 +69,17 @@ describe('SMS failure does not block or roll back a valid contribution', () => {
     expect(res.body.data.receipt).toBeTruthy();
 
     // SMS was attempted and honestly reported as failed (invalid phone),
-    // never silently dropped and never reported as sent.
+    // never silently dropped and never reported as sent. reasonCode lets a
+    // caller distinguish "bad phone number" from "provider rejected it"
+    // without parsing the free-text message.
     expect(res.body.data.sms.status).toBe('failed');
+    expect(res.body.data.sms.reasonCode).toBe('invalid_phone');
     expect(res.body.data.sms.errorMessage).toBeTruthy();
 
     const logs = await smsLogRepository.findAllByTenant(ctx.tenant.id);
     expect(logs).toHaveLength(1);
     expect(logs[0].status).toBe('failed');
+    expect(logs[0].reason_code).toBe('invalid_phone');
   });
 
   it('a contribution with no contributor at all still succeeds with sms: null', async () => {

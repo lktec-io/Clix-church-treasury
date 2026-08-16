@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
-import { formatMoney } from '../utils/format.js';
+import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
 
 const STATUS_BADGE = {
   active: 'badge--warning',
@@ -65,6 +65,7 @@ export default function PledgesPage() {
     try {
       await pledgesApi.create({
         ...form,
+        pledgedAmount: sanitizeAmountInput(form.pledgedAmount),
         contributorId: Number(form.contributorId),
         fundId: Number(form.fundId),
         targetDate: form.targetDate || null,

@@ -8,7 +8,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
-import { formatMoney } from '../utils/format.js';
+import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
 const PAGE_SIZE = 50;
@@ -88,6 +88,7 @@ export default function ExpensesPage() {
     try {
       await expensesApi.create({
         ...form,
+        amount: sanitizeAmountInput(form.amount),
         categoryId: Number(form.categoryId),
         fundId: Number(form.fundId),
         accountId: Number(form.accountId),

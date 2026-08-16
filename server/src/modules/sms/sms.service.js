@@ -39,7 +39,11 @@ export async function sendSms(
 
   let result;
   if (!normalizedPhone) {
-    result = { status: 'failed', errorMessage: `Phone number is not a recognizable Tanzanian mobile number (${maskPhone(phone)})` };
+    result = {
+      status: 'failed',
+      reasonCode: 'invalid_phone',
+      errorMessage: `Phone number is not a recognizable Tanzanian mobile number (${maskPhone(phone)})`,
+    };
   } else {
     try {
       result =
@@ -47,12 +51,13 @@ export async function sendSms(
           ? await sendViaBeem({ phone: normalizedPhone, body })
           : await sendViaNoop({ phone: normalizedPhone, body });
     } catch (error) {
-      result = { status: 'failed', errorMessage: error.message };
+      result = { status: 'failed', reasonCode: 'unexpected_error', errorMessage: error.message };
     }
   }
 
   console.log(
     `[sms] tenant=${tenantId} provider=${env.sms.provider} template=${templateKey} to=${maskPhone(phone)} status=${result.status}` +
+      (result.reasonCode ? ` reason=${result.reasonCode}` : '') +
       (result.errorMessage ? ` error="${result.errorMessage}"` : '')
   );
 
@@ -63,6 +68,7 @@ export async function sendSms(
     locale,
     body,
     status: result.status,
+    reason_code: result.reasonCode ?? null,
     provider_message_id: result.providerMessageId ?? null,
     error_message: result.errorMessage ?? null,
     related_type: relatedType,
@@ -73,6 +79,9 @@ export async function sendSms(
   // module's own phone-format text, or a network-error message — never a
   // credential/secret (those never flow through `result`) — so it's safe
   // to hand back to callers for staff-facing display (client requirement:
-  // "for staff users, surface a concise reason where safe").
-  return { status: result.status, errorMessage: result.errorMessage ?? null };
+  // "for staff users, surface a concise reason where safe"). reasonCode is
+  // a stable machine-readable category (auth/bad_request/rate_limited/
+  // timeout/network/invalid_phone/provider_error/provider_rejected) a UI
+  // can branch on without parsing errorMessage's free text.
+  return { status: result.status, reasonCode: result.reasonCode ?? null, errorMessage: result.errorMessage ?? null };
 }

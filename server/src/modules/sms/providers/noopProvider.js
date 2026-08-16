@@ -4,5 +4,5 @@
 // this exact status so nothing is silently dropped or fabricated as sent.
 export async function sendViaNoop({ phone, body }) {
   console.log(`[sms:noop] would send to ${phone}:\n${body}`);
-  return { status: 'skipped_no_provider' };
+  return { status: 'skipped_no_provider', reasonCode: 'not_configured' };
 }

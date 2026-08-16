@@ -5,7 +5,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
-import { formatMoney } from '../utils/format.js';
+import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
 
 function emptyForm(periodId) {
   return { financialPeriodId: periodId ?? '', fundId: '', categoryId: '', type: 'expense', budgetAmount: '', notes: '' };
@@ -86,6 +86,7 @@ export default function BudgetsPage() {
     try {
       await budgetsApi.create({
         ...form,
+        budgetAmount: sanitizeAmountInput(form.budgetAmount),
         financialPeriodId: Number(form.financialPeriodId),
         fundId: Number(form.fundId),
         categoryId: form.categoryId ? Number(form.categoryId) : null,

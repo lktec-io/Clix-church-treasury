@@ -80,10 +80,13 @@ export default function MemberStatementsPage() {
     try {
       const result = await contributorsApi.sendStatementSms(contributorId, year, month);
       const tone = { sent: 'success', failed: 'warning', skipped_no_provider: 'info' }[result.sms.status] ?? 'info';
-      const message =
-        result.sms.status === 'failed' && result.sms.errorMessage
-          ? `${t('memberStatements.sms.failed')} ${t('contributions.sms.reason', { reason: result.sms.errorMessage })}`
-          : t(`memberStatements.sms.${result.sms.status}`);
+      let message = t(`memberStatements.sms.${result.sms.status}`);
+      if (result.sms.status === 'failed') {
+        const reasonText = result.sms.reasonCode
+          ? t(`contributions.sms.reasonCode.${result.sms.reasonCode}`)
+          : result.sms.errorMessage;
+        message = reasonText ? `${t('memberStatements.sms.failed')} ${t('contributions.sms.reason', { reason: reasonText })}` : message;
+      }
       toast[tone](message);
     } catch (err) {
       setError(unwrapApiError(err).message);

@@ -10,6 +10,17 @@ export function formatMoney(amountString) {
   return `${negative ? '-' : ''}${withSeparators}.${frac}`;
 }
 
+// The backend's money validator (server/src/modules/financial/money.js)
+// requires a bare "1234.56"-shaped string with no thousands separators —
+// but every amount field in this app is a plain text input with no input
+// mask, and typing "10,000" is completely ordinary for a financial
+// figure. Every amount-collecting form (Contributions, Expenses,
+// Transfers, Pledges, Budgets) runs the value through this before
+// sending it to the API, so that entirely normal input is never rejected.
+export function sanitizeAmountInput(value) {
+  return String(value ?? '').replace(/[,\s]/g, '');
+}
+
 // TZS is this product's one and only base currency default
 // (tenants.base_currency, docs/PROJECT_ARCHITECTURE.md) — no per-tenant
 // currency is fetched/displayed elsewhere in the frontend today, so this

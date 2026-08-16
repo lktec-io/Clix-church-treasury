@@ -47,6 +47,12 @@ describe('contribution idempotency (migration 0032 regression)', () => {
     // Same contribution row returned both times — never a second one created.
     expect(second.body.data.id).toBe(first.body.data.id);
     expect(second.body.data.deduplicated).toBe(true);
+    // The deduplicated response must carry the exact same shape as a
+    // first-time success (regression: an earlier version of this dedup
+    // path omitted `.transaction`, a real API-contract inconsistency).
+    expect(second.body.data.transaction).toBeTruthy();
+    expect(second.body.data.transaction.id).toBe(first.body.data.transaction.id);
+    expect(second.body.data.receipt.receipt_number).toBe(first.body.data.receipt.receipt_number);
 
     const history = await transactionsRepository.listHistory(ctx.tenant.id, { accountId: ctx.account.id });
     expect(history).toHaveLength(1);

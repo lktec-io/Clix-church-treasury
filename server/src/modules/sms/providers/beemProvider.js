@@ -14,6 +14,21 @@ import { env } from '../../../config/env.js';
 // message first. Uses Node's built-in `fetch` — no new dependency.
 const REQUEST_TIMEOUT_MS = 10_000;
 
+// Classifies an HTTP status from Beem into a stable, non-secret reason
+// code — so a caller (SMS status UI, PM2 logs) can distinguish "your
+// credentials are wrong" from "you sent a malformed request" from "you're
+// being rate limited" without parsing free-text prose (client requirement:
+// "improve SMS errors so they distinguish invalid credentials / invalid
+// sender / invalid phone number / provider rejection / timeout / network
+// failure / rate limit").
+function classifyHttpFailure(status) {
+  if (status === 401 || status === 403) return 'auth';
+  if (status === 429) return 'rate_limited';
+  if (status >= 400 && status < 500) return 'bad_request';
+  if (status >= 500) return 'provider_error';
+  return 'provider_rejected';
+}
+
 export async function sendViaBeem({ phone, body }) {
   const { apiKey, secretKey, senderId, apiUrl } = env.sms.beem;
   const auth = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
@@ -36,11 +51,16 @@ export async function sendViaBeem({ phone, body }) {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (error) {
-    // Network failure, DNS failure, or the timeout above firing — never a
-    // thrown error the caller has to handle specially (sms.service.js's own
-    // try/catch would also catch this, but resolving to the same shape here
-    // keeps every non-2xx/network outcome uniform for the caller).
-    return { status: 'failed', errorMessage: `Could not reach Beem API: ${error.message}` };
+    // AbortSignal.timeout() rejects with a DOMException named
+    // "TimeoutError" — distinguished from a genuine network/DNS failure
+    // (anything else fetch can throw) so "Beem is slow" and "Beem is
+    // unreachable" don't get reported identically.
+    const reasonCode = error.name === 'TimeoutError' ? 'timeout' : 'network';
+    const errorMessage =
+      reasonCode === 'timeout'
+        ? `Beem API did not respond within ${REQUEST_TIMEOUT_MS / 1000}s`
+        : `Could not reach Beem API: ${error.message}`;
+    return { status: 'failed', reasonCode, errorMessage };
   }
 
   const payload = await response.json().catch(() => null);
@@ -49,10 +69,13 @@ export async function sendViaBeem({ phone, body }) {
     // Both the HTTP status and Beem's own message text, when Beem sends
     // one — a bare "Invalid Authentication Parameters" alone doesn't tell
     // an operator whether that was a 401 (credentials wrong/expired) or a
-    // 400 (malformed request accepted-looking creds); the status code
-    // narrows that down without exposing the credentials themselves.
+    // 400 (malformed request, e.g. bad sender ID or phone format) — the
+    // status code narrows that down without exposing the credentials
+    // themselves. `reasonCode` gives a caller a stable value to branch on
+    // instead of parsing this text.
+    const reasonCode = classifyHttpFailure(response.status);
     const detail = payload?.message ? `HTTP ${response.status} — ${payload.message}` : `HTTP ${response.status}`;
-    return { status: 'failed', errorMessage: `Beem API: ${detail}` };
+    return { status: 'failed', reasonCode, errorMessage: `Beem API: ${detail}` };
   }
 
   return { status: 'sent', providerMessageId: payload.request_id ? String(payload.request_id) : null };
