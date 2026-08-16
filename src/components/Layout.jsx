@@ -25,6 +25,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import PageTransition from './ui/PageTransition.jsx';
+import ThemeSwitcher from './ui/ThemeSwitcher.jsx';
 
 // Grouped to match the product's real workflow shape (docs/MASTER_TODO.md
 // Phase 10 §10.5), adapted to what actually exists: Income and
@@ -191,6 +192,9 @@ export default function Layout() {
       <div className="app-sidebar__footer">
         <div className="app-sidebar__footer-details">
           <div>{session?.user?.full_name}</div>
+          <div style={{ marginTop: 10 }}>
+            <ThemeSwitcher />
+          </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <select
               value={locale}

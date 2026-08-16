@@ -1,0 +1,449 @@
+/* ==========================================================================
+   CARDS — surfaces: cards, stat tiles, the hero card, quick actions,
+   badges, alerts, empty states, skeletons, the member-history timeline.
+   Grouped together because they're all "content surfaces" built from the
+   same card-like visual language, unlike layout.css's structural chrome.
+   ========================================================================== */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+  transition: box-shadow var(--motion-base) var(--ease-premium);
+}
+
+@media (max-width: 480px) {
+  .card {
+    border-radius: var(--radius-sm);
+  }
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card + .card {
+  margin-top: 16px;
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.card__header h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.stat-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stat-tile__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.stat-tile__label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.stat-tile__value {
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.stat-tile__value.is-positive {
+  color: var(--color-success);
+}
+.stat-tile__value.is-negative {
+  color: var(--color-danger);
+}
+
+.stat-tile__trend {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.stat-tile__trend.is-up {
+  color: var(--color-success);
+}
+.stat-tile__trend.is-down {
+  color: var(--color-danger);
+}
+
+/* Featured hero financial card — one per page, the single most important
+   figure. Uses --gradient-hero (a dedicated, deliberately rich/dark
+   gradient in all three themes) rather than a flat primary fill, so white
+   text stays legible even in Midnight where --color-primary itself is a
+   bright, light blue. */
+.hero-card {
+  background: var(--gradient-hero);
+  color: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.hero-card::after {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+.hero-card__label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.hero-card__value {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+  color: #ffffff;
+}
+
+@media (max-width: 480px) {
+  .hero-card__value {
+    font-size: 26px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.hero-card__meta {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 4px;
+}
+
+.hero-card__breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  position: relative;
+}
+
+.hero-card__breakdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hero-card__breakdown-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 700;
+}
+
+.hero-card__breakdown-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Quick actions ---------- */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  min-width: 0;
+  transition: box-shadow var(--motion-fast) var(--ease-premium), transform var(--motion-fast) var(--ease-premium);
+}
+
+.quick-action:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.quick-action__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 18px;
+}
+
+.quick-action--primary {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  color: var(--sidebar-active-text);
+}
+.quick-action--primary .quick-action__icon {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--sidebar-active-text);
+}
+
+.quick-action__label {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Badges ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge--success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.badge--danger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+.badge--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+.badge--neutral {
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+.badge--accent {
+  background: var(--color-accent-light);
+  color: var(--color-accent-dark);
+}
+
+/* ---------- Alerts ---------- */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 15px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.alert--error {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+.alert--success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.alert--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+.alert--info {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+/* ---------- Empty state ---------- */
+.empty-state {
+  padding: 44px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.empty-state__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+.empty-state__title {
+  font-weight: 700;
+  color: var(--text-heading);
+  font-size: 15px;
+}
+
+.empty-state__message {
+  font-size: 13px;
+  max-width: 320px;
+}
+
+/* ---------- Skeletons ---------- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+
+[data-theme='midnight'] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+.skeleton-text {
+  height: 12px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+.skeleton-text:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- Timeline (member history) ---------- */
+.timeline-group {
+  margin-bottom: 18px;
+}
+
+.timeline-group__label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+}
+
+.timeline-item__icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: 16px;
+}
+
+.timeline-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-item__title {
+  font-weight: 600;
+  color: var(--text-heading);
+  font-size: 14px;
+}
+
+.timeline-item__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.timeline-item__amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+  flex-shrink: 0;
+}

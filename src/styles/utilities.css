@@ -1,0 +1,244 @@
+/* ==========================================================================
+   UTILITIES — cross-cutting overlay surfaces that don't belong to a single
+   page: toasts, modals/confirm dialogs, the auth page shell used by both
+   the staff and member login/register screens.
+   ========================================================================== */
+
+/* ---------- Toasts ---------- */
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  left: 16px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+@media (min-width: 480px) {
+  .toast-stack {
+    left: auto;
+    width: 360px;
+  }
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-muted);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 13px 13px 13px 15px;
+  font-size: 14px;
+  pointer-events: auto;
+}
+
+.toast__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 17px;
+}
+
+.toast__message {
+  flex: 1;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.toast__close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  border-radius: 4px;
+}
+.toast__close:hover {
+  background: var(--bg-muted);
+}
+
+.toast--success {
+  border-left-color: var(--color-success);
+}
+.toast--success .toast__icon {
+  color: var(--color-success);
+}
+.toast--error {
+  border-left-color: var(--color-danger);
+}
+.toast--error .toast__icon {
+  color: var(--color-danger);
+}
+.toast--warning {
+  border-left-color: var(--color-warning);
+}
+.toast--warning .toast__icon {
+  color: var(--color-warning);
+}
+.toast--info {
+  border-left-color: var(--color-primary);
+}
+.toast--info .toast__icon {
+  color: var(--color-primary);
+}
+
+/* ---------- Modals / confirmation dialogs ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--modal-backdrop-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 110;
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+  }
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  background: var(--glass-panel-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 480px) {
+  .modal {
+    border-radius: var(--radius);
+  }
+}
+
+.modal__message {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 8px 0 4px;
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ---------- Auth pages (staff login/register + member login) ---------- */
+.auth-page {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(circle at top left, var(--color-primary-soft), var(--bg) 55%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 32px;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 22px;
+  }
+}
+
+.auth-card__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 19px;
+  margin-bottom: 6px;
+  color: var(--text-heading);
+}
+
+.auth-card__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-primary);
+  color: var(--sidebar-active-text);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.auth-card__subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 22px;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- Theme switcher ---------- */
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--sidebar-hover-bg);
+  border: 1px solid var(--sidebar-border);
+}
+
+.theme-switcher__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
+}
+
+.theme-switcher__option:hover {
+  transform: scale(1.08);
+}
+
+.theme-switcher__option.is-active {
+  box-shadow: 0 0 0 2px var(--sidebar-hover-text);
+}
+
+.theme-switcher__option--aurora {
+  background: linear-gradient(135deg, #0b1f4d, #10b981);
+}
+.theme-switcher__option--midnight {
+  background: linear-gradient(135deg, #0b1628, #3b9eff);
+}
+.theme-switcher__option--frost {
+  background: linear-gradient(135deg, #f6f5f2, #2952cc);
+}

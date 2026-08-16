@@ -1,7 +1,8 @@
 // Shimmering placeholder blocks — replaces plain "Inapakia..." text so a
 // loading page visually resembles the content it's about to show
 // (docs/MASTER_TODO.md premium-UI pass §34). Pure CSS animation
-// (.skeleton in App.css), no Framer Motion needed for a continuous loop.
+// (.skeleton in src/styles/cards.css), no Framer Motion needed for a
+// continuous loop.
 export function SkeletonText({ width = '100%' }) {
   return <div className="skeleton skeleton-text" style={{ width }} />;
 }

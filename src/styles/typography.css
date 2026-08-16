@@ -1,0 +1,72 @@
+/* ==========================================================================
+   TYPOGRAPHY — Poppins, globally, everywhere. No page or shared component
+   may reference another font-family; every element that renders text
+   inherits from html/body here.
+   ========================================================================== */
+
+html,
+body,
+button,
+input,
+textarea,
+select,
+table,
+th,
+td {
+  font-family: var(--font-primary);
+}
+
+body {
+  font: var(--font-weight-regular) 15px/1.6 var(--font-primary);
+  color: var(--text);
+  background: var(--bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Theme switches update these two properties; a short transition keeps
+     the swap from feeling like a hard flash-cut (respects
+     prefers-reduced-motion via animations.css's global override). */
+  transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-primary);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
+  margin: 0 0 4px;
+}
+
+h1 {
+  font-size: 24px;
+}
+h2 {
+  font-size: 17px;
+}
+h3 {
+  font-size: 15px;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Financial figures always read as tabular numerals so amounts in a column
+   align digit-for-digit. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

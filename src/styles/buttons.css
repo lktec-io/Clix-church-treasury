@@ -1,0 +1,124 @@
+/* ==========================================================================
+   BUTTONS — one button system, five variants + icon button. Transitions
+   are itemized (background/border-color/color/box-shadow/transform), never
+   `transition: all`, so a hover never accidentally animates layout.
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
+    color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium),
+    transform var(--motion-fast) var(--ease-premium);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--gradient-primary);
+  color: var(--sidebar-active-text);
+  box-shadow: var(--shadow-sm);
+}
+.btn--primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-glow);
+}
+
+/* .btn--accent is the secondary CTA color (e.g. "Download PDF") — driven by
+   --color-blue so it stays inside the three authoritative theme palettes
+   instead of a hand-picked color outside the token system. */
+.btn--accent {
+  background: var(--color-blue);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+.btn--accent:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-blue) 85%, black 15%);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.btn--secondary:hover:not(:disabled) {
+  background: var(--bg-muted);
+}
+
+.btn--danger {
+  background: var(--color-danger);
+  color: #ffffff;
+}
+.btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 85%, black 15%);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+.btn--ghost:hover:not(:disabled) {
+  background: var(--bg-muted);
+  color: var(--text);
+}
+
+.btn--sm {
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
+}
+.icon-btn:hover {
+  background: var(--bg-muted);
+  color: var(--text);
+}
+
+/* Inline loading spinner for a button mid-submit — a small honest "this is
+   working" signal instead of only swapping the label text. Opt-in via
+   btn--loading so pages adopt it deliberately, not automatically. */
+.btn--loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.btn--loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  animation: spin 0.7s linear infinite;
+}
+.btn--secondary.btn--loading::after {
+  border-color: var(--border-strong);
+  border-top-color: var(--text);
+}

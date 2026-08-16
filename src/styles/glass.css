@@ -1,0 +1,26 @@
+/* ==========================================================================
+   GLASS — reusable glassmorphism utilities. Used sparingly and only where
+   a surface genuinely sits over moving page content (topbar, modal
+   backdrop, mobile drawer backdrop) — the sidebar itself is a solid
+   gradient panel (layout.css), not glass, per the sidebar-specific tokens
+   in themes.css. "Premium means restrained": one blur strength per theme
+   (--glass-blur), no per-component ad-hoc blur values.
+   ========================================================================== */
+
+.glass-panel {
+  background: var(--glass-panel-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+}
+
+.glass-navbar {
+  background: var(--color-navbar-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+}
+
+.glass-backdrop {
+  background: var(--modal-backdrop-bg);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}

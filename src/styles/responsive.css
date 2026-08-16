@@ -1,0 +1,25 @@
+/* ==========================================================================
+   RESPONSIVE — the global viewport-containment safety net. This is a
+   backstop, not the fix: every real overflow source is closed at the
+   component level (layout.css/forms.css/tables.css/cards.css). These rules
+   exist so that if something new is ever added and misses a fix, the page
+   still cannot scroll sideways — html/body/#root simply refuse to grow
+   past the viewport.
+   ========================================================================== */
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+@media (min-width: 1280px) {
+  .app-content {
+    padding-left: var(--space-xl);
+    padding-right: var(--space-xl);
+  }
+}

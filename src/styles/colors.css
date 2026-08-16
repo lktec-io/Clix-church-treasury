@@ -1,0 +1,49 @@
+/* ==========================================================================
+   COLORS — semantic alias layer.
+
+   themes.css defines the AUTHORITATIVE per-theme tokens (--color-primary,
+   --color-accent, --color-background, --color-text-primary, etc. — the
+   exact Aurora / Midnight / Frost values). This file defines nothing new on
+   its own; it only maps the semantic names every component file actually
+   uses (--text, --bg, --surface, --border...) onto those authoritative
+   tokens, and derives the handful of tint/shade variants the old design
+   needed (soft/light backgrounds, a stronger border) via color-mix() so
+   they stay correct under all three themes automatically instead of being
+   hand-picked per theme. Component CSS never references a raw hex value —
+   everything traces back to the tokens in themes.css.
+   ========================================================================== */
+
+:root {
+  /* Text */
+  --text-heading: var(--color-text-primary);
+  --text: var(--color-text-primary);
+  --text-muted: var(--color-text-secondary);
+
+  /* Surfaces */
+  --bg: var(--color-background);
+  --bg-muted: var(--color-gray-light);
+  --surface: var(--color-card-bg);
+  --surface-raised: var(--color-card-glass-bg);
+
+  /* Borders — --border-strong is derived, not a second theme token: mixing
+     in 40% of the primary text color gives a visibly stronger line than
+     --border while staying correct in light AND dark themes without a
+     dedicated per-theme value. */
+  --border: var(--color-border);
+  --border-strong: color-mix(in srgb, var(--color-border) 60%, var(--color-text-primary) 40%);
+
+  /* Tint chips (icon backgrounds, focus rings, badge fills) — derived from
+     the brand colors against the current theme's own background, so a
+     "soft primary" chip is always readable in Aurora, Midnight, and Frost
+     without three separate hand-tuned values. */
+  --color-primary-soft: color-mix(in srgb, var(--color-primary) 12%, var(--color-background) 88%);
+  --color-accent-light: color-mix(in srgb, var(--color-accent) 18%, var(--color-background) 82%);
+
+  /* Hover/pressed variants for the two brand colors — themes.css supplies
+     these directly per theme (they are NOT derived, since "hover" needs
+     deliberate per-theme tuning, e.g. Midnight's accent already glows). */
+  --color-primary-dark: var(--color-primary-hover);
+  --color-accent-dark: var(--color-accent-hover);
+
+  --shadow: var(--shadow-sm);
+}

@@ -1,218 +1,23 @@
-:root {
-  /* ---------- Clix brand: Navy + Green + sparing Orange ----------
-     Actual Clix Digital Works brand identity (not a placeholder). Navy
-     carries authority/trust (sidebar, topbar, primary actions, headings).
-     Green is the recognizable Clix accent — active states, CTAs, positive
-     financial emphasis, the sidebar's glass active-indicator. Orange is
-     used sparingly (warnings, one or two selected-highlight moments) and
-     must never dominate a screen. --color-primary-rgb backs the
-     translucent glass sidebar (App.css), since backdrop-filter needs an
-     rgba(), not a var() alone. */
-  --color-primary: #0f3358;
-  --color-primary-rgb: 15, 51, 88;
-  --color-primary-dark: #0a2340;
-  --color-primary-light: #e9eff5;
-  --color-primary-soft: #eef4fa;
+/* ==========================================================================
+   Clix Treasury — design system entry point.
 
-  --color-accent: #1a9d63;
-  --color-accent-dark: #147a4d;
-  --color-accent-light: #e5f6ec;
-  --color-accent-rgb: 26, 157, 99;
+   This file is intentionally just an import chain. Every rule lives in
+   src/styles/*, one concern per file, loaded in this order. There is no
+   second, competing stylesheet — App.css (the old monolithic file this
+   replaced) has been removed; nothing imports it anymore.
+   ========================================================================== */
 
-  --color-highlight: #e0812f;
-  --color-highlight-dark: #c06a1e;
-  --color-highlight-light: #fdf0e2;
-
-  --color-success: #1a7f4e;
-  --color-success-bg: #e7f6ee;
-  --color-danger: #b3261e;
-  --color-danger-bg: #fbeaea;
-  --color-warning: #a15c00;
-  --color-warning-bg: #fdf1de;
-
-  --text: #33363b;
-  --text-muted: #6b7280;
-  --text-heading: #101828;
-  --bg: #f5f6f8;
-  --bg-muted: #eef0f3;
-  --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --border: #e2e5e9;
-  --border-strong: #c9ced6;
-
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 2px 8px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12), 0 2px 6px rgba(16, 24, 40, 0.06);
-  --shadow: var(--shadow-sm);
-
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 40px;
-
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 18px;
-
-  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
-  --motion-fast: 0.15s;
-  --motion-base: 0.25s;
-  --motion-slow: 0.35s;
-
-  /* Poppins, self-hosted via @fontsource/poppins (main.jsx) — SIL Open
-     Font License, freely bundleable, unlike the previously-specified
-     CircularTtf which this project could never legally obtain and load.
-     Weights 400/500/600/700 only, per the design brief's "avoid excessive
-     800/900 weight" instruction. */
-  --font-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  --sans: var(--font-primary);
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-
-  font: 400 15px/1.6 var(--font-primary);
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-primary: #6ea3d6;
-    --color-primary-rgb: 10, 22, 36;
-    --color-primary-dark: #8fb8e0;
-    --color-primary-light: #17293c;
-    --color-primary-soft: #1a2c3f;
-
-    --color-accent: #35c584;
-    --color-accent-dark: #5fe0a3;
-    --color-accent-light: #103a26;
-    --color-accent-rgb: 53, 197, 132;
-
-    --color-highlight: #f2a15c;
-    --color-highlight-dark: #f7b87c;
-    --color-highlight-light: #3a2510;
-
-    --color-success: #4ade80;
-    --color-success-bg: #10291b;
-    --color-danger: #f47068;
-    --color-danger-bg: #331413;
-    --color-warning: #f2b64a;
-    --color-warning-bg: #332405;
-
-    --text: #d4d6d9;
-    --text-muted: #9aa0a8;
-    --text-heading: #f3f4f6;
-    --bg: #10131a;
-    --bg-muted: #171b24;
-    --surface: #1a1e27;
-    --surface-raised: #1f2430;
-    --border: #2b2f3a;
-    --border-strong: #3a3f4c;
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
-    --shadow: var(--shadow-sm);
-  }
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-button,
-input,
-textarea,
-select,
-table,
-th,
-td {
-  font-family: var(--font-primary);
-}
-
-html {
-  overflow-x: hidden;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  /* Hard safety net against any stray horizontal overflow (a min-width
-     child, a long unbroken token in a table cell, etc.) — the page itself
-     must never scroll sideways even if one component's overflow-x:auto
-     scroll-container strategy has a gap somewhere (docs/MASTER_TODO.md
-     mobile-first pass §10/O). */
-  overflow-x: hidden;
-  width: 100%;
-}
-
-#root {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-h1,
-h2,
-h3 {
-  font-family: var(--font-primary);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text-heading);
-  margin: 0 0 4px;
-}
-
-h1 {
-  font-size: 24px;
-}
-h2 {
-  font-size: 17px;
-}
-h3 {
-  font-size: 15px;
-}
-
-p {
-  margin: 0;
-}
-
-a {
-  color: var(--color-primary);
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
-
-/* Financial figures always read as tabular numerals so amounts in a
-   column align digit-for-digit — a small detail that reads as "built by
-   people who take money seriously" (docs/MASTER_TODO.md premium-UI pass). */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+@import './styles/variables.css';
+@import './styles/colors.css';
+@import './styles/themes.css';
+@import './styles/glass.css';
+@import './styles/typography.css';
+@import './styles/spacing.css';
+@import './styles/layout.css';
+@import './styles/buttons.css';
+@import './styles/forms.css';
+@import './styles/tables.css';
+@import './styles/cards.css';
+@import './styles/animations.css';
+@import './styles/responsive.css';
+@import './styles/utilities.css';

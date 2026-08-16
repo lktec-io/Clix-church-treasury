@@ -1,0 +1,169 @@
+/* ==========================================================================
+   FORMS — one grid system (auto-fit, collapses to a single column with no
+   media query needed), one input treatment, one action-row pattern that
+   stacks on phones instead of overflowing.
+   ========================================================================== */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 20px 0 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.form-section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.form-section__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.field input,
+.field select,
+.field textarea {
+  /* Explicit width, not just flex-stretch from .field's column layout — a
+     <select> whose widest <option> is a long name can size itself off that
+     option's intrinsic content width in some browsers, ignoring the
+     stretched cross size. */
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
+  min-height: 40px;
+}
+
+.field textarea {
+  min-height: unset;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.field-error {
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  /* A row of 3-4 export/action buttons (e.g. Reports' Run + PDF + Excel +
+     CSV) reads better as full-width stacked buttons than as awkward
+     wrapped fragments on a phone. */
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Contribution breakdown rows — side by side on desktop, stacked on
+   narrow phones rather than three cramped columns. */
+.breakdown-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.breakdown-row__purpose {
+  flex: 2;
+}
+.breakdown-row__amount {
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .breakdown-row {
+    flex-wrap: wrap;
+  }
+  .breakdown-row__purpose {
+    flex-basis: 100%;
+  }
+  .breakdown-row__amount {
+    flex: 1;
+  }
+}
+
+/* Amount field emphasis — the single most important number on any
+   recording form gets its own visual weight. */
+.field--amount input {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.currency-input {
+  position: relative;
+}
+.currency-input__prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.currency-input input {
+  padding-left: 50px;
+}

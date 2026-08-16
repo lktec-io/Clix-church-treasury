@@ -3,13 +3,14 @@ import { FiHome, FiClock, FiFileText, FiLock, FiLogOut, FiHeart } from 'react-ic
 import { useMemberAuth } from '../../context/MemberAuthContext.jsx';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 import PageTransition from '../ui/PageTransition.jsx';
+import ThemeSwitcher from '../ui/ThemeSwitcher.jsx';
 
 // Deliberately much simpler than the staff Layout.jsx — no multi-group
 // sidebar, since a member only ever needs four destinations. Bottom tab
 // bar on mobile (where members will actually use this, per the product
 // spec's "mobile-first" requirement), reusing the same CSS custom
 // properties and ~900px breakpoint convention already established in
-// App.css/index.css rather than introducing a second design system.
+// src/styles/ design system rather than introducing a second one.
 const NAV_ITEMS = [
   { to: '/member/dashboard', icon: FiHome, labelKey: 'member.nav.dashboard', end: true },
   { to: '/member/history', icon: FiClock, labelKey: 'member.nav.history' },
@@ -36,6 +37,7 @@ export default function MemberLayout() {
           {t('app.name')}
         </div>
         <div className="member-topbar__actions">
+          <ThemeSwitcher />
           <select
             value={locale}
             onChange={(e) => setLocale(e.target.value)}
