@@ -10,6 +10,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
+import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -227,10 +228,10 @@ export default function ContributionsPage() {
               about the SMS provider" situation vs. "this contributor's
               phone number is wrong" situation. */}
           {smsNotice.reasonCode ? (
-            <span style={{ fontSize: 12, opacity: 0.85 }}>{t(`contributions.sms.reasonCode.${smsNotice.reasonCode}`)}</span>
+            <span className="text-caption--inherit">{t(`contributions.sms.reasonCode.${smsNotice.reasonCode}`)}</span>
           ) : (
             smsNotice.reason && (
-              <span style={{ fontSize: 12, opacity: 0.85 }}>{t('contributions.sms.reason', { reason: smsNotice.reason })}</span>
+              <span className="text-caption--inherit">{t('contributions.sms.reason', { reason: smsNotice.reason })}</span>
             )
           )}
         </div>
@@ -446,7 +447,7 @@ export default function ContributionsPage() {
           <h2>{t('contributions.title')}</h2>
         </div>
         {loading ? (
-          <div className="empty-state">{t('common.loading')}</div>
+          <SkeletonTable rows={5} columns={5} />
         ) : contributions.length === 0 ? (
           <EmptyState
             icon={FiDollarSign}

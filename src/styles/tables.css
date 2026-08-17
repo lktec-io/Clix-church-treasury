@@ -36,8 +36,10 @@ table.data-table {
   transition: background-color var(--motion-fast) var(--ease-premium);
 }
 
-.data-table tbody tr:hover {
-  background: var(--bg-muted);
+@media (hover: hover) and (pointer: fine) {
+  .data-table tbody tr:hover {
+    background: var(--bg-muted);
+  }
 }
 
 .data-table .is-amount {

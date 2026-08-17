@@ -70,3 +70,20 @@ textarea {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* The "small metadata" tier of the type hierarchy (helper notes under a
+   toast/alert, secondary explanatory text) — one class instead of every
+   page hand-rolling its own inline font-size for the same purpose. */
+.text-caption {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Same size, but keeps the parent's own color (dimmed) instead of
+   switching to --text-muted — for caption text sitting inside a tinted
+   surface (e.g. inside .alert--warning), where --text-muted's neutral
+   gray would fight the alert's own contextual color. */
+.text-caption--inherit {
+  font-size: 12px;
+  opacity: 0.85;
+}

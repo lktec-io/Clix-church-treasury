@@ -118,6 +118,16 @@ export default function Layout() {
     };
   }, [sidebarOpen, isDesktop]);
 
+  // Escape closes the mobile drawer, same as clicking the backdrop.
+  useEffect(() => {
+    if (!sidebarOpen || isDesktop) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen, isDesktop]);
+
   const toggleCollapsed = () => {
     setCollapsed((v) => {
       const next = !v;

@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -211,7 +212,7 @@ export default function ExpensesPage() {
           <h2>{t('expenses.title')}</h2>
         </div>
         {loading ? (
-          <div className="empty-state">{t('common.loading')}</div>
+          <SkeletonTable rows={4} columns={4} />
         ) : expenses.length === 0 ? (
           <div className="empty-state">{t('common.noResults')}</div>
         ) : (

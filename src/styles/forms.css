@@ -85,6 +85,26 @@
   box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--bg-muted);
+}
+
+/* Native validation state, no JS wiring needed — every required field
+   already has the `required` attribute, this just makes the browser's own
+   validity check visible instead of silent. :user-invalid (not :invalid)
+   so an empty required field isn't flagged red before the user has
+   touched it; :not(:focus) so the red border doesn't fight the blue focus
+   ring while actively typing. */
+.field input:user-invalid:not(:focus),
+.field select:user-invalid:not(:focus),
+.field textarea:user-invalid:not(:focus) {
+  border-color: var(--color-danger);
+}
+
 .field-error {
   font-size: 12px;
   color: var(--color-danger);

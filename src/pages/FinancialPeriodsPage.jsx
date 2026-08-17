@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney } from '../utils/format.js';
 
 function emptyForm() {
@@ -139,7 +140,7 @@ export default function FinancialPeriodsPage() {
 
       <div className="card">
         {loading ? (
-          <div className="empty-state">{t('common.loading')}</div>
+          <SkeletonTable rows={4} columns={5} />
         ) : periods.length === 0 ? (
           <div className="empty-state">{t('common.noResults')}</div>
         ) : (
@@ -217,7 +218,7 @@ export default function FinancialPeriodsPage() {
           </div>
 
           {checklist && (
-            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+            <p className="text-caption">
               {t('financialPeriods.pendingExpenses')}: {checklist.pendingApprovalCount + checklist.approvedUnpaidCount}
             </p>
           )}

@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 
 // Genuinely missing until now: income.view/expense.create both require a
 // categoryId (server/src/modules/contributions/contributions.validator.js,
@@ -131,7 +132,7 @@ export default function CategoriesPage() {
 
       <div className="card">
         {loading ? (
-          <div className="empty-state">{t('common.loading')}</div>
+          <SkeletonTable rows={4} columns={4} />
         ) : categories.length === 0 ? (
           <div className="empty-state">{t('categories.empty')}</div>
         ) : (

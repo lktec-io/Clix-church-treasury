@@ -20,8 +20,13 @@
   }
 }
 
-.card:hover {
-  box-shadow: var(--shadow-md);
+/* (hover: hover) so a tap on a touchscreen never leaves a card "stuck"
+   looking hovered until the next tap elsewhere — real mice/trackpads get
+   the effect, touch devices don't fake it. */
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    box-shadow: var(--shadow-md);
+  }
 }
 
 .card + .card {
@@ -309,9 +314,11 @@
   transition: box-shadow var(--motion-fast) var(--ease-premium), transform var(--motion-fast) var(--ease-premium);
 }
 
-.quick-action:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .quick-action:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
 }
 
 .quick-action__icon {

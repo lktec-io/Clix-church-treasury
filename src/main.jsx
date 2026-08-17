@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { MotionConfig } from 'framer-motion'
 // Self-hosted Poppins (SIL Open Font License — freely bundleable, unlike
 // the licensed CircularTtf this design system specified previously and
 // could never actually load in this environment). Only the weights the
@@ -21,24 +22,35 @@ import { ConfirmProvider } from './components/ConfirmDialog.jsx'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <ThemeProvider>
-        <LocaleProvider>
-          <ToastProvider>
-            <ConfirmProvider>
-              {/* Both auth providers are always mounted, not swapped based on
-                  route — each manages its own independent token/cookie/session,
-                  so a staff session and a member session can coexist without
-                  interfering (see api/memberClient.js for why they're
-                  separate clients in the first place). */}
-              <AuthProvider>
-                <MemberAuthProvider>
-                  <App />
-                </MemberAuthProvider>
-              </AuthProvider>
-            </ConfirmProvider>
-          </ToastProvider>
-        </LocaleProvider>
-      </ThemeProvider>
+      {/* reducedMotion="user" is the one thing a global CSS
+          prefers-reduced-motion rule cannot do: every Framer Motion
+          animation in this app (sidebar drawer, toast, modal, page
+          transitions, dashboard card stagger) is driven by JS directly
+          setting transform/opacity, not CSS transition/animation
+          properties — so the "animation-duration: 0.001ms !important"
+          override in animations.css never touched any of it. This makes
+          Framer itself skip transform/layout animation whenever the OS
+          reduced-motion setting is on, app-wide, from one place. */}
+      <MotionConfig reducedMotion="user">
+        <ThemeProvider>
+          <LocaleProvider>
+            <ToastProvider>
+              <ConfirmProvider>
+                {/* Both auth providers are always mounted, not swapped based on
+                    route — each manages its own independent token/cookie/session,
+                    so a staff session and a member session can coexist without
+                    interfering (see api/memberClient.js for why they're
+                    separate clients in the first place). */}
+                <AuthProvider>
+                  <MemberAuthProvider>
+                    <App />
+                  </MemberAuthProvider>
+                </AuthProvider>
+              </ConfirmProvider>
+            </ToastProvider>
+          </LocaleProvider>
+        </ThemeProvider>
+      </MotionConfig>
     </BrowserRouter>
   </StrictMode>,
 )

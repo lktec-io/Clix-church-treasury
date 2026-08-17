@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 
 export default function FundsPage() {
   const { t } = useLocale();
@@ -113,7 +114,7 @@ export default function FundsPage() {
 
       <div className="card">
         {loading ? (
-          <div className="empty-state">{t('common.loading')}</div>
+          <SkeletonTable rows={4} columns={4} />
         ) : funds.length === 0 ? (
           <div className="empty-state">{t('common.noResults')}</div>
         ) : (

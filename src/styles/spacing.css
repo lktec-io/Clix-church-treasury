@@ -50,3 +50,16 @@
     padding: 18px;
   }
 }
+
+/* Stat tiles and quick actions are card-like surfaces too — they were
+   missing the same mobile-tightening tier every other surface in this
+   file gets, a real inconsistency: everything else in the app got
+   noticeably cozier on a phone, these two didn't. */
+@media (max-width: 480px) {
+  .stat-tile {
+    padding: 12px 14px;
+  }
+  .quick-action {
+    padding: 13px 14px;
+  }
+}

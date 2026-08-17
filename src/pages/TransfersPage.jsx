@@ -5,6 +5,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 function emptyForm() {
@@ -138,7 +139,7 @@ export default function TransfersPage() {
 
       <div className="card">
         {loading ? (
-          <div className="empty-state">{t('common.loading')}</div>
+          <SkeletonTable rows={4} columns={3} />
         ) : transfers.length === 0 ? (
           <div className="empty-state">{t('common.noResults')}</div>
         ) : (

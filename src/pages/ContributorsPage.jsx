@@ -8,6 +8,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
+import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 
 function emptyForm() {
   return { fullName: '', phone: '', email: '', memberNumber: '' };
@@ -167,7 +168,7 @@ export default function ContributorsPage() {
           />
         </div>
         {loading ? (
-          <div className="empty-state">{t('common.loading')}</div>
+          <SkeletonTable rows={5} columns={5} />
         ) : filteredContributors.length === 0 ? (
           <EmptyState
             icon={FiUsers}
