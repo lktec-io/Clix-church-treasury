@@ -66,6 +66,7 @@
 
   "dashboard.title": "Dashibodi",
   "dashboard.totalBalance": "Salio jumla",
+  "dashboard.live": "Moja kwa moja",
   "dashboard.pendingApprovals": "Yanayosubiri idhini",
   "dashboard.noOpenPeriod": "Hakuna kipindi cha fedha kilichofunguliwa bado. Unda kimoja ili kuanza kusajili mapato na matumizi.",
   "dashboard.periodFilter": "Kipindi",

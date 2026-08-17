@@ -31,12 +31,13 @@
 }
 
 .hero-card {
-  padding: 26px 28px;
+  /* Compact by design — a premium SaaS hero figure, not a giant block. */
+  padding: 20px 22px;
 }
 
 @media (max-width: 480px) {
   .hero-card {
-    padding: 18px 16px;
+    padding: 16px 15px;
   }
 }
 

@@ -66,6 +66,7 @@
 
   "dashboard.title": "Dashboard",
   "dashboard.totalBalance": "Total balance",
+  "dashboard.live": "Live",
   "dashboard.pendingApprovals": "Pending approvals",
   "dashboard.noOpenPeriod": "There is no open financial period yet. Create one to start recording income and expenses.",
   "dashboard.periodFilter": "Period",

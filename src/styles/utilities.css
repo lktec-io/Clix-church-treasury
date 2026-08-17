@@ -112,7 +112,12 @@
 .modal {
   width: 100%;
   max-width: 440px;
+  /* dvh, not vh — tracks the *actual* visible viewport as mobile browser
+     chrome (address bar) shows/hides, so the modal never claims height
+     that's really hidden behind the browser UI. Falls back to the
+     already-correct vh in the rare browser without dvh support. */
   max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
   overflow-y: auto;
   background: var(--glass-panel-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(160%);

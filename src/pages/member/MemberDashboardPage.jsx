@@ -61,7 +61,13 @@ export default function MemberDashboardPage() {
       {error && <div className="alert alert--error">{error}</div>}
 
       <motion.div className="hero-card" custom={0} variants={cardEntrance} initial="initial" animate="animate">
-        <div className="hero-card__label">{t('member.dashboard.thisYear')}</div>
+        <div className="hero-card__top">
+          <div className="hero-card__label">{t('member.dashboard.thisYear')}</div>
+          <span className="live-indicator">
+            <span className="live-indicator__dot" aria-hidden="true" />
+            {t('dashboard.live')}
+          </span>
+        </div>
         <div className="hero-card__value tabular-nums">{formatCurrency(yearTotal?.total)}</div>
         <div className="hero-card__meta">{t('member.dashboard.thisMonth')}: {formatMoney(statement?.total)}</div>
       </motion.div>

@@ -21,6 +21,15 @@
     transform var(--motion-fast) var(--ease-premium);
 }
 
+@media (max-width: 480px) {
+  /* ~44px minimum touch target on phones, not just desktop precision
+     sizing (small/icon buttons excluded — .btn--sm is deliberately
+     compact for dense table rows). */
+  .btn:not(.btn--sm) {
+    min-height: 44px;
+  }
+}
+
 .btn:active:not(:disabled) {
   transform: scale(0.98);
 }
@@ -91,6 +100,8 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--surface);
+  /* Real touch target: 38px is fine for a mouse; a phone gets the ~44px
+     minimum recommended tap size without visually bloating desktop UI. */
   color: var(--text-muted);
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
@@ -98,6 +109,13 @@
 .icon-btn:hover {
   background: var(--bg-muted);
   color: var(--text);
+}
+
+@media (max-width: 480px) {
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
 
 /* Inline loading spinner for a button mid-submit — a small honest "this is

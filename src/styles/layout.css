@@ -102,13 +102,18 @@
 
 .app-sidebar__close {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px;
   background: none;
   border: none;
   font-size: 20px;
   cursor: pointer;
   color: var(--color-text-on-sidebar);
-  padding: 4px;
   border-radius: var(--radius-sm);
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
 }
 
 .app-sidebar__close:hover {
@@ -262,12 +267,22 @@
 
 .app-topbar__menu-btn {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin: -10px;
   background: none;
   border: none;
+  border-radius: var(--radius-sm);
   font-size: 20px;
   cursor: pointer;
   color: var(--text);
+  transition: background-color var(--motion-fast) var(--ease-premium);
+}
+.app-topbar__menu-btn:hover {
+  background: var(--bg-muted);
 }
 
 @media (min-width: 900px) {

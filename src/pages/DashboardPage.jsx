@@ -20,7 +20,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
-import { SkeletonCard, SkeletonStatGrid } from '../components/ui/Skeleton.jsx';
+import { SkeletonHero, SkeletonStatGrid, SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney, formatCurrency, formatDate } from '../utils/format.js';
 
 // Every figure here is read from the existing Financial Engine / Phase 9
@@ -174,8 +174,9 @@ export default function DashboardPage() {
     return (
       <div>
         <PageHeader title={t('dashboard.title')} />
+        <SkeletonHero />
         <SkeletonStatGrid />
-        <SkeletonCard lines={4} />
+        <SkeletonTable rows={4} columns={3} />
       </div>
     );
   }
@@ -207,7 +208,13 @@ export default function DashboardPage() {
         <>
           <PermissionGate permission="reports.view">
             <motion.div className="hero-card" custom={0} variants={cardEntrance} initial="initial" animate="animate">
-              <div className="hero-card__label">{t('dashboard.totalBalance')}</div>
+              <div className="hero-card__top">
+                <div className="hero-card__label">{t('dashboard.totalBalance')}</div>
+                <span className="live-indicator">
+                  <span className="live-indicator__dot" aria-hidden="true" />
+                  {t('dashboard.live')}
+                </span>
+              </div>
               <div className="hero-card__value tabular-nums">{summary ? formatCurrency(summary.closingBalance) : '—'}</div>
               <div className="hero-card__meta">{t(`dashboard.period.${range}`)}</div>
               <div className="hero-card__breakdown">

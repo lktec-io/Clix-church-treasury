@@ -7,6 +7,23 @@ export function SkeletonText({ width = '100%' }) {
   return <div className="skeleton skeleton-text" style={{ width }} />;
 }
 
+export function SkeletonHero() {
+  return (
+    <div className="card" style={{ background: 'var(--bg-muted)', boxShadow: 'none', marginBottom: 16 }}>
+      <div className="skeleton" style={{ width: '35%', height: 12, marginBottom: 10 }} />
+      <div className="skeleton" style={{ width: '55%', height: 28, marginBottom: 14 }} />
+      <div style={{ display: 'flex', gap: 16 }}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} style={{ flex: 1 }}>
+            <div className="skeleton" style={{ width: '70%', height: 10, marginBottom: 6 }} />
+            <div className="skeleton" style={{ width: '50%', height: 16 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SkeletonStatGrid({ count = 4 }) {
   return (
     <div className="stat-grid">
