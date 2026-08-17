@@ -11,7 +11,11 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   min-width: 0;
-  transition: box-shadow var(--motion-base) var(--ease-premium);
+  /* background-color/border-color here (not just box-shadow) so switching
+     Aurora/Midnight/Frost fades every card in place instead of the card
+     itself hard-snapping while only body's text/bg color cross-fades. */
+  transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium),
+    box-shadow var(--motion-base) var(--ease-premium);
 }
 
 @media (max-width: 480px) {
@@ -64,6 +68,7 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
 }
 
 .stat-tile__icon {
@@ -358,6 +363,7 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+  transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
 }
 
 .badge--success {
@@ -390,6 +396,7 @@
   border-radius: var(--radius-sm);
   font-size: 14px;
   margin-bottom: 14px;
+  transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
 }
 .alert--error {
   background: var(--color-danger-bg);

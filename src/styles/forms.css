@@ -69,7 +69,8 @@
   background: var(--surface);
   color: var(--text);
   font-size: 14px;
-  transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
+  transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium),
+    background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
   min-height: 40px;
 }
 

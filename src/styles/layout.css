@@ -38,6 +38,14 @@
   left: 0;
   z-index: 20;
   box-shadow: var(--shadow-lg);
+  /* border-color only, deliberately — `width` is already animated inline
+     by Framer Motion (Layout.jsx's collapse/expand), so it's left out of
+     this transition to avoid two animation systems fighting over the same
+     property. background-image (the gradient) isn't reliably animatable
+     across browsers, so a theme switch still snaps the sidebar's gradient
+     — border-color is the part of this surface CSS transitions can
+     actually smooth. */
+  transition: border-color var(--motion-slow) var(--ease-premium);
 }
 
 @media (min-width: 900px) {
@@ -256,6 +264,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
 }
 
 @media (max-width: 480px) {
@@ -379,6 +388,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  transition: border-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
 }
 
 @media (max-width: 480px) {
