@@ -73,18 +73,37 @@ export const env = {
   // Phase 7+), but present now so it's configured once, correctly, ahead
   // of that need rather than improvised later.
   frontendUrl: required('FRONTEND_URL'),
-  // Real SMS sending only turns on once BEEM_API_KEY/BEEM_SECRET_KEY are
-  // both set — until then `provider` resolves to 'noop', which logs and
-  // records every attempt in sms_log without making a network call
-  // (server/src/modules/sms/sms.service.js). Never required at startup:
-  // an unconfigured deployment must still boot and record contributions.
-  sms: {
-    provider: process.env.BEEM_API_KEY && process.env.BEEM_SECRET_KEY ? 'beem' : 'noop',
-    beem: {
-      apiKey: process.env.BEEM_API_KEY ?? '',
-      secretKey: process.env.BEEM_SECRET_KEY ?? '',
-      senderId: process.env.BEEM_SENDER_ID ?? '',
-      apiUrl: process.env.BEEM_API_URL ?? 'https://apisms.beem.africa/v1/send',
-    },
-  },
+  sms: buildSmsConfig(),
 };
+
+// Real SMS sending only turns on once BEEM_API_KEY/BEEM_SECRET_KEY are
+// both set — until then `provider` resolves to 'noop', which logs and
+// records every attempt in sms_log without making a network call
+// (server/src/modules/sms/sms.service.js). Never required at startup as a
+// pair being *absent*: an unconfigured deployment must still boot and
+// record contributions.
+//
+// What IS required to fail fast: a *partial* configuration — one of
+// BEEM_API_KEY/BEEM_SECRET_KEY set without the other. That state is
+// otherwise invisible: it silently resolves to `provider: 'noop'`, so an
+// admin who set one variable and typo'd/forgot the other gets a server
+// that starts cleanly and looks fine, with SMS quietly never sending and
+// no error anywhere pointing at why. Refusing to boot here turns a
+// support mystery into an immediate, specific startup error.
+function buildSmsConfig() {
+  const apiKey = process.env.BEEM_API_KEY ?? '';
+  const secretKey = process.env.BEEM_SECRET_KEY ?? '';
+  const senderId = process.env.BEEM_SENDER_ID ?? '';
+  const apiUrl = process.env.BEEM_API_URL ?? 'https://apisms.beem.africa/v1/send';
+
+  if (Boolean(apiKey) !== Boolean(secretKey)) {
+    throw new Error(
+      'Partial Beem SMS configuration: exactly one of BEEM_API_KEY / BEEM_SECRET_KEY is set. ' +
+        'Set both to enable SMS sending, or clear both to run with SMS disabled — a single ' +
+        'variable left set silently falls back to the no-op provider with no other warning.'
+    );
+  }
+
+  const provider = apiKey && secretKey ? 'beem' : 'noop';
+  return { provider, beem: { apiKey, secretKey, senderId, apiUrl } };
+}

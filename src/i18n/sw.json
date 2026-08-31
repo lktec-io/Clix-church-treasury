@@ -119,6 +119,7 @@
   "contributions.retrySms": "Jaribu Kutuma SMS Tena",
   "contributions.sms.reason": "Sababu: {{reason}}",
   "contributions.sms.reasonCode.auth": "Mtoa huduma wa SMS amekataa taarifa za uthibitisho zilizowekwa. Msimamizi anahitaji kuangalia mipangilio ya Beem.",
+  "contributions.sms.reasonCode.forbidden": "Mtoa huduma wa SMS amekubali taarifa za uthibitisho lakini amekataa ombi hili — mara nyingi husababishwa na jina la mtumaji (sender ID) lisilokubalika au lisilolingana. Msimamizi anahitaji kuangalia mipangilio ya sender ID.",
   "contributions.sms.reasonCode.bad_request": "Mtoa huduma wa SMS amekataa ombi kwa sababu halikuwa sahihi.",
   "contributions.sms.reasonCode.rate_limited": "SMS nyingi zimetumwa hivi karibuni. Tafadhali jaribu tena baadaye kidogo.",
   "contributions.sms.reasonCode.timeout": "Mtoa huduma wa SMS hakujibu kwa wakati.",

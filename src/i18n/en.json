@@ -119,6 +119,7 @@
   "contributions.retrySms": "Try Sending SMS Again",
   "contributions.sms.reason": "Reason: {{reason}}",
   "contributions.sms.reasonCode.auth": "The SMS provider rejected the configured credentials. An administrator needs to check the Beem configuration.",
+  "contributions.sms.reasonCode.forbidden": "The SMS provider accepted the credentials but rejected this request — usually an unapproved or mismatched sender ID. An administrator needs to check the sender ID configuration.",
   "contributions.sms.reasonCode.bad_request": "The SMS provider rejected the request as malformed.",
   "contributions.sms.reasonCode.rate_limited": "Too many SMS were sent recently. Please try again shortly.",
   "contributions.sms.reasonCode.timeout": "The SMS provider did not respond in time.",
