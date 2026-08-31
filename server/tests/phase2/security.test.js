@@ -5,21 +5,24 @@ import { buildRealApp } from '../helpers/realApp.js';
 import { seedRbacCatalog } from '../../src/db/seeds/seedRbacCatalog.js';
 import { uniqueName } from '../helpers/fixtures.js';
 import { pool } from '../../src/config/db.js';
+import * as authService from '../../src/modules/auth/auth.service.js';
 
 beforeEach(async () => {
   await resetDatabase();
   await seedRbacCatalog();
 });
 
-async function registerChurch(app) {
+// Test fixture helper, not a public API call — see tests/phase2/auth.test.js's
+// comment: there is no public /register-tenant route anymore.
+async function registerChurch() {
   const payload = {
     churchName: uniqueName('Grace Chapel'),
     adminEmail: `${uniqueName('admin')}@example.test`,
     adminPassword: 'CorrectHorseBatteryStaple',
     adminFullName: 'Test Admin',
   };
-  const res = await request(app).post('/api/v1/auth/register-tenant').send(payload).expect(201);
-  return { tenant: res.body.data.tenant, payload };
+  const result = await authService.registerTenant(payload, { ipAddress: '127.0.0.1' });
+  return { tenant: result.tenant, payload };
 }
 
 async function login(app, tenantSlug, email, password) {
@@ -74,7 +77,7 @@ describe('security middleware', () => {
 
   it('never returns password_hash in any user-facing response', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const token = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
 
     const res = await request(app).get('/api/v1/users').set('Authorization', `Bearer ${token}`).expect(200);
@@ -85,7 +88,7 @@ describe('security middleware', () => {
 
   it('a mass-assigned status/role field in an invite payload is ignored', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const token = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
 
     const res = await request(app)
@@ -109,7 +112,7 @@ describe('security middleware', () => {
 
   it('does not leak plaintext password or raw refresh token into the audit log', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
 
     await request(app)
       .post('/api/v1/auth/login')

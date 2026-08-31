@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiShield } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -91,9 +91,6 @@ export default function LoginPage() {
             {submitting ? t('common.loading') : t('auth.login.submit')}
           </button>
         </form>
-        <p className="auth-card__subtitle" style={{ marginTop: 16, marginBottom: 0 }}>
-          {t('auth.login.needAccount')} <Link to="/register">{t('auth.register.submit')}</Link>
-        </p>
       </motion.div>
     </div>
   );

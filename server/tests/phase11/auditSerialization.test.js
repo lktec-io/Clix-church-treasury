@@ -8,6 +8,7 @@ import { serializeAuditState, auditLogRepository } from '../../src/modules/audit
 import { rolesRepository } from '../../src/modules/roles/roles.repository.js';
 import { seedRbacCatalog } from '../../src/db/seeds/seedRbacCatalog.js';
 import { PERMISSIONS } from '../../src/db/seeds/permissionCatalog.js';
+import { registerTenant } from '../../src/modules/auth/auth.service.js';
 
 beforeEach(async () => {
   await resetDatabase();
@@ -135,9 +136,9 @@ describe('audit logging no longer crashes financial_period.reopened / user.role_
   });
 });
 
-// --- The first registered administrator must actually have every permission ---
-describe('Super Administrator provisioning via the real registration endpoint', () => {
-  it('a newly registered church admin has the full permission catalog immediately, via the exact production code path', async () => {
+// --- The first registered administrator must actually have every TENANT permission ---
+describe('Super Administrator provisioning via the underlying registration capability', () => {
+  it('a newly registered church admin has the full tenant permission catalog immediately, via the exact production code path — EXCEPT platform.manage, which no tenant role ever grants', async () => {
     await seedRbacCatalog();
     const app = buildRealApp();
 
@@ -147,8 +148,11 @@ describe('Super Administrator provisioning via the real registration endpoint', 
       adminPassword: 'CorrectHorseBatteryStaple',
       adminFullName: 'Test Admin',
     };
-    const registerRes = await request(app).post('/api/v1/auth/register-tenant').send(payload).expect(201);
-    const { slug: tenantSlug } = registerRes.body.data.tenant;
+    // Not an HTTP call — there is no public /register-tenant route anymore
+    // (see tests/phase2/auth.test.js's comment on this same change). This
+    // calls the exact same service function the removed route used to.
+    const registerResult = await registerTenant(payload, { ipAddress: '127.0.0.1' });
+    const tenantSlug = registerResult.tenant.slug;
 
     const loginRes = await request(app)
       .post('/api/v1/auth/login')
@@ -161,7 +165,13 @@ describe('Super Administrator provisioning via the real registration endpoint', 
       .expect(200);
 
     expect(meRes.body.data.roles).toContain('Super Administrator');
-    expect(meRes.body.data.permissions).toHaveLength(PERMISSIONS.length);
+    // PERMISSIONS.length - 1, not PERMISSIONS.length: platform.manage is
+    // deliberately excluded from Super Administrator's "ALL" grant
+    // (permissionCatalog.js's PLATFORM_ONLY_PERMISSIONS) — a tenant admin,
+    // even the very first one on a brand-new tenant, must never receive
+    // the platform-level permission just by holding the top tenant role.
+    expect(meRes.body.data.permissions).toHaveLength(PERMISSIONS.length - 1);
+    expect(meRes.body.data.permissions).not.toContain('platform.manage');
     // Spot-check permissions added across later phases — a regression that
     // only broke, say, Phase 8's additions would still pass a naive
     // "non-empty permissions" check but not this.

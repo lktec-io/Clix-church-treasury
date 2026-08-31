@@ -1,6 +1,6 @@
 import { env } from '../../config/env.js';
 import * as authService from './auth.service.js';
-import { validateLogin, validateRegisterTenant, validateEmail, validatePassword } from './auth.validator.js';
+import { validateLogin, validateEmail, validatePassword } from './auth.validator.js';
 import { validationError } from '../../errors/AppError.js';
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
@@ -18,16 +18,6 @@ function setRefreshCookie(res, token) {
 
 function clearRefreshCookie(res) {
   res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/v1/auth' });
-}
-
-export async function registerTenant(req, res, next) {
-  try {
-    const data = validateRegisterTenant(req.body ?? {});
-    const result = await authService.registerTenant(data, { ipAddress: req.ip });
-    res.status(201).json({ success: true, data: result });
-  } catch (err) {
-    next(err);
-  }
 }
 
 export async function login(req, res, next) {

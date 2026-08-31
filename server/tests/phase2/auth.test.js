@@ -6,6 +6,7 @@ import { buildRealApp } from '../helpers/realApp.js';
 import { seedRbacCatalog } from '../../src/db/seeds/seedRbacCatalog.js';
 import { env } from '../../src/config/env.js';
 import { uniqueName } from '../helpers/fixtures.js';
+import * as authService from '../../src/modules/auth/auth.service.js';
 
 function extractCookie(res, name) {
   const header = res.headers['set-cookie']?.find((c) => c.startsWith(`${name}=`));
@@ -18,7 +19,15 @@ beforeEach(async () => {
   await seedRbacCatalog();
 });
 
-async function registerChurch(app, overrides = {}) {
+// registerChurch is a TEST FIXTURE HELPER, not a call through the public
+// API — there is no public /register-tenant route anymore (removed:
+// tenants are now only ever created by a Platform Administrator via
+// /api/v1/platform/tenants). It calls the underlying service directly,
+// the exact same function platform.service.js#createTenant's sibling
+// code path (tenants.service.js#createTenantWithConnection) is built on
+// — this is "the backend capability", still fully exercised by every
+// test below it, just no longer reachable by an anonymous HTTP request.
+async function registerChurch(overrides = {}) {
   const payload = {
     churchName: uniqueName('Grace Chapel'),
     adminEmail: `${uniqueName('admin')}@example.test`,
@@ -26,54 +35,49 @@ async function registerChurch(app, overrides = {}) {
     adminFullName: 'Test Admin',
     ...overrides,
   };
-  const res = await request(app).post('/api/v1/auth/register-tenant').send(payload).expect(201);
-  return { ...res.body.data, payload };
+  const result = await authService.registerTenant(payload, { ipAddress: '127.0.0.1' });
+  return { ...result, payload };
 }
 
-describe('POST /auth/register-tenant', () => {
-  it('creates a tenant and an active Super Administrator admin user', async () => {
+describe('public tenant registration is removed', () => {
+  it('POST /auth/register-tenant no longer exists — 404, not merely unauthenticated', async () => {
     const app = buildRealApp();
-    const { tenant, user } = await registerChurch(app);
+    const res = await request(app)
+      .post('/api/v1/auth/register-tenant')
+      .send({ churchName: 'Anyone', adminEmail: 'anyone@example.test', adminPassword: 'whatever1234', adminFullName: 'Anyone' });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('auth.service.js#registerTenant (the underlying capability platform.service.js also builds on)', () => {
+  it('creates a tenant and an active Super Administrator admin user', async () => {
+    const { tenant, user } = await registerChurch();
     expect(tenant.status).toBe('active');
     expect(user.status).toBe('active');
     expect(user.password_hash).toBeUndefined();
   });
 
   it('rejects a duplicate church name (slug collision)', async () => {
-    const app = buildRealApp();
     const churchName = uniqueName('Unity Church');
-    await registerChurch(app, { churchName });
-    const res = await request(app)
-      .post('/api/v1/auth/register-tenant')
-      .send({
-        churchName,
-        adminEmail: `${uniqueName('admin')}@example.test`,
-        adminPassword: 'CorrectHorseBatteryStaple',
-        adminFullName: 'Another Admin',
-      })
-      .expect(409);
-    expect(res.body.error.code).toBe('CONFLICT');
-  });
-
-  it('rejects a weak password', async () => {
-    const app = buildRealApp();
-    const res = await request(app)
-      .post('/api/v1/auth/register-tenant')
-      .send({
-        churchName: uniqueName('Faith Assembly'),
-        adminEmail: `${uniqueName('admin')}@example.test`,
-        adminPassword: 'short',
-        adminFullName: 'Test Admin',
-      })
-      .expect(422);
-    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    await registerChurch({ churchName });
+    await expect(
+      authService.registerTenant(
+        {
+          churchName,
+          adminEmail: `${uniqueName('admin')}@example.test`,
+          adminPassword: 'CorrectHorseBatteryStaple',
+          adminFullName: 'Another Admin',
+        },
+        { ipAddress: '127.0.0.1' }
+      )
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
   });
 });
 
 describe('POST /auth/login', () => {
   it('logs in with correct credentials and sets an httpOnly refresh cookie', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
 
     const res = await request(app)
       .post('/api/v1/auth/login')
@@ -91,7 +95,7 @@ describe('POST /auth/login', () => {
 
   it('rejects an unknown email with the same generic message as a wrong password', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
 
     const wrongPassword = await request(app)
       .post('/api/v1/auth/login')
@@ -118,7 +122,7 @@ describe('POST /auth/login', () => {
 
   it('locks the account after repeated failed attempts', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
 
     for (let i = 0; i < env.login.maxAttempts; i += 1) {
       await request(app)
@@ -139,7 +143,7 @@ describe('POST /auth/login', () => {
 describe('POST /auth/refresh and /auth/logout', () => {
   it('rotates the refresh token on each refresh', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
 
     const loginRes = await request(app)
       .post('/api/v1/auth/login')
@@ -160,7 +164,7 @@ describe('POST /auth/refresh and /auth/logout', () => {
 
   it('rejects reuse of an already-rotated refresh token and kills the whole chain', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
 
     const loginRes = await request(app)
       .post('/api/v1/auth/login')
@@ -206,7 +210,7 @@ describe('POST /auth/refresh and /auth/logout', () => {
 
   it('logout revokes the refresh token so it can no longer be used', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
 
     const loginRes = await request(app)
       .post('/api/v1/auth/login')
@@ -261,7 +265,7 @@ describe('access token verification', () => {
 describe('GET /auth/me', () => {
   it('returns the current user, roles, and permissions', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const token = await request(app)
       .post('/api/v1/auth/login')
       .send({ tenantSlug: tenant.slug, email: payload.adminEmail, password: payload.adminPassword })
@@ -284,7 +288,7 @@ describe('GET /auth/me', () => {
 describe('password reset', () => {
   it('completes a reset and revokes existing sessions', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const agent = request.agent(app);
 
     await agent
@@ -320,7 +324,7 @@ describe('password reset', () => {
 
   it('does not reveal whether an email exists', async () => {
     const app = buildRealApp();
-    const { tenant } = await registerChurch(app);
+    const { tenant } = await registerChurch();
     const res = await request(app)
       .post('/api/v1/auth/password-reset/request')
       .send({ tenantSlug: tenant.slug, email: 'nobody-here@example.test' })

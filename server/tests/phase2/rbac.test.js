@@ -5,21 +5,25 @@ import { buildRealApp } from '../helpers/realApp.js';
 import { seedRbacCatalog } from '../../src/db/seeds/seedRbacCatalog.js';
 import { rolesRepository } from '../../src/modules/roles/roles.repository.js';
 import { uniqueName } from '../helpers/fixtures.js';
+import * as authService from '../../src/modules/auth/auth.service.js';
 
 beforeEach(async () => {
   await resetDatabase();
   await seedRbacCatalog();
 });
 
-async function registerChurch(app) {
+// Test fixture helper, not a public API call — there is no public
+// /register-tenant route anymore (see tests/phase2/auth.test.js's own
+// comment on this same pattern). Calls the underlying service directly.
+async function registerChurch() {
   const payload = {
     churchName: uniqueName('Grace Chapel'),
     adminEmail: `${uniqueName('admin')}@example.test`,
     adminPassword: 'CorrectHorseBatteryStaple',
     adminFullName: 'Test Admin',
   };
-  const res = await request(app).post('/api/v1/auth/register-tenant').send(payload).expect(201);
-  return { tenant: res.body.data.tenant, admin: res.body.data.user, payload };
+  const result = await authService.registerTenant(payload, { ipAddress: '127.0.0.1' });
+  return { tenant: result.tenant, admin: result.user, payload };
 }
 
 async function login(app, tenantSlug, email, password) {
@@ -74,7 +78,7 @@ async function createLoggedInUserWithRole(app, superAdminToken, tenant, roleName
 describe('RBAC — permission matrix', () => {
   it('Super Administrator can access every protected resource used in this phase', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const token = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
 
     await request(app).get('/api/v1/accounts').set('Authorization', `Bearer ${token}`).expect(200);
@@ -85,7 +89,7 @@ describe('RBAC — permission matrix', () => {
 
   it('Viewer can read accounts/funds but cannot create them', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const superAdminToken = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
     const { token } = await createLoggedInUserWithRole(app, superAdminToken, tenant, 'Viewer');
 
@@ -101,7 +105,7 @@ describe('RBAC — permission matrix', () => {
 
   it('Auditor can view audit logs but cannot manage funds', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const superAdminToken = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
     const { token } = await createLoggedInUserWithRole(app, superAdminToken, tenant, 'Auditor');
 
@@ -117,7 +121,7 @@ describe('RBAC — permission matrix', () => {
 
   it('Approver cannot view or manage users (no users.view/users.manage)', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const superAdminToken = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
     const { token } = await createLoggedInUserWithRole(app, superAdminToken, tenant, 'Approver');
 
@@ -126,7 +130,7 @@ describe('RBAC — permission matrix', () => {
 
   it('a user without users.manage cannot assign themselves a more privileged role (privilege escalation blocked)', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const superAdminToken = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
     const { token, userId } = await createLoggedInUserWithRole(app, superAdminToken, tenant, 'Treasurer');
 
@@ -141,7 +145,7 @@ describe('RBAC — permission matrix', () => {
 
   it('a user cannot disable their own account', async () => {
     const app = buildRealApp();
-    const { tenant, payload, admin } = await registerChurch(app);
+    const { tenant, payload, admin } = await registerChurch();
     const token = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
 
     const res = await request(app)
@@ -154,7 +158,7 @@ describe('RBAC — permission matrix', () => {
 
   it('a disabled user cannot log in even with the correct password', async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const superAdminToken = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
     const { userId, email, password } = await createLoggedInUserWithRole(
       app,
@@ -178,7 +182,7 @@ describe('RBAC — permission matrix', () => {
 
   it("a disabled user's active sessions are revoked", async () => {
     const app = buildRealApp();
-    const { tenant, payload } = await registerChurch(app);
+    const { tenant, payload } = await registerChurch();
     const superAdminToken = await login(app, tenant.slug, payload.adminEmail, payload.adminPassword);
     const { userId, token, refreshCookie } = await createLoggedInUserWithRole(
       app,
@@ -210,8 +214,8 @@ describe('RBAC — permission matrix', () => {
 describe('RBAC — tenant + role isolation combined', () => {
   it('a role created/used in tenant A has no effect on tenant B users', async () => {
     const app = buildRealApp();
-    const { tenant: tenantA, payload: payloadA } = await registerChurch(app);
-    const { tenant: tenantB, payload: payloadB } = await registerChurch(app);
+    const { tenant: tenantA, payload: payloadA } = await registerChurch();
+    const { tenant: tenantB, payload: payloadB } = await registerChurch();
 
     const tokenA = await login(app, tenantA.slug, payloadA.adminEmail, payloadA.adminPassword);
     const tokenB = await login(app, tenantB.slug, payloadB.adminEmail, payloadB.adminPassword);

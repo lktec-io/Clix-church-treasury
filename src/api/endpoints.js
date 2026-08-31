@@ -2,10 +2,12 @@ import { apiClient } from './client.js';
 
 const unwrap = (res) => res.data.data;
 
+// No registerTenant — there is no public tenant-registration endpoint
+// (see server/src/modules/auth/auth.routes.js's own comment). Every
+// tenant is created by a Platform Administrator via platformApi.createTenant.
 export const authApi = {
   login: (body) => apiClient.post('/auth/login', body).then(unwrap),
   logout: () => apiClient.post('/auth/logout').then(unwrap),
-  registerTenant: (body) => apiClient.post('/auth/register-tenant', body).then(unwrap),
 };
 
 export const platformApi = {

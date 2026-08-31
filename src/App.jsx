@@ -15,7 +15,6 @@ import MemberHistoryPage from './pages/member/MemberHistoryPage.jsx';
 import MemberStatementPage from './pages/member/MemberStatementPage.jsx';
 import MemberChangePinPage from './pages/member/MemberChangePinPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import RegisterPage from './pages/RegisterPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import ContributionsPage from './pages/ContributionsPage.jsx';
 import ContributorsPage from './pages/ContributorsPage.jsx';
@@ -34,9 +33,13 @@ import UsersPage from './pages/UsersPage.jsx';
 function App() {
   return (
     <Routes>
+      {/* /login is the ONLY public entry point for staff/platform accounts —
+          there is deliberately no /register: every tenant and its first
+          admin user is created exclusively by a Platform Administrator via
+          /platform/tenants. See auth.routes.js's own comment for the
+          backend side of this. */}
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
       </Route>
 
       {/* Member self-service portal — a fully separate route tree from the
