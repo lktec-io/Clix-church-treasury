@@ -63,6 +63,7 @@ export class TenantsRepository {
     const [rows] = await this.runner(connection).query(
       `SELECT
          t.*,
+         (SELECT u.id FROM users u WHERE u.tenant_id = t.id ORDER BY u.id ASC LIMIT 1) AS admin_user_id,
          (SELECT u.email FROM users u WHERE u.tenant_id = t.id ORDER BY u.id ASC LIMIT 1) AS admin_email,
          (SELECT u.full_name FROM users u WHERE u.tenant_id = t.id ORDER BY u.id ASC LIMIT 1) AS admin_full_name,
          (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS user_count

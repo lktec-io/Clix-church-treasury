@@ -14,5 +14,7 @@ export function platformRoutes() {
   router.get('/tenants/:id', platformController.getTenant);
   router.patch('/tenants/:id', platformController.updateTenant);
   router.patch('/tenants/:id/status', platformController.setTenantStatus);
+  router.patch('/tenants/:id/admin', platformController.updateTenantAdmin);
+  router.post('/tenants/:id/admin/reset-password', platformController.resetTenantAdminPassword);
   return router;
 }

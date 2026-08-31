@@ -1,5 +1,11 @@
 import * as platformService from './platform.service.js';
-import { validateCreateTenant, validateUpdateTenant, validateTenantStatus } from './platform.validator.js';
+import {
+  validateCreateTenant,
+  validateUpdateTenant,
+  validateTenantStatus,
+  validateUpdateTenantAdmin,
+  validateResetTenantAdminPassword,
+} from './platform.validator.js';
 
 export async function listTenants(req, res, next) {
   try {
@@ -44,6 +50,26 @@ export async function setTenantStatus(req, res, next) {
     const { status } = validateTenantStatus(req.body ?? {});
     const tenant = await platformService.setTenantStatus(Number(req.params.id), status, req.auth.userId);
     res.json({ success: true, data: tenant });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateTenantAdmin(req, res, next) {
+  try {
+    const { userId, fullName, email } = validateUpdateTenantAdmin(req.body ?? {});
+    const admin = await platformService.updateTenantAdmin(Number(req.params.id), userId, { fullName, email }, req.auth.userId);
+    res.json({ success: true, data: admin });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetTenantAdminPassword(req, res, next) {
+  try {
+    const { userId, newPassword } = validateResetTenantAdminPassword(req.body ?? {});
+    const result = await platformService.resetTenantAdminPassword(Number(req.params.id), userId, newPassword, req.auth.userId);
+    res.json({ success: true, data: result });
   } catch (err) {
     next(err);
   }

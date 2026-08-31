@@ -71,3 +71,40 @@ export function validateTenantStatus(body) {
   }
   return { status: body.status };
 }
+
+export function validateUpdateTenantAdmin(body) {
+  const fields = {};
+  if (typeof body.userId !== 'number' && typeof body.userId !== 'string') {
+    fields.userId = 'userId is required';
+  }
+  if (typeof body.fullName !== 'string' || body.fullName.trim().length === 0) {
+    fields.fullName = 'fullName is required';
+  } else if (body.fullName.length > 255) {
+    fields.fullName = 'must be at most 255 characters';
+  }
+  try {
+    validateEmail(body.email, 'email');
+  } catch {
+    fields.email = 'must be a valid email address';
+  }
+  if (Object.keys(fields).length > 0) {
+    throw validationError('Invalid tenant admin update payload', fields);
+  }
+  return { userId: Number(body.userId), fullName: body.fullName.trim(), email: body.email.trim().toLowerCase() };
+}
+
+export function validateResetTenantAdminPassword(body) {
+  const fields = {};
+  if (typeof body.userId !== 'number' && typeof body.userId !== 'string') {
+    fields.userId = 'userId is required';
+  }
+  try {
+    validatePassword(body.newPassword, 'newPassword');
+  } catch {
+    fields.newPassword = 'must be at least 10 characters';
+  }
+  if (Object.keys(fields).length > 0) {
+    throw validationError('Invalid password reset payload', fields);
+  }
+  return { userId: Number(body.userId), newPassword: body.newPassword };
+}

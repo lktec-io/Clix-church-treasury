@@ -6,6 +6,7 @@ import { createTenantWithConnection } from '../tenants/tenants.service.js';
 import { usersRepository } from '../users/users.repository.js';
 import { rolesRepository } from '../roles/roles.repository.js';
 import { userRolesRepository } from '../roles/userRoles.repository.js';
+import { refreshTokensRepository } from '../auth/refreshTokens.repository.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
 
 const BCRYPT_COST = 10;
@@ -23,6 +24,7 @@ function toPublicTenantRow(row) {
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    adminUserId: row.admin_user_id ?? null,
     adminEmail: row.admin_email ?? null,
     adminFullName: row.admin_full_name ?? null,
     userCount: Number(row.user_count ?? 0),
@@ -160,4 +162,75 @@ export async function setTenantStatus(tenantId, status, actorUserId) {
   });
 
   return updated;
+}
+
+function toPublicAdminUser(user) {
+  return { id: user.id, email: user.email, fullName: user.full_name, status: user.status };
+}
+
+// Platform-admin-triggered edit of a tenant's admin account — name/email
+// only. Never accepts or returns a password here; that is exclusively
+// resetTenantAdminPassword's job below, kept as a deliberately separate
+// action (matches how the rest of this codebase already treats "edit
+// profile" and "change password" as two different operations, e.g.
+// auth.service.js's resetPassword vs. no combined "update everything"
+// endpoint anywhere in this app).
+export async function updateTenantAdmin(tenantId, userId, { fullName, email }, actorUserId) {
+  const existing = await usersRepository.findById(tenantId, userId);
+  if (!existing) throw notFound('Tenant admin user not found');
+
+  if (email !== existing.email) {
+    const conflicting = await usersRepository.findByEmail(tenantId, email);
+    if (conflicting && conflicting.id !== userId) {
+      throw conflict('That email is already used by another user in this tenant');
+    }
+  }
+
+  const updated = await usersRepository.update(tenantId, userId, { email, full_name: fullName });
+
+  await recordAuditLog({
+    tenantId,
+    actorUserId,
+    action: 'platform.tenant_admin_updated',
+    entityType: 'users',
+    entityId: userId,
+    before: { email: existing.email, fullName: existing.full_name },
+    after: { email, fullName },
+  });
+
+  return toPublicAdminUser(updated);
+}
+
+// Sets a new password for a tenant admin, chosen by the platform admin
+// (e.g. "the client forgot their password and has no working email
+// recovery flow yet" — this codebase's password-reset-by-email flow,
+// auth.service.js#requestPasswordReset, has no email delivery wired up;
+// see its own comment — so this is the real, working recovery path today).
+// Reuses the exact same bcrypt hashing as every other password write in
+// this codebase — never a second hashing implementation. Revokes every
+// existing refresh token for that user (same as auth.service.js's own
+// resetPassword) so a session issued under the OLD password cannot keep
+// refreshing indefinitely after a platform-admin-forced reset; the user
+// must log in again with the new password at the normal /login page.
+export async function resetTenantAdminPassword(tenantId, userId, newPassword, actorUserId) {
+  const existing = await usersRepository.findById(tenantId, userId);
+  if (!existing) throw notFound('Tenant admin user not found');
+
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+  await usersRepository.setPasswordHash(tenantId, userId, passwordHash);
+  await refreshTokensRepository.revokeAllForUser(userId);
+
+  await recordAuditLog({
+    tenantId,
+    actorUserId,
+    action: 'platform.tenant_admin_password_reset',
+    entityType: 'users',
+    entityId: userId,
+    // Never the password or its hash — audit_logs.repository.js's own
+    // redact() would strip a literal `password`/`hash`-named key anyway,
+    // but there is nothing password-shaped in this payload to begin with.
+    after: { passwordReset: true },
+  });
+
+  return { success: true };
 }

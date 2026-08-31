@@ -14,6 +14,8 @@ export const platformApi = {
   createTenant: (body) => apiClient.post('/platform/tenants', body).then(unwrap),
   updateTenant: (id, body) => apiClient.patch(`/platform/tenants/${id}`, body).then(unwrap),
   setTenantStatus: (id, status) => apiClient.patch(`/platform/tenants/${id}/status`, { status }).then(unwrap),
+  updateTenantAdmin: (id, body) => apiClient.patch(`/platform/tenants/${id}/admin`, body).then(unwrap),
+  resetTenantAdminPassword: (id, body) => apiClient.post(`/platform/tenants/${id}/admin/reset-password`, body).then(unwrap),
 };
 
 export const accountsApi = {

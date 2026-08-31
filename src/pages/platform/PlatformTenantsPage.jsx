@@ -116,27 +116,21 @@ function CreateTenantModal({ onClose, onCreated }) {
   );
 }
 
-function EditTenantModal({ tenant, onClose, onSaved }) {
+function ResetAdminPasswordModal({ tenant, onClose, onDone }) {
   const { t } = useLocale();
   const toast = useToast();
-  const [form, setForm] = useState({
-    name: tenant.name,
-    baseCurrency: tenant.baseCurrency,
-    localeDefault: tenant.localeDefault,
-  });
+  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await platformApi.updateTenant(tenant.id, form);
-      toast.success(t('common.saved'));
-      onSaved();
+      await platformApi.resetTenantAdminPassword(tenant.id, { userId: tenant.adminUserId, newPassword });
+      toast.success(t('platform.tenants.passwordResetToast'));
+      onDone();
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -154,45 +148,173 @@ function EditTenantModal({ tenant, onClose, onSaved }) {
         exit="exit"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="edit-tenant-title"
+        aria-labelledby="reset-password-title"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="card__header">
-          <h2 id="edit-tenant-title">{t('platform.tenants.editTitle')}</h2>
+          <h2 id="reset-password-title">{t('platform.tenants.resetPasswordTitle')}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label={t('common.cancel')}>
             <FiX aria-hidden="true" />
           </button>
         </div>
         {error && <div className="alert alert--error">{error}</div>}
         <form onSubmit={handleSubmit}>
-          <div className="form-grid">
-            <div className="field field--full">
-              <label htmlFor="editName">{t('platform.tenants.churchName')}</label>
-              <input id="editName" value={form.name} onChange={handleChange('name')} required />
-            </div>
-            <div className="field">
-              <label htmlFor="editCurrency">{t('platform.tenants.baseCurrency')}</label>
-              <input id="editCurrency" value={form.baseCurrency} onChange={handleChange('baseCurrency')} maxLength={3} required />
-            </div>
-            <div className="field">
-              <label htmlFor="editLocale">{t('platform.tenants.defaultLocale')}</label>
-              <select id="editLocale" value={form.localeDefault} onChange={handleChange('localeDefault')}>
-                <option value="en">EN</option>
-                <option value="sw">SW</option>
-              </select>
-            </div>
+          <div className="field field--full">
+            <label htmlFor="newAdminPassword">{t('platform.tenants.newPassword')}</label>
+            <input
+              id="newAdminPassword"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={10}
+              required
+            />
+            <span className="field-hint">{t('platform.tenants.resetPasswordHint')}</span>
           </div>
           <div className="modal__actions">
             <button type="button" className="btn btn--secondary" onClick={onClose} disabled={submitting}>
               {t('common.cancel')}
             </button>
-            <button type="submit" className={`btn btn--primary${submitting ? ' btn--loading' : ''}`} disabled={submitting}>
-              {t('common.save')}
+            <button type="submit" className={`btn btn--danger${submitting ? ' btn--loading' : ''}`} disabled={submitting}>
+              {t('platform.tenants.resetPassword')}
             </button>
           </div>
         </form>
       </motion.div>
     </motion.div>
+  );
+}
+
+function EditTenantModal({ tenant, onClose, onSaved }) {
+  const { t } = useLocale();
+  const toast = useToast();
+  const [form, setForm] = useState({
+    name: tenant.name,
+    baseCurrency: tenant.baseCurrency,
+    localeDefault: tenant.localeDefault,
+    adminFullName: tenant.adminFullName ?? '',
+    adminEmail: tenant.adminEmail ?? '',
+  });
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+
+  const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      // Two separate resources (the tenant record itself, and its admin
+      // user account) — deliberately two calls, not a combined endpoint,
+      // matching how the backend keeps "edit tenant" and "edit tenant
+      // admin" as genuinely separate operations (platform.service.js).
+      await platformApi.updateTenant(tenant.id, {
+        name: form.name,
+        baseCurrency: form.baseCurrency,
+        localeDefault: form.localeDefault,
+      });
+      if (tenant.adminUserId) {
+        await platformApi.updateTenantAdmin(tenant.id, {
+          userId: tenant.adminUserId,
+          fullName: form.adminFullName,
+          email: form.adminEmail,
+        });
+      }
+      toast.success(t('common.saved'));
+      onSaved();
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <motion.div className="modal-overlay" variants={overlayVariants} initial="initial" animate="animate" exit="exit" onMouseDown={onClose}>
+        <motion.div
+          className="modal"
+          variants={modalVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-tenant-title"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="card__header">
+            <h2 id="edit-tenant-title">{t('platform.tenants.editTitle')}</h2>
+            <button type="button" className="icon-btn" onClick={onClose} aria-label={t('common.cancel')}>
+              <FiX aria-hidden="true" />
+            </button>
+          </div>
+          {error && <div className="alert alert--error">{error}</div>}
+          <form onSubmit={handleSubmit}>
+            <div className="form-grid">
+              <div className="field field--full">
+                <label htmlFor="editName">{t('platform.tenants.churchName')}</label>
+                <input id="editName" value={form.name} onChange={handleChange('name')} required />
+              </div>
+              <div className="field">
+                <label htmlFor="editCurrency">{t('platform.tenants.baseCurrency')}</label>
+                <input id="editCurrency" value={form.baseCurrency} onChange={handleChange('baseCurrency')} maxLength={3} required />
+              </div>
+              <div className="field">
+                <label htmlFor="editLocale">{t('platform.tenants.defaultLocale')}</label>
+                <select id="editLocale" value={form.localeDefault} onChange={handleChange('localeDefault')}>
+                  <option value="en">EN</option>
+                  <option value="sw">SW</option>
+                </select>
+              </div>
+            </div>
+
+            {tenant.adminUserId && (
+              <>
+                <div className="form-section">
+                  <div className="form-section__title">{t('platform.tenants.adminAccount')}</div>
+                </div>
+                <div className="form-grid">
+                  <div className="field field--full">
+                    <label htmlFor="editAdminFullName">{t('platform.tenants.adminFullName')}</label>
+                    <input id="editAdminFullName" value={form.adminFullName} onChange={handleChange('adminFullName')} required />
+                  </div>
+                  <div className="field field--full">
+                    <label htmlFor="editAdminEmail">{t('platform.tenants.adminEmail')}</label>
+                    <input id="editAdminEmail" type="email" value={form.adminEmail} onChange={handleChange('adminEmail')} required />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  style={{ marginTop: 4 }}
+                  onClick={() => setResettingPassword(true)}
+                >
+                  {t('platform.tenants.resetPassword')}
+                </button>
+              </>
+            )}
+
+            <div className="modal__actions">
+              <button type="button" className="btn btn--secondary" onClick={onClose} disabled={submitting}>
+                {t('common.cancel')}
+              </button>
+              <button type="submit" className={`btn btn--primary${submitting ? ' btn--loading' : ''}`} disabled={submitting}>
+                {t('common.save')}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+      <AnimatePresence>
+        {resettingPassword && (
+          <ResetAdminPasswordModal tenant={tenant} onClose={() => setResettingPassword(false)} onDone={() => setResettingPassword(false)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
