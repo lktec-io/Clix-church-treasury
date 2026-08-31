@@ -1,7 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import PublicOnlyRoute from './components/PublicOnlyRoute.jsx';
+import PlatformProtectedRoute from './components/PlatformProtectedRoute.jsx';
 import Layout from './components/Layout.jsx';
+import PlatformLayout from './components/PlatformLayout.jsx';
+import PlatformDashboardPage from './pages/platform/PlatformDashboardPage.jsx';
+import PlatformTenantsPage from './pages/platform/PlatformTenantsPage.jsx';
 import MemberProtectedRoute from './components/member/MemberProtectedRoute.jsx';
 import MemberPublicOnlyRoute from './components/member/MemberPublicOnlyRoute.jsx';
 import MemberLayout from './components/member/MemberLayout.jsx';
@@ -50,6 +54,20 @@ function App() {
           <Route path="/member/history" element={<MemberHistoryPage />} />
           <Route path="/member/statement" element={<MemberStatementPage />} />
           <Route path="/member/change-pin" element={<MemberChangePinPage />} />
+        </Route>
+      </Route>
+
+      {/* Platform administration — a fully separate route tree, gated by
+          the platform.manage permission (PlatformProtectedRoute.jsx),
+          never accessible to an ordinary tenant user regardless of their
+          own tenant role/permissions. No /platform/login exists: a
+          platform admin authenticates through the exact same /login page
+          as everyone else (LoginPage.jsx redirects here afterward when
+          the logged-in session carries platform.manage). */}
+      <Route element={<PlatformProtectedRoute />}>
+        <Route element={<PlatformLayout />}>
+          <Route path="/platform" element={<PlatformDashboardPage />} />
+          <Route path="/platform/tenants" element={<PlatformTenantsPage />} />
         </Route>
       </Route>
 

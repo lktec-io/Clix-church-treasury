@@ -1,14 +1,15 @@
 import { permissionsRepository } from '../../modules/permissions/permissions.repository.js';
 import { rolesRepository } from '../../modules/roles/roles.repository.js';
-import { PERMISSIONS, SYSTEM_ROLES } from './permissionCatalog.js';
+import { PERMISSIONS, SYSTEM_ROLES, PLATFORM_ONLY_PERMISSIONS } from './permissionCatalog.js';
 
 const ROLE_DESCRIPTIONS = {
-  'Super Administrator': 'Full access to every module and every tenant setting.',
+  'Super Administrator': 'Full access to every module and every tenant setting (within one tenant — not a platform-level role).',
   Treasurer: 'Mhazini — full financial recording and management authority for the church.',
   'Assistant Treasurer': 'Can record income/expenses but cannot manage accounts, funds, or budgets.',
   Approver: 'Reviews and approves/rejects pending expenses; cannot create them (segregation of duties).',
   Auditor: 'Read-only access plus the audit log; cannot create or modify financial records.',
   Viewer: 'Read-only access to financial data.',
+  'Platform Administrator': 'Creates and manages tenants across the whole platform. Not a tenant role — carries no financial permissions.',
 };
 
 export async function seedRbacCatalog() {
@@ -29,7 +30,10 @@ export async function seedRbacCatalog() {
       });
     }
 
-    const permissionNames = grant === 'ALL' ? PERMISSIONS.map(([name]) => name) : grant;
+    const permissionNames =
+      grant === 'ALL'
+        ? PERMISSIONS.map(([name]) => name).filter((name) => !PLATFORM_ONLY_PERMISSIONS.includes(name))
+        : grant;
     for (const permissionName of permissionNames) {
       await permissionsRepository.grantToRole(role.id, permissionIdByName.get(permissionName));
     }

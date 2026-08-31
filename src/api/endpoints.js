@@ -8,6 +8,14 @@ export const authApi = {
   registerTenant: (body) => apiClient.post('/auth/register-tenant', body).then(unwrap),
 };
 
+export const platformApi = {
+  listTenants: () => apiClient.get('/platform/tenants').then(unwrap),
+  getTenant: (id) => apiClient.get(`/platform/tenants/${id}`).then(unwrap),
+  createTenant: (body) => apiClient.post('/platform/tenants', body).then(unwrap),
+  updateTenant: (id, body) => apiClient.patch(`/platform/tenants/${id}`, body).then(unwrap),
+  setTenantStatus: (id, status) => apiClient.patch(`/platform/tenants/${id}/status`, { status }).then(unwrap),
+};
+
 export const accountsApi = {
   list: () => apiClient.get('/accounts').then(unwrap),
   create: (body) => apiClient.post('/accounts', body).then(unwrap),

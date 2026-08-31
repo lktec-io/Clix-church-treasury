@@ -1,0 +1,73 @@
+import { validationError } from '../../errors/AppError.js';
+import { validateEmail, validatePassword } from '../auth/auth.validator.js';
+
+// Deliberately reuses auth.validator.js's exact email/password rules
+// (same 254-char/RFC-shape email check, same 10-char minimum password) —
+// a platform-created tenant admin logs in through the exact same /login
+// flow as a self-registered one, so its credentials must satisfy the
+// exact same contract, not a parallel one that could drift.
+export function validateCreateTenant(body) {
+  const fields = {};
+  if (typeof body.churchName !== 'string' || body.churchName.trim().length === 0) {
+    fields.churchName = 'churchName is required';
+  } else if (body.churchName.length > 255) {
+    fields.churchName = 'must be at most 255 characters';
+  }
+  if (typeof body.adminFullName !== 'string' || body.adminFullName.trim().length === 0) {
+    fields.adminFullName = 'adminFullName is required';
+  } else if (body.adminFullName.length > 255) {
+    fields.adminFullName = 'must be at most 255 characters';
+  }
+  try {
+    validateEmail(body.adminEmail, 'adminEmail');
+  } catch {
+    fields.adminEmail = 'must be a valid email address';
+  }
+  try {
+    validatePassword(body.adminPassword, 'adminPassword');
+  } catch {
+    fields.adminPassword = 'must be at least 10 characters';
+  }
+  if (Object.keys(fields).length > 0) {
+    throw validationError('Invalid tenant creation payload', fields);
+  }
+  return {
+    churchName: body.churchName.trim(),
+    adminFullName: body.adminFullName.trim(),
+    adminEmail: body.adminEmail.trim().toLowerCase(),
+    adminPassword: body.adminPassword,
+  };
+}
+
+const CURRENCY_RE = /^[A-Z]{3}$/;
+const LOCALE_RE = /^[a-z]{2}$/;
+
+export function validateUpdateTenant(body) {
+  const fields = {};
+  if (typeof body.name !== 'string' || body.name.trim().length === 0) {
+    fields.name = 'name is required';
+  } else if (body.name.length > 255) {
+    fields.name = 'must be at most 255 characters';
+  }
+  const baseCurrency = body.baseCurrency ?? 'TZS';
+  if (!CURRENCY_RE.test(baseCurrency)) {
+    fields.baseCurrency = 'must be a 3-letter currency code (e.g. TZS)';
+  }
+  const localeDefault = body.localeDefault ?? 'en';
+  if (!LOCALE_RE.test(localeDefault)) {
+    fields.localeDefault = 'must be a 2-letter locale code (e.g. en, sw)';
+  }
+  if (Object.keys(fields).length > 0) {
+    throw validationError('Invalid tenant update payload', fields);
+  }
+  return { name: body.name.trim(), baseCurrency, localeDefault };
+}
+
+const VALID_STATUSES = ['active', 'suspended'];
+
+export function validateTenantStatus(body) {
+  if (!VALID_STATUSES.includes(body.status)) {
+    throw validationError('Invalid status', { status: `must be one of: ${VALID_STATUSES.join(', ')}` });
+  }
+  return { status: body.status };
+}

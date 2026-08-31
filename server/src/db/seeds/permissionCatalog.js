@@ -39,12 +39,40 @@ export const PERMISSIONS = [
   ['roles.manage', 'Manage custom roles and their permissions'],
   ['settings.manage', 'Manage church settings'],
   ['audit.view', 'View the audit log'],
+  // Platform-level, not tenant-level — deliberately excluded from every
+  // tenant-facing role's grant list (including Super Administrator's "ALL")
+  // so a tenant admin can never reach this by accumulating tenant
+  // permissions. Only the "Platform Administrator" system role below
+  // grants it. Checked the same way every other permission is (RBAC
+  // middleware.js's requirePermission), reusing the existing
+  // authorization mechanism rather than a second one for this one case.
+  ['platform.manage', 'Create/view/edit/activate/deactivate tenants across the whole platform (Platform Administrator only, never a tenant role)'],
 ];
 
+// Permissions that must NEVER be included when a role's grant list is the
+// literal string 'ALL' (seedRbacCatalog.js expands 'ALL' to
+// "every permission in PERMISSIONS" — without this exclusion list, Super
+// Administrator's 'ALL' would silently include platform.manage too,
+// exactly the "tenant role becomes a platform role" leak this whole
+// separation exists to prevent).
+export const PLATFORM_ONLY_PERMISSIONS = ['platform.manage'];
+
 // System-default roles. tenant_id NULL — shared across every tenant.
-// "ALL" grants every permission in the catalog above.
+// "ALL" grants every permission in the catalog above EXCEPT platform.manage
+// (see its own comment) — Super Administrator is the top tenant-level role,
+// not a platform-level one; the two are deliberately kept distinct.
 export const SYSTEM_ROLES = {
   'Super Administrator': 'ALL',
+  // The platform admin's own account is an ordinary tenant user (belongs
+  // to some tenant like any other) holding this one role — this is what
+  // lets it reuse the exact same login, JWT, refresh-token, and RBAC
+  // machinery as every other user, with zero new auth code. It grants
+  // ONLY platform.manage — no financial/tenant permissions — so a
+  // platform admin does not automatically gain the ability to record
+  // contributions, view another tenant's financial data through the
+  // tenant-scoped API surface, etc. The reverse is also true: assigning
+  // this role to someone does not grant it to any other tenant's users.
+  'Platform Administrator': ['platform.manage'],
   'Treasurer': [
     'dashboard.view',
     'income.view', 'income.create', 'income.update', 'income.reverse',

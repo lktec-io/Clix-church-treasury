@@ -19,3 +19,18 @@ export function requirePermission(permissionName) {
     }
   };
 }
+
+// The platform-level authorization boundary for every /api/v1/platform/*
+// route. Deliberately just requirePermission('platform.manage') — not a
+// second authorization system — so a platform admin is authenticated,
+// authorized, and re-checked on every request through the exact same
+// database-backed RBAC path as any other permission (never trusted from
+// the JWT alone; see requirePermission's own comment). A tenant's Super
+// Administrator does not hold this permission (permissionCatalog.js
+// explicitly excludes it from "ALL") and therefore gets 403 here even
+// though they're a fully authenticated, fully-permissioned user within
+// their own tenant — tenant role and platform role are enforced as
+// genuinely separate things, not merely styled as separate in the UI.
+export function requirePlatformAdmin(req, res, next) {
+  return requirePermission('platform.manage')(req, res, next);
+}

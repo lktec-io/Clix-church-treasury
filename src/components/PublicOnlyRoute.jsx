@@ -14,10 +14,16 @@ import { useAuth } from '../context/AuthContext.jsx';
 // render immediately, and only redirect once we positively know the
 // visitor is already authenticated.
 export default function PublicOnlyRoute() {
-  const { status } = useAuth();
+  const { status, hasPermission } = useAuth();
 
   if (status === 'authenticated') {
-    return <Navigate to="/" replace />;
+    // A platform admin's landing page is /platform, never the tenant
+    // dashboard — they may not even hold any tenant-scoped permission at
+    // all (platform.manage carries no financial permissions; see
+    // permissionCatalog.js), so redirecting them to "/" the way every
+    // other authenticated user is could land on a dashboard with nothing
+    // visible on it.
+    return <Navigate to={hasPermission('platform.manage') ? '/platform' : '/'} replace />;
   }
 
   return <Outlet />;

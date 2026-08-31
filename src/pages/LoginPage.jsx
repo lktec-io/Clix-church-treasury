@@ -21,8 +21,17 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(form);
-      navigate(location.state?.from?.pathname ?? '/', { replace: true });
+      const session = await login(form);
+      // A platform admin's landing page is always /platform, regardless
+      // of what page originally redirected them to /login — they may not
+      // hold any tenant-scoped permission at all (permissionCatalog.js:
+      // platform.manage carries no financial permissions), so honoring
+      // location.state.from here could land them on a tenant page with
+      // nothing visible on it.
+      const destination = session.permissions?.includes('platform.manage')
+        ? '/platform'
+        : location.state?.from?.pathname ?? '/';
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(err.message ?? t('auth.login.error'));
     } finally {

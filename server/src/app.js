@@ -7,6 +7,7 @@ import { authenticate } from './middleware/authenticate.js';
 import { tenantContext } from './middleware/tenantContext.js';
 import { authenticateMember } from './middleware/authenticateMember.js';
 import { memberContext } from './middleware/memberContext.js';
+import { requirePlatformAdmin } from './middleware/rbac.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { apiRateLimiter } from './middleware/rateLimit.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
@@ -28,6 +29,7 @@ import { financialPeriodsRoutes } from './modules/financial/financialPeriods.rou
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { rolesRoutes } from './modules/roles/roles.routes.js';
 import { smsRoutes } from './modules/sms/sms.routes.js';
+import { platformRoutes } from './modules/platform/platform.routes.js';
 
 // Middleware order matters and matches docs/API_ARCHITECTURE.md §3:
 // secure headers -> CORS -> body/cookie parsing -> rate limit -> auth ->
@@ -77,6 +79,14 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
   app.use('/api/v1/reports', apiRateLimiter, auth, tenantContext, reportsRoutes());
   app.use('/api/v1/roles', apiRateLimiter, auth, tenantContext, rolesRoutes());
   app.use('/api/v1/sms', apiRateLimiter, auth, tenantContext, smsRoutes());
+
+  // Platform-level, deliberately WITHOUT tenantContext — a platform admin
+  // manages tenants across the whole platform, not scoped to their own
+  // tenant_id the way every route above is. requirePlatformAdmin (an
+  // ordinary permission check, see middleware/rbac.js) is the entire
+  // authorization boundary here, applied to every route in
+  // platformRoutes() with no exceptions.
+  app.use('/api/v1/platform', apiRateLimiter, auth, requirePlatformAdmin, platformRoutes());
 
   app.use((req, res) => {
     res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Route not found' } });
