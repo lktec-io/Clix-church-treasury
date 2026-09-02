@@ -297,6 +297,45 @@
   color: var(--text);
 }
 
+/* Inset breakdown panel (the optional Zaka/Sadaka line items). Recessed
+   rather than raised — it's nested inside the wizard canvas, so an inner
+   shadow reads as "carved into that surface" where an outer one would fight
+   the parent card for the same plane. Replaces an inline
+   `background: var(--bg-muted)` grey block. */
+.breakdown-panel {
+  padding: 14px;
+  border-radius: var(--radius);
+  background: rgba(var(--color-primary-rgb), 0.035);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
+  box-shadow: inset 0 1px 3px rgba(var(--color-primary-rgb), 0.05);
+}
+
+/* These inputs live outside a .field wrapper, so they inherited no framing
+   at all — which is why they previously carried an inline background just
+   to be visible. They now get the same treatment as every other input:
+   white on the tinted panel, navy hairline, green ring on focus. */
+.breakdown-panel input {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  min-height: 40px;
+  transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
+}
+
+.breakdown-panel input:hover {
+  border-color: rgba(var(--color-primary-rgb), 0.32);
+}
+
+.breakdown-panel input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent-strong);
+}
+
 /* Back sits left, the primary action right — reversed from the default
    right-aligned form-actions row. */
 .wizard-actions {

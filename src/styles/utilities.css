@@ -199,8 +199,19 @@
   min-height: 100svh;
 }
 
+/* Three stacked layers, painted back to front:
+     1. the element itself  — solid navy + hero gradient (always present)
+     2. ::before            — the /loginpage.jpg photo under a navy scrim
+     3. ::after             — a soft green bloom
+     4. content (z-index 1) — brand, headline, lede, trust points
+
+   Layer 1 is deliberately a complete, finished background on its own. The
+   photo in layer 2 is an enhancement, not a dependency: until loginpage.jpg
+   is added to /public the panel renders as a darkened hero gradient, which
+   is a correct-looking design rather than a broken one. */
 .auth-split__panel {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -210,6 +221,23 @@
   color: #ffffff;
   background-image: var(--gradient-hero);
   background-color: var(--color-primary);
+}
+
+/* Photo backdrop. The gradient is listed BEFORE the url() because CSS paints
+   background layers first-listed-on-top — so the navy scrim sits over the
+   image, not under it. At 0.88 → 0.92 alpha the white headline clears AA
+   against any photo that lands here, however bright; that ceiling is why
+   the overlay is opaque enough to look almost solid on its own. */
+.auth-split__panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to bottom, rgba(11, 31, 77, 0.88), rgba(7, 20, 50, 0.92)),
+    url('/loginpage.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
 }
 
 /* Soft green bloom over the navy so the panel isn't a flat wash. */

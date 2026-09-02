@@ -9,7 +9,7 @@ export function SkeletonText({ width = '100%' }) {
 
 export function SkeletonHero() {
   return (
-    <div className="card" style={{ background: 'var(--bg-muted)', boxShadow: 'none', marginBottom: 16 }}>
+    <div className="card skeleton-hero">
       <div className="skeleton" style={{ width: '35%', height: 12, marginBottom: 10 }} />
       <div className="skeleton" style={{ width: '55%', height: 28, marginBottom: 14 }} />
       <div style={{ display: 'flex', gap: 16 }}>

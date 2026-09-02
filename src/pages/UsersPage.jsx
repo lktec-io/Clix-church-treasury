@@ -178,9 +178,9 @@ export default function UsersPage() {
                               <PermissionGate permission="users.manage">
                                 <button
                                   type="button"
+                                  className="badge__remove"
                                   onClick={() => handleRemoveRole(u, r.id)}
                                   aria-label={`${t('common.deactivate')} ${r.name}`}
-                                  style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
                                 >
                                   ×
                                 </button>

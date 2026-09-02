@@ -61,6 +61,10 @@
   --sidebar-text-strong: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.1);
 
+  /* Deep end of the navy ramp (#0b1f4d → #071432) — used for pressed/hover
+     states on navy surfaces and the login backdrop overlay. */
+  --color-primary-deep: #071432;
+
   /* Depth */
   --glass-blur: 20px;
   --gradient-sidebar: linear-gradient(180deg, #0b1f4d 0%, #123262 100%);

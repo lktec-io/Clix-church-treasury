@@ -501,7 +501,7 @@ export default function ContributionsPage() {
               {t('contributions.addBreakdown')}
             </label>
             {showBreakdown && (
-              <div className="card" style={{ background: 'var(--bg-muted)', boxShadow: 'none', padding: 14 }}>
+              <div className="breakdown-panel">
                 {items.map((item, index) => (
                   <div key={index} className="breakdown-row">
                     <input
@@ -509,7 +509,6 @@ export default function ContributionsPage() {
                       value={item.purpose}
                       onChange={updateItem(index, 'purpose')}
                       className="breakdown-row__purpose"
-                      style={{ background: 'var(--surface)' }}
                       required
                     />
                     <input
@@ -519,7 +518,6 @@ export default function ContributionsPage() {
                       value={item.amount}
                       onChange={updateItem(index, 'amount')}
                       className="breakdown-row__amount"
-                      style={{ background: 'var(--surface)' }}
                       required
                     />
                     <button

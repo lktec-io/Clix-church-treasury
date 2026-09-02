@@ -401,6 +401,39 @@
   border-color: rgba(var(--color-accent-rgb), 0.3);
 }
 
+/* Dismiss control inside a badge (removing a role from a user). Previously a
+   bare <button> with inline `background: none` — the one genuinely unstyled
+   control left in the app. Sized as a real 18px target with a danger-tinted
+   hover so the destructive intent is legible before the click. */
+.badge__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 5px;
+  margin-right: -3px;
+  padding: 0;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
+}
+.badge__remove:hover {
+  background: var(--color-danger);
+  color: #ffffff;
+}
+.badge__remove:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+}
+
 /* ---------- Alerts ---------- */
 .alert {
   display: flex;
@@ -465,6 +498,16 @@
 }
 
 /* ---------- Skeletons ---------- */
+/* The loading hero mirrors the real hero card's plane rather than sitting
+   in a flat grey box, so the swap to loaded content doesn't visibly jump.
+   Replaces an inline `background: var(--bg-muted)`. */
+.card.skeleton-hero {
+  margin-bottom: 16px;
+  background: rgba(var(--color-primary-rgb), 0.03);
+  border-color: rgba(var(--color-primary-rgb), 0.06);
+  box-shadow: var(--shadow-sm);
+}
+
 .skeleton {
   position: relative;
   overflow: hidden;
