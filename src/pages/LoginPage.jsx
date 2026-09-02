@@ -1,9 +1,26 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiShield } from 'react-icons/fi';
+import { FiShield, FiLock, FiPieChart, FiFileText } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+
+/* Panel copy fades in top-down; the form card arrives as one piece so the
+   inputs never appear to "assemble" under the user's cursor. */
+const panelVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.09, delayChildren: 0.05 } },
+};
+const panelItemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+};
+
+const TRUST_POINTS = [
+  { icon: FiLock, key: 'auth.login.point.secure' },
+  { icon: FiPieChart, key: 'auth.login.point.records' },
+  { icon: FiFileText, key: 'auth.login.point.reports' },
+];
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -40,18 +57,43 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-page">
+    <div className="auth-page auth-page--split">
+      <div className="auth-split">
+        <motion.aside
+          className="auth-split__panel"
+          variants={panelVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div className="auth-split__brand" variants={panelItemVariants}>
+            <span className="auth-split__brand-mark">
+              <FiShield aria-hidden="true" />
+            </span>
+            {t('app.name')}
+          </motion.div>
+          <motion.h1 className="auth-split__headline" variants={panelItemVariants}>
+            {t('auth.login.headline')}
+          </motion.h1>
+          <motion.p className="auth-split__lede" variants={panelItemVariants}>
+            {t('auth.login.lede')}
+          </motion.p>
+          <motion.ul className="auth-split__points" variants={panelItemVariants}>
+            {TRUST_POINTS.map(({ icon: Icon, key }) => (
+              <li className="auth-split__point" key={key}>
+                <Icon aria-hidden="true" />
+                {t(key)}
+              </li>
+            ))}
+          </motion.ul>
+        </motion.aside>
+
+        <div className="auth-split__form">
       <motion.div
         className="auth-card"
         initial={{ opacity: 0, y: 14, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+        animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, delay: 0.12, ease: [0.22, 1, 0.36, 1] } }}
       >
-        <div className="auth-card__brand">
-          <span className="auth-card__brand-mark">
-            <FiShield aria-hidden="true" />
-          </span>
-          {t('app.name')}
-        </div>
+        <div className="auth-card__brand">{t('auth.login.welcome')}</div>
         <div className="auth-card__subtitle">{t('auth.login.subtitle')}</div>
         {error && <div className="alert alert--error">{error}</div>}
         <form onSubmit={handleSubmit}>
@@ -87,11 +129,20 @@ export default function LoginPage() {
               required
             />
           </div>
-          <button type="submit" className="btn btn--primary" disabled={submitting}>
+          <motion.button
+            type="submit"
+            className="btn btn--primary btn--block"
+            disabled={submitting}
+            whileHover={submitting ? undefined : { y: -1 }}
+            whileTap={submitting ? undefined : { scale: 0.985 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+          >
             {submitting ? t('common.loading') : t('auth.login.submit')}
-          </button>
+          </motion.button>
         </form>
       </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

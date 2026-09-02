@@ -39,13 +39,26 @@
   cursor: not-allowed;
 }
 
+/* Full-width CTA — auth forms and any single-action panel. */
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+
+/* Green focus ring on every button, matching the field focus treatment.
+   :focus-visible (not :focus) so a mouse click doesn't leave a ring behind. */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+}
+
 .btn--primary {
   background: var(--gradient-primary);
   color: var(--sidebar-active-text);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 6px 18px -8px rgba(var(--color-accent-rgb), 0.5);
 }
 .btn--primary:hover:not(:disabled) {
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 10px 26px -8px rgba(var(--color-accent-rgb), 0.62);
 }
 
 /* .btn--accent is the secondary CTA color (e.g. "Download PDF") — driven by

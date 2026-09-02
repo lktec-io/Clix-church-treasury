@@ -135,6 +135,15 @@ export async function refresh({ rawRefreshToken, ipAddress }) {
       throw unauthenticated('Account is no longer active');
     }
 
+    // Tenant suspension must end existing member sessions too, not just
+    // block new member logins — same reasoning as auth.service.js#refresh's
+    // equivalent check. Without this, suspending a church would leave every
+    // already-signed-in contributor able to keep refreshing indefinitely.
+    const tenant = await tenantsRepository.findById(contributor.tenant_id, connection);
+    if (!tenant || tenant.status !== 'active') {
+      throw unauthenticated('Account is no longer active');
+    }
+
     const session = await issueMemberSession(contributor, connection);
     await contributorRefreshTokensRepository.revoke(record.id, connection);
     await contributorRefreshTokensRepository.setReplacement(record.id, session.tokenId, connection);

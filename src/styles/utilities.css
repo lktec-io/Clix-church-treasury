@@ -147,29 +147,184 @@
   margin-top: 20px;
 }
 
-/* ---------- Auth pages (staff login/register + member login) ---------- */
+/* ---------- Auth pages (staff login/register + member login) ----------
+   Two presentations share these classes:
+     .auth-page > .auth-card            → centered luxury card (member,
+                                          platform login)
+     .auth-page.auth-page--split        → full corporate gateway (staff
+                                          login), which adds a navy brand
+                                          panel beside the card.
+   ---------------------------------------------------------------- */
 .auth-page {
   min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: radial-gradient(circle at top left, var(--color-primary-soft), var(--bg) 55%);
+  /* Layered mesh rather than a single radial: two off-screen colour pools
+     (navy top-left, green bottom-right) bleeding into the slate canvas.
+     This is what gives the page depth without any image asset. */
+  background:
+    radial-gradient(1100px 700px at 8% -10%, rgba(var(--color-primary-rgb), 0.14), transparent 60%),
+    radial-gradient(900px 600px at 105% 110%, rgba(var(--color-accent-rgb), 0.12), transparent 62%),
+    var(--bg);
 }
 
 .auth-card {
   width: 100%;
   max-width: 400px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   padding: 32px;
 }
 
 @media (max-width: 480px) {
   .auth-card {
     padding: 22px;
+  }
+}
+
+/* ---- Split gateway ---- */
+.auth-page--split {
+  padding: 0;
+  align-items: stretch;
+}
+
+.auth-split {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100svh;
+}
+
+.auth-split__panel {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: 34px 24px 30px;
+  color: #ffffff;
+  background-image: var(--gradient-hero);
+  background-color: var(--color-primary);
+}
+
+/* Soft green bloom over the navy so the panel isn't a flat wash. */
+.auth-split__panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(680px 420px at 88% 8%, rgba(var(--color-accent-rgb), 0.3), transparent 62%);
+  pointer-events: none;
+}
+
+.auth-split__panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-split__brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.auth-split__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  font-size: 19px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.auth-split__headline {
+  font-size: 26px;
+  line-height: 1.22;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  max-width: 15ch;
+}
+
+.auth-split__lede {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.76);
+  max-width: 46ch;
+}
+
+.auth-split__points {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.auth-split__point {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.auth-split__point svg {
+  flex-shrink: 0;
+  font-size: 15px;
+  color: var(--color-accent);
+}
+
+.auth-split__form {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px 40px;
+  background: var(--bg);
+}
+
+.auth-split__form .auth-card {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.07);
+  box-shadow: var(--shadow-lg);
+}
+
+@media (min-width: 900px) {
+  .auth-split {
+    flex-direction: row;
+  }
+  .auth-split__panel {
+    flex: 1 1 46%;
+    max-width: 560px;
+    padding: 56px 52px;
+    gap: 22px;
+  }
+  .auth-split__headline {
+    font-size: 38px;
+  }
+  .auth-split__form {
+    flex: 1 1 54%;
+    padding: 40px;
+  }
+  .auth-split__form .auth-card {
+    max-width: 430px;
+    padding: 38px;
   }
 }
 
@@ -208,44 +363,3 @@
   gap: 14px;
 }
 
-/* ---------- Theme switcher ---------- */
-.theme-switcher {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--sidebar-hover-bg);
-  border: 1px solid var(--sidebar-border);
-}
-
-.theme-switcher__option {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  cursor: pointer;
-  padding: 0;
-  transition: transform var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
-}
-
-.theme-switcher__option:hover {
-  transform: scale(1.08);
-}
-
-.theme-switcher__option.is-active {
-  box-shadow: 0 0 0 2px var(--sidebar-hover-text);
-}
-
-.theme-switcher__option--aurora {
-  background: linear-gradient(135deg, #0b1f4d, #10b981);
-}
-.theme-switcher__option--midnight {
-  background: linear-gradient(135deg, #0b1628, #3b9eff);
-}
-.theme-switcher__option--frost {
-  background: linear-gradient(135deg, #f6f5f2, #2952cc);
-}

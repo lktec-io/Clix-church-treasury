@@ -45,14 +45,9 @@ import { usersRepository } from '../src/modules/users/users.repository.js';
 import { rolesRepository } from '../src/modules/roles/roles.repository.js';
 import { userRolesRepository } from '../src/modules/roles/userRoles.repository.js';
 import { validateEmail, validatePassword } from '../src/modules/auth/auth.validator.js';
+import { PLATFORM_TENANT_SLUG, PLATFORM_TENANT_NAME } from '../src/modules/platform/platformTenant.js';
 
 const BCRYPT_COST = 10;
-// A dedicated internal tenant that only ever holds platform-admin
-// accounts — never a real church. Fixed slug so this script is safe to
-// re-run: it finds the same tenant every time instead of creating a new
-// one, which is what makes the whole script idempotent end to end.
-const PLATFORM_TENANT_SLUG = 'clix-platform';
-const PLATFORM_TENANT_NAME = 'Clix Platform (internal)';
 
 function fail(message) {
   console.error(`[bootstrap-platform-admin] ${message}`);

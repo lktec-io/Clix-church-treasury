@@ -60,6 +60,22 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Same shape and same session handling as login() above — only the
+  // endpoint differs (POST /auth/platform-login), which resolves the
+  // platform tenant server-side so no tenant identifier is needed here.
+  const platformLogin = useCallback(async ({ email, password }) => {
+    try {
+      const result = await authApi.platformLogin({ email, password });
+      setAccessToken(result.accessToken);
+      const me = await apiClient.get('/auth/me').then((res) => res.data.data);
+      setSession(me);
+      setStatus('authenticated');
+      return me;
+    } catch (error) {
+      throw unwrapApiError(error);
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -74,8 +90,8 @@ export function AuthProvider({ children }) {
   );
 
   const value = useMemo(
-    () => ({ status, session, login, logout, hasPermission }),
-    [status, session, login, logout, hasPermission]
+    () => ({ status, session, login, platformLogin, logout, hasPermission }),
+    [status, session, login, platformLogin, logout, hasPermission]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

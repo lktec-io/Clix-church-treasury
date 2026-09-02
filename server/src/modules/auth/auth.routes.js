@@ -22,6 +22,11 @@ export function authRoutes({ authenticate, tenantContext }) {
   const router = Router();
   router.use(authRateLimiter);
   router.post('/login', authController.login);
+  // Platform-admin sign-in — same auth system as /login (see
+  // auth.service.js#platformLogin), just resolves the internal platform
+  // tenant server-side and refuses to issue a session to anyone without
+  // platform.manage.
+  router.post('/platform-login', authController.platformLogin);
   router.post('/refresh', authController.refresh);
   router.post('/logout', authController.logout);
   router.post('/password-reset/request', authController.requestPasswordReset);

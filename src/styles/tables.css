@@ -19,32 +19,80 @@ table.data-table {
 .data-table th,
 .data-table td {
   text-align: left;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
+  /* Generous vertical rhythm — financial rows are scanned, not read, and
+     the extra 4px per side is what separates "spreadsheet" from "ledger". */
+  padding: 16px 18px;
   white-space: nowrap;
   transition: border-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
 }
 
-.data-table th {
+.data-table td {
+  /* Hairline in navy at 6% instead of the generic grey --border: the rule
+     separates rows without drawing a hard grid over the data. */
+  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.06);
+  color: var(--text);
+}
+
+/* No rule under the final row — the card edge already closes the table. */
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table thead th {
+  position: relative;
   color: var(--text-muted);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  background: rgba(var(--color-primary-rgb), 0.035);
+  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.09);
+}
+
+.data-table thead th:first-child {
+  border-top-left-radius: var(--radius-sm);
+  border-bottom-left-radius: var(--radius-sm);
+}
+.data-table thead th:last-child {
+  border-top-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+/* Zebra striping at 2.5% navy — present enough to guide the eye across a
+   wide row, faint enough that it never competes with a status badge. */
+.data-table tbody tr:nth-child(even) {
+  background: rgba(var(--color-primary-rgb), 0.025);
 }
 
 .data-table tbody tr {
-  transition: background-color var(--motion-fast) var(--ease-premium);
+  transition: background-color var(--motion-fast) var(--ease-premium),
+    box-shadow var(--motion-fast) var(--ease-premium);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .data-table tbody tr:hover {
-    background: var(--bg-muted);
+    background: rgba(var(--color-accent-rgb), 0.055);
+    box-shadow: inset 3px 0 0 0 var(--color-accent);
   }
 }
 
 .data-table .is-amount {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.01em;
   text-align: right;
+  color: var(--text-heading);
+}
+
+/* Phones: claw back the horizontal padding so fewer rows need a scroll to
+   read at all. Vertical rhythm is kept — that's the part doing the work. */
+@media (max-width: 600px) {
+  .data-table th,
+  .data-table td {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
 }

@@ -34,6 +34,29 @@ export async function login(req, res, next) {
   }
 }
 
+export async function platformLogin(req, res, next) {
+  try {
+    const email = req.body?.email;
+    const password = req.body?.password;
+    validateEmail(email);
+    if (typeof password !== 'string' || password.length === 0) {
+      throw validationError('Invalid payload', { password: 'password is required' });
+    }
+    const result = await authService.platformLogin({
+      email: email.trim().toLowerCase(),
+      password,
+      ipAddress: req.ip,
+    });
+    setRefreshCookie(res, result.refreshToken);
+    res.json({
+      success: true,
+      data: { accessToken: result.accessToken, user: result.user, roles: result.roles },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function refresh(req, res, next) {
   try {
     const rawRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME];

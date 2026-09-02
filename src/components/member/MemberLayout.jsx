@@ -3,7 +3,6 @@ import { FiHome, FiClock, FiFileText, FiLock, FiLogOut, FiHeart } from 'react-ic
 import { useMemberAuth } from '../../context/MemberAuthContext.jsx';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 import PageTransition from '../ui/PageTransition.jsx';
-import ThemeSwitcher from '../ui/ThemeSwitcher.jsx';
 
 // Deliberately much simpler than the staff Layout.jsx — no multi-group
 // sidebar, since a member only ever needs four destinations. Bottom tab
@@ -37,7 +36,6 @@ export default function MemberLayout() {
           {t('app.name')}
         </div>
         <div className="member-topbar__actions">
-          <ThemeSwitcher />
           <select
             value={locale}
             onChange={(e) => setLocale(e.target.value)}

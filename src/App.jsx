@@ -1,9 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import PublicOnlyRoute from './components/PublicOnlyRoute.jsx';
 import PlatformProtectedRoute from './components/PlatformProtectedRoute.jsx';
 import Layout from './components/Layout.jsx';
 import PlatformLayout from './components/PlatformLayout.jsx';
+import PlatformLoginPage from './pages/platform/PlatformLoginPage.jsx';
 import PlatformDashboardPage from './pages/platform/PlatformDashboardPage.jsx';
 import PlatformTenantsPage from './pages/platform/PlatformTenantsPage.jsx';
 import MemberProtectedRoute from './components/member/MemberProtectedRoute.jsx';
@@ -32,7 +34,11 @@ import UsersPage from './pages/UsersPage.jsx';
 
 function App() {
   return (
-    <Routes>
+    <>
+      {/* Inside the router so it can read useLocation(), outside <Routes>
+          so it survives every route change rather than remounting. */}
+      <ScrollToTop />
+      <Routes>
       {/* /login is the ONLY public entry point for staff/platform accounts —
           there is deliberately no /register: every tenant and its first
           admin user is created exclusively by a Platform Administrator via
@@ -63,10 +69,14 @@ function App() {
       {/* Platform administration — a fully separate route tree, gated by
           the platform.manage permission (PlatformProtectedRoute.jsx),
           never accessible to an ordinary tenant user regardless of their
-          own tenant role/permissions. No /platform/login exists: a
-          platform admin authenticates through the exact same /login page
-          as everyone else (LoginPage.jsx redirects here afterward when
-          the logged-in session carries platform.manage). */}
+          own tenant role/permissions. /platform/login is a dedicated
+          entry point for platform admins (PlatformLoginPage.jsx) — it
+          calls the exact same auth API /login already uses, not a second
+          auth system; /login itself still also redirects a
+          platform.manage session to /platform, so either door works. */}
+      <Route element={<PublicOnlyRoute />}>
+        <Route path="/platform/login" element={<PlatformLoginPage />} />
+      </Route>
       <Route element={<PlatformProtectedRoute />}>
         <Route element={<PlatformLayout />}>
           <Route path="/platform" element={<PlatformDashboardPage />} />
@@ -93,8 +103,9 @@ function App() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

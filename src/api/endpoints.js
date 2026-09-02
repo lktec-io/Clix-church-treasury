@@ -7,6 +7,10 @@ const unwrap = (res) => res.data.data;
 // tenant is created by a Platform Administrator via platformApi.createTenant.
 export const authApi = {
   login: (body) => apiClient.post('/auth/login', body).then(unwrap),
+  // Platform-admin sign-in: email + password only — the server resolves
+  // the internal platform tenant itself and rejects anyone without
+  // platform.manage before a session is ever issued.
+  platformLogin: (body) => apiClient.post('/auth/platform-login', body).then(unwrap),
   logout: () => apiClient.post('/auth/logout').then(unwrap),
 };
 

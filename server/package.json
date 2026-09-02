@@ -11,6 +11,7 @@
     "migrate:status": "node src/db/migrateStatus.js",
     "seed": "node src/db/seeds/run.js",
     "bootstrap:platform-admin": "node scripts/bootstrapPlatformAdmin.js",
+    "verify:platform": "node scripts/verifyPlatform.js",
     "db:check": "node src/db/check.js",
     "test": "vitest run",
     "test:watch": "vitest",

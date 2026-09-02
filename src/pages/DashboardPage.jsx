@@ -12,6 +12,11 @@ import {
   FiFileText,
   FiBarChart2,
   FiSend,
+  FiDollarSign,
+  FiGift,
+  FiHome,
+  FiTool,
+  FiPieChart,
 } from 'react-icons/fi';
 import { reportsApi, financialPeriodsApi, expensesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
@@ -30,6 +35,36 @@ import { formatMoney, formatCurrency, formatDate } from '../utils/format.js';
 // dateTo is sent to the Income/Expense reports; it is calendar math
 // (computing "the 1st of this month"), never financial math.
 const RANGE_OPTIONS = ['month', 'quarter', 'year', 'custom'];
+
+// Fund-allocation tiles are driven by the tenant's OWN funds
+// (financialSummary's fundSummaries: real per-fund balances for the open
+// period), not a hardcoded list — a church that has created Zaka, Sadaka,
+// Mfuko wa Kanisa and Miradi ya Ujenzi sees exactly those four, and a
+// church that organises its money differently sees its own. This only
+// picks a fitting icon when a fund's name is recognisable, in either
+// language, and falls back to a neutral one otherwise. Matching is a
+// display concern only — nothing financial keys off it.
+const FUND_ICON_RULES = [
+  { icon: FiDollarSign, match: /zaka|tithe|fungu la kumi/i },
+  { icon: FiGift, match: /sadaka|offering|collection/i },
+  { icon: FiTool, match: /ujenzi|build|construction|project|mradi|miradi/i },
+  { icon: FiHome, match: /kanisa|church|local|budget|bajeti/i },
+];
+
+function fundIconFor(name = '') {
+  return FUND_ICON_RULES.find((rule) => rule.match.test(name))?.icon ?? FiPieChart;
+}
+
+// Staggered scroll-reveal used by the fund grid. `once` so tiles settle
+// permanently instead of re-animating every time they re-enter view.
+const revealContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07 } },
+};
+const revealItem = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
+};
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -162,6 +197,19 @@ export default function DashboardPage() {
   });
   const firstName = session?.user?.full_name?.split(' ')[0];
 
+  // Denominator for each tile's share-of-total badge. Only positive
+  // balances count — a fund sitting negative shouldn't shrink the
+  // percentages of the others or push the total toward zero. Presentation
+  // only: no financial figure on this page is derived from it.
+  const fundAllocationTotal = useMemo(
+    () =>
+      (summary?.fundSummaries ?? []).reduce((sum, fund) => {
+        const balance = Number(fund.balance);
+        return Number.isFinite(balance) && balance > 0 ? sum + balance : sum;
+      }, 0),
+    [summary]
+  );
+
   const quickActions = [
     { to: '/contributions', icon: FiPlus, labelKey: 'dashboard.quickActions.recordContribution', permission: 'income.create', primary: true },
     { to: '/contributors', icon: FiUserPlus, labelKey: 'dashboard.quickActions.addContributor', permission: 'contributors.manage' },
@@ -215,7 +263,19 @@ export default function DashboardPage() {
                   {t('dashboard.live')}
                 </span>
               </div>
-              <div className="hero-card__value tabular-nums">{summary ? formatCurrency(summary.closingBalance) : '—'}</div>
+              {/* Very shallow breathing loop on the headline balance — enough
+                  to read as "live", small enough not to distract someone
+                  reading the number. MotionConfig reducedMotion="user"
+                  (main.jsx) suppresses it entirely for anyone who has asked
+                  the OS to reduce motion. */}
+              <motion.div
+                className="hero-card__value tabular-nums"
+                animate={{ scale: [1, 1.012, 1], opacity: [1, 0.94, 1] }}
+                transition={{ duration: 4.5, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+                style={{ transformOrigin: 'left center' }}
+              >
+                {summary ? formatCurrency(summary.closingBalance) : '—'}
+              </motion.div>
               <div className="hero-card__meta">{t(`dashboard.period.${range}`)}</div>
               <div className="hero-card__breakdown">
                 <div className="hero-card__breakdown-item">
@@ -309,6 +369,44 @@ export default function DashboardPage() {
               </div>
             </PermissionGate>
           </motion.div>
+
+          {/* Fund allocation — where the money actually sits right now,
+              one tile per fund the church has defined. Reveals on scroll
+              rather than on mount, since it usually sits below the fold. */}
+          <PermissionGate permission="reports.view">
+            {summary?.fundSummaries?.length > 0 && (
+              <div className="card">
+                <div className="card__header">
+                  <h2>{t('dashboard.fundAllocation')}</h2>
+                  <Link to="/funds" className="btn btn--secondary btn--sm">{t('dashboard.viewAll')}</Link>
+                </div>
+                <motion.div
+                  className="fund-grid"
+                  variants={revealContainer}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.1 }}
+                >
+                  {summary.fundSummaries.map((fund) => {
+                    const Icon = fundIconFor(fund.name);
+                    const share = fundAllocationTotal > 0
+                      ? Math.round((Number(fund.balance) / fundAllocationTotal) * 100)
+                      : null;
+                    return (
+                      <motion.div className="fund-tile" key={fund.fundId} variants={revealItem}>
+                        <div className="fund-tile__head">
+                          <span className="fund-tile__icon"><Icon aria-hidden="true" /></span>
+                          {share !== null && <span className="fund-tile__share">{share}%</span>}
+                        </div>
+                        <div className="fund-tile__name">{fund.name}</div>
+                        <div className="fund-tile__value tabular-nums">{formatMoney(fund.balance)}</div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              </div>
+            )}
+          </PermissionGate>
 
           <PermissionGate permission="expense.approve">
             <div className="stat-grid">

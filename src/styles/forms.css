@@ -63,12 +63,13 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--border-strong);
+  padding: 11px 13px;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   font-size: 14px;
+  box-shadow: inset 0 1px 2px rgba(var(--color-primary-rgb), 0.04);
   transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium),
     background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
   min-height: 40px;
@@ -78,12 +79,20 @@
   min-height: unset;
 }
 
+/* Navy at rest, green ring on focus — the accent colour is reserved for
+   "you are here / this is live", and an active field qualifies. */
+.field input:hover:not(:disabled),
+.field select:hover:not(:disabled),
+.field textarea:hover:not(:disabled) {
+  border-color: rgba(var(--color-primary-rgb), 0.32);
+}
+
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-soft);
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent-strong);
 }
 
 .field input:disabled,
@@ -187,4 +196,168 @@
 }
 .currency-input input {
   padding-left: 50px;
+}
+
+/* ---------- Contribution wizard (ContributionsPage) ---------- */
+/* The stepper doubles as progress indicator and back-navigation. Built
+   from the same tokens as everything else — no new colour values. */
+/* Elevated canvas: the wizard is the highest-stakes surface in the app —
+   money is entered here — so it gets its own raised plane and breathing
+   room rather than sitting flush in the page like a settings form. */
+.card.wizard-canvas {
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+}
+
+@media (min-width: 640px) {
+  .card.wizard-canvas {
+    padding: 30px 32px;
+  }
+}
+
+.wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0 0 20px;
+  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.07);
+  counter-reset: none;
+}
+
+.wizard-steps__item {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.wizard-steps__btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
+    color var(--motion-fast) var(--ease-premium);
+}
+
+.wizard-steps__btn:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.wizard-steps__marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wizard-steps__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wizard-steps__item.is-current .wizard-steps__btn {
+  border-color: var(--color-accent);
+  color: var(--text-heading);
+  background: rgba(var(--color-accent-rgb), 0.05);
+  box-shadow: var(--ring-accent);
+}
+.wizard-steps__item.is-current .wizard-steps__marker {
+  background: var(--gradient-primary);
+  color: #ffffff;
+  box-shadow: 0 0 12px -1px rgba(var(--color-accent-rgb), 0.55);
+}
+
+.wizard-steps__item.is-done .wizard-steps__marker {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+.wizard-steps__item.is-done .wizard-steps__btn {
+  color: var(--text);
+}
+
+/* Back sits left, the primary action right — reversed from the default
+   right-aligned form-actions row. */
+.wizard-actions {
+  justify-content: space-between;
+}
+
+/* ---------- Review step ---------- */
+.wizard-review__amount {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  border-radius: var(--radius);
+  background: var(--gradient-hero);
+  color: #ffffff;
+}
+
+.wizard-review__amount-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.wizard-review__amount-value {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.wizard-review {
+  margin: 0;
+}
+
+.wizard-review__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.wizard-review__row:last-child {
+  border-bottom: none;
+}
+
+.wizard-review__row dt {
+  flex: 0 0 40%;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.wizard-review__row dd {
+  flex: 1 1 55%;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
 }

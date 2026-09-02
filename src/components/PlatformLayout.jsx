@@ -6,29 +6,38 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import PageTransition from './ui/PageTransition.jsx';
-import ThemeSwitcher from './ui/ThemeSwitcher.jsx';
 
 // Deliberately its own small layout, not a reuse of Layout.jsx's markup —
 // the platform console has exactly two destinations and no collapse
 // state, so duplicating the (much simpler) shell here is clearer than
 // threading platform-mode flags through the staff Layout. It reuses 100%
 // of the existing app-shell/app-sidebar/app-topbar CSS classes though —
-// zero new stylesheet, so every theme (Aurora/Midnight/Frost) already
-// works here exactly as it does for the staff shell.
+// zero new stylesheet, so it inherits the design system's palette
+// automatically, exactly as the staff shell does.
 const NAV_ITEMS = [
   { to: '/platform', icon: FiGrid, labelKey: 'platform.nav.dashboard', end: true },
   { to: '/platform/tenants', icon: FiBriefcase, labelKey: 'platform.nav.tenants' },
 ];
 
+// Mirrors Layout.jsx exactly — right-anchored drawer, spring entry,
+// staggered links. See that file for the reasoning on the variant names.
 const drawerVariants = {
-  hidden: { x: '-100%' },
-  visible: { x: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
-  exit: { x: '-100%', transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } },
+  hidden: { x: '100%' },
+  visible: { x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
+  exit: { x: '100%', transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
 };
 const overlayVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.2 } },
   exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+const navListVariants = {
+  navHidden: {},
+  navVisible: { transition: { staggerChildren: 0.05, delayChildren: 0.12 } },
+};
+const navItemVariants = {
+  navHidden: { opacity: 0, x: 24 },
+  navVisible: { opacity: 1, x: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
 };
 
 export default function PlatformLayout() {
@@ -79,28 +88,31 @@ export default function PlatformLayout() {
           </button>
         )}
       </div>
-      <div className="app-sidebar__nav">
+      <motion.div
+        className="app-sidebar__nav"
+        variants={navListVariants}
+        initial="navHidden"
+        animate="navVisible"
+      >
         <div className="app-sidebar__group">
           {NAV_ITEMS.map(({ to, icon: Icon, labelKey, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
-            >
-              <Icon aria-hidden="true" />
-              <span>{t(labelKey)}</span>
-            </NavLink>
+            <motion.div key={to} variants={navItemVariants}>
+              <NavLink
+                to={to}
+                end={end}
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
+              >
+                <Icon aria-hidden="true" />
+                <span>{t(labelKey)}</span>
+              </NavLink>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
       <div className="app-sidebar__footer">
         <div className="app-sidebar__footer-details">
           <div>{session?.user?.full_name}</div>
-          <div style={{ marginTop: 10 }}>
-            <ThemeSwitcher />
-          </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <select
               value={locale}

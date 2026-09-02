@@ -10,6 +10,7 @@ import { userRolesRepository } from '../roles/userRoles.repository.js';
 import { permissionsRepository } from '../permissions/permissions.repository.js';
 import { refreshTokensRepository } from './refreshTokens.repository.js';
 import { passwordResetTokensRepository } from './passwordResetTokens.repository.js';
+import { PLATFORM_TENANT_SLUG } from '../platform/platformTenant.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
 import {
   signAccessToken,
@@ -157,6 +158,33 @@ export async function login({ tenantSlug, email, password, ipAddress }) {
   });
 }
 
+// Platform-administrator sign-in. Deliberately NOT a second authentication
+// system: it delegates to login() above, so password hashing, lockout,
+// audit logging, refresh-token issuance and tenant-status checks are all
+// the exact same code every other user goes through. It adds exactly two
+// things on top:
+//   1. It resolves the internal platform tenant server-side, so the
+//      frontend never has to know or send that identifier.
+//   2. It refuses to issue a session at all unless the authenticated user
+//      actually holds platform.manage — rather than handing out a real
+//      session and having the client sign itself back out afterwards.
+// The error for "authenticated, but not a platform admin" is deliberately
+// the same generic string as a bad password, so this endpoint can't be
+// used to discover which addresses are platform administrators.
+export async function platformLogin({ email, password, ipAddress }) {
+  const result = await login({ tenantSlug: PLATFORM_TENANT_SLUG, email, password, ipAddress });
+
+  const permissions = await permissionsRepository.listForUser(result.user.id);
+  if (!permissions.includes('platform.manage')) {
+    // Undo the session this login just issued — it must not survive a
+    // failed platform-authorization check.
+    await refreshTokensRepository.revokeAllForUser(result.user.id);
+    throw unauthenticated(GENERIC_LOGIN_ERROR);
+  }
+
+  return result;
+}
+
 export async function refresh({ rawRefreshToken, ipAddress }) {
   if (!rawRefreshToken) throw unauthenticated('Missing refresh token');
 
@@ -188,6 +216,19 @@ export async function refresh({ rawRefreshToken, ipAddress }) {
 
     const user = await usersRepository.findByIdAnyTenant(record.user_id, connection);
     if (!user || user.status !== 'active') {
+      throw unauthenticated('Account is no longer active');
+    }
+
+    // The tenant's own status must be re-checked on every refresh, not only
+    // at login. Without this, suspending a tenant (platform.service.js
+    // #setTenantStatus) blocks NEW logins but leaves every already-signed-in
+    // user able to mint a fresh access token indefinitely — i.e. suspension
+    // would not actually suspend anyone who was online when it happened.
+    // Same generic message as the user-status branch: a suspended tenant's
+    // staff shouldn't be told, at an unauthenticated endpoint, whether the
+    // account or the whole church was disabled.
+    const tenant = await tenantsRepository.findById(user.tenant_id, connection);
+    if (!tenant || tenant.status !== 'active') {
       throw unauthenticated('Account is no longer active');
     }
 

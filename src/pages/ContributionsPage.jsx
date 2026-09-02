@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FiDollarSign, FiLayers, FiPlus, FiX, FiRefreshCw } from 'react-icons/fi';
+import { AnimatePresence, motion } from 'framer-motion';
+import { FiDollarSign, FiLayers, FiPlus, FiX, FiRefreshCw, FiCheck, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi, pledgesApi, receiptsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -15,6 +16,27 @@ import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
 const PAGE_SIZE = 50;
+
+// The recording form is a 4-step wizard rather than one long page: a
+// treasurer entering a Sunday's collections is doing three genuinely
+// different things (how much / where it belongs / how it splits) and the
+// last step exists so money is never posted without the person seeing the
+// final figure first. The steps are presentation only — the submit path,
+// idempotency key, amount sanitising and validation underneath are
+// unchanged.
+const STEPS = [
+  { id: 1, labelKey: 'contributions.wizard.step.amount' },
+  { id: 2, labelKey: 'contributions.wizard.step.details' },
+  { id: 3, labelKey: 'contributions.wizard.step.breakdown' },
+  { id: 4, labelKey: 'contributions.wizard.step.review' },
+];
+const LAST_STEP = STEPS.length;
+
+const stepVariants = {
+  enter: { opacity: 0, x: 16 },
+  center: { opacity: 1, x: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, x: -16, transition: { duration: 0.15 } },
+};
 
 function emptyForm() {
   return {
@@ -64,6 +86,9 @@ export default function ContributionsPage() {
   const [hasMore, setHasMore] = useState(false);
   const [smsNotice, setSmsNotice] = useState(null); // { contributionId, status } | null
   const [resendingSms, setResendingSms] = useState(false);
+  const [step, setStep] = useState(1);
+  const [stepError, setStepError] = useState(null);
+  const stepPanelRef = useRef(null);
   // One key per logical attempt, not per click — regenerated only after a
   // successful save, so a double-click, a slow-network retry, or resubmitting
   // after an ambiguous timeout all carry the SAME key and the backend
@@ -127,8 +152,67 @@ export default function ContributionsPage() {
   const itemsMismatch =
     items.length > 0 && form.amount && itemsTotal !== Number(sanitizeAmountInput(form.amount)).toFixed(2);
 
+  // Per-step gate. Returns null when the step is complete, otherwise the
+  // translated reason — shown inline rather than letting the treasurer
+  // reach the review step with a half-filled entry.
+  const stepProblem = (which) => {
+    if (which === 1) {
+      const amount = sanitizeAmountInput(form.amount);
+      if (!amount || Number(amount) <= 0) return t('contributions.wizard.error.amount');
+      if (!form.contributionDate) return t('contributions.wizard.error.date');
+      return null;
+    }
+    if (which === 2) {
+      if (!form.accountId) return t('contributions.wizard.error.account');
+      if (!form.fundId) return t('contributions.wizard.error.fund');
+      if (!form.categoryId) return t('contributions.wizard.error.category');
+      return null;
+    }
+    if (which === 3) {
+      if (!showBreakdown) return null;
+      if (items.some((i) => !i.purpose.trim() || !sanitizeAmountInput(i.amount))) {
+        return t('contributions.wizard.error.breakdownIncomplete');
+      }
+      if (itemsMismatch) return t('contributions.itemsMismatch');
+      return null;
+    }
+    return null;
+  };
+
+  const goToStep = (next) => {
+    setStepError(null);
+    setStep(next);
+  };
+
+  const goNext = () => {
+    const problem = stepProblem(step);
+    if (problem) {
+      setStepError(problem);
+      return;
+    }
+    goToStep(Math.min(step + 1, LAST_STEP));
+  };
+
+  const goBack = () => goToStep(Math.max(step - 1, 1));
+
+  // Move focus into each new step so keyboard and screen-reader users land
+  // in the panel that just appeared instead of staying on the (now
+  // replaced) button they pressed.
+  useEffect(() => {
+    const panel = stepPanelRef.current;
+    if (!panel) return;
+    const firstField = panel.querySelector('input, select, textarea, button');
+    if (firstField) firstField.focus({ preventScroll: true });
+  }, [step]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Enter anywhere in an earlier step advances rather than posting money.
+    // Submission is only ever reachable from the review step.
+    if (step !== LAST_STEP) {
+      goNext();
+      return;
+    }
     setError(null);
     setSmsNotice(null);
     setSubmitting(true);
@@ -148,6 +232,8 @@ export default function ContributionsPage() {
       setForm(emptyForm());
       setItems([]);
       setShowBreakdown(false);
+      setStep(1); // wizard returns to the start, ready for the next entry
+      setStepError(null);
       setIdempotencyKey(crypto.randomUUID()); // this logical attempt is done — the next Save is a new one
       await loadAll();
       toast.success(t('contributions.recorded'));
@@ -238,35 +324,83 @@ export default function ContributionsPage() {
       )}
 
       <PermissionGate permission="income.create">
-        <div className="card">
+        <div className="card wizard-canvas">
           <div className="card__header">
             <h2>{t('contributions.recordNew')}</h2>
           </div>
           <form onSubmit={handleSubmit}>
-            <div className="form-section">
-              <div className="form-section__title"><FiDollarSign aria-hidden="true" /> {t('contributions.section.amount')}</div>
-            </div>
-            <div className="form-grid">
-              <div className="field field--full field--amount">
-                <label>{t('common.amount')}</label>
-                <div className="currency-input">
-                  <span className="currency-input__prefix">TZS</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={form.amount}
-                    onChange={handleChange('amount')}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Stepper — also the progress indicator. Completed steps stay
+                clickable so a treasurer can jump back to correct something
+                without losing what they've typed; forward jumps go through
+                goNext() so validation is never skipped. */}
+            <ol className="wizard-steps" aria-label={t('contributions.wizard.progress')}>
+              {STEPS.map((s) => (
+                <li
+                  key={s.id}
+                  className={`wizard-steps__item${s.id === step ? ' is-current' : ''}${s.id < step ? ' is-done' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="wizard-steps__btn"
+                    onClick={() => s.id < step && goToStep(s.id)}
+                    disabled={s.id > step}
+                    aria-current={s.id === step ? 'step' : undefined}
+                  >
+                    <span className="wizard-steps__marker">{s.id < step ? <FiCheck aria-hidden="true" /> : s.id}</span>
+                    <span className="wizard-steps__label">{t(s.labelKey)}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
 
-            <div className="form-section">
-              <div className="form-section__title"><FiLayers aria-hidden="true" /> {t('contributions.section.details')}</div>
-            </div>
-            <div className="form-grid">
+            {stepError && <div className="alert alert--warning">{stepError}</div>}
+
+            <div ref={stepPanelRef}>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div key={step} variants={stepVariants} initial="enter" animate="center" exit="exit">
+                  {step === 1 && (
+                    <>
+                      <div className="form-section">
+                        <div className="form-section__title"><FiDollarSign aria-hidden="true" /> {t('contributions.section.amount')}</div>
+                      </div>
+                      <div className="form-grid">
+                        <div className="field field--full field--amount">
+                          <label>{t('common.amount')}</label>
+                          <div className="currency-input">
+                            <span className="currency-input__prefix">TZS</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              value={form.amount}
+                              onChange={handleChange('amount')}
+                            />
+                          </div>
+                        </div>
+                        <div className="field">
+                          <label>{t('contributions.paymentMethod')}</label>
+                          <select value={form.paymentMethod} onChange={handleChange('paymentMethod')}>
+                            {PAYMENT_METHODS.map((m) => (
+                              <option key={m} value={m}>
+                                {t(`paymentMethod.${m}`)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="field">
+                          <label>{t('contributions.contributionDate')}</label>
+                          <input type="date" value={form.contributionDate} onChange={handleChange('contributionDate')} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {step === 2 && (
+                    <>
+                      <div className="form-section">
+                        <div className="form-section__title"><FiLayers aria-hidden="true" /> {t('contributions.section.details')}</div>
+                      </div>
+                      <div className="form-grid">
               <div className="field">
                 <label>{t('contributions.account')}</label>
                 <select value={form.accountId} onChange={handleChange('accountId')} required>
@@ -311,20 +445,6 @@ export default function ContributionsPage() {
                   </span>
                 )}
               </div>
-              <div className="field">
-                <label>{t('contributions.paymentMethod')}</label>
-                <select value={form.paymentMethod} onChange={handleChange('paymentMethod')} required>
-                  {PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m}>
-                      {t(`paymentMethod.${m}`)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('contributions.contributionDate')}</label>
-                <input type="date" value={form.contributionDate} onChange={handleChange('contributionDate')} required />
-              </div>
               {contributors.length > 0 && (
                 <div className="field">
                   <label>{t('contributions.contributor')}</label>
@@ -359,8 +479,12 @@ export default function ContributionsPage() {
                 <label>{t('common.notes')}</label>
                 <textarea rows={2} value={form.notes} onChange={handleChange('notes')} />
               </div>
-            </div>
+                      </div>
+                    </>
+                  )}
 
+                  {step === 3 && (
+                    <>
             <div className="form-section">
               <div className="form-section__title"><FiLayers aria-hidden="true" /> {t('contributions.section.breakdown')}</div>
             </div>
@@ -433,10 +557,93 @@ export default function ContributionsPage() {
                 )}
               </div>
             )}
-            <div className="form-actions">
-              <button type="submit" className="btn btn--primary" disabled={submitting || itemsMismatch}>
-                {submitting ? t('common.loading') : t('common.record')}
-              </button>
+                    </>
+                  )}
+
+                  {step === 4 && (
+                    <>
+                      <div className="form-section">
+                        <div className="form-section__title">
+                          <FiCheck aria-hidden="true" /> {t('contributions.wizard.step.review')}
+                        </div>
+                      </div>
+                      {/* The figure being posted, shown once, large, before
+                          anything is written. Everything below it is the
+                          supporting detail in the same order it was entered. */}
+                      <div className="wizard-review__amount">
+                        <span className="wizard-review__amount-label">{t('common.amount')}</span>
+                        <span className="wizard-review__amount-value tabular-nums">
+                          TZS {formatMoney(sanitizeAmountInput(form.amount) || '0')}
+                        </span>
+                      </div>
+                      <dl className="wizard-review">
+                        <div className="wizard-review__row">
+                          <dt>{t('contributions.contributionDate')}</dt>
+                          <dd>{formatDate(form.contributionDate)}</dd>
+                        </div>
+                        <div className="wizard-review__row">
+                          <dt>{t('contributions.paymentMethod')}</dt>
+                          <dd>{t(`paymentMethod.${form.paymentMethod}`)}</dd>
+                        </div>
+                        <div className="wizard-review__row">
+                          <dt>{t('contributions.account')}</dt>
+                          <dd>{accounts.find((a) => String(a.id) === String(form.accountId))?.name ?? '—'}</dd>
+                        </div>
+                        <div className="wizard-review__row">
+                          <dt>{t('contributions.fund')}</dt>
+                          <dd>{funds.find((f) => String(f.id) === String(form.fundId))?.name ?? '—'}</dd>
+                        </div>
+                        <div className="wizard-review__row">
+                          <dt>{t('contributions.category')}</dt>
+                          <dd>{categories.find((c) => String(c.id) === String(form.categoryId))?.name ?? '—'}</dd>
+                        </div>
+                        <div className="wizard-review__row">
+                          <dt>{t('contributions.contributor')}</dt>
+                          <dd>
+                            {contributors.find((c) => String(c.id) === String(form.contributorId))?.full_name ??
+                              t('contributions.wizard.anonymous')}
+                          </dd>
+                        </div>
+                        {form.reference && (
+                          <div className="wizard-review__row">
+                            <dt>{t('common.reference')}</dt>
+                            <dd>{form.reference}</dd>
+                          </div>
+                        )}
+                        {items.length > 0 && (
+                          <div className="wizard-review__row">
+                            <dt>{t('contributions.section.breakdown')}</dt>
+                            <dd>
+                              {items.map((item, i) => (
+                                <div key={i}>
+                                  {item.purpose} — <span className="tabular-nums">{formatMoney(sanitizeAmountInput(item.amount) || '0')}</span>
+                                </div>
+                              ))}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
+                    </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <div className="form-actions wizard-actions">
+              {step > 1 && (
+                <button type="button" className="btn btn--secondary" onClick={goBack} disabled={submitting}>
+                  <FiArrowLeft aria-hidden="true" /> {t('contributions.wizard.back')}
+                </button>
+              )}
+              {step < LAST_STEP ? (
+                <button type="button" className="btn btn--primary" onClick={goNext}>
+                  {t('contributions.wizard.next')} <FiArrowRight aria-hidden="true" />
+                </button>
+              ) : (
+                <button type="submit" className="btn btn--primary" disabled={submitting || itemsMismatch}>
+                  {submitting ? t('common.loading') : t('common.record')}
+                </button>
+              )}
             </div>
           </form>
         </div>

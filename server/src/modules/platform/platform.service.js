@@ -7,6 +7,9 @@ import { usersRepository } from '../users/users.repository.js';
 import { rolesRepository } from '../roles/roles.repository.js';
 import { userRolesRepository } from '../roles/userRoles.repository.js';
 import { refreshTokensRepository } from '../auth/refreshTokens.repository.js';
+import { contributorsRepository } from '../contributors/contributors.repository.js';
+import { contributorRefreshTokensRepository } from '../memberAuth/contributorRefreshTokens.repository.js';
+import { isPlatformTenantSlug } from './platformTenant.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
 
 const BCRYPT_COST = 10;
@@ -33,7 +36,9 @@ function toPublicTenantRow(row) {
 
 export async function listTenants() {
   const rows = await tenantsRepository.listAllWithAdminSummary();
-  return rows.map(toPublicTenantRow);
+  // The internal platform tenant is infrastructure, not a customer church —
+  // it never appears in tenant management (platformTenant.js explains why).
+  return rows.filter((row) => !isPlatformTenantSlug(row.slug)).map(toPublicTenantRow);
 }
 
 export async function getTenantDetail(tenantId) {
@@ -116,6 +121,9 @@ export async function createTenant({ churchName, adminFullName, adminEmail, admi
 export async function updateTenant(tenantId, updates, actorUserId) {
   const existing = await tenantsRepository.findById(tenantId);
   if (!existing) throw notFound('Tenant not found');
+  if (isPlatformTenantSlug(existing.slug)) {
+    throw new AppError('FORBIDDEN', 'The internal platform tenant cannot be suspended or modified', { status: 403 });
+  }
 
   const updated = await tenantsRepository.updateDetails(tenantId, updates);
 
@@ -135,9 +143,38 @@ export async function updateTenant(tenantId, updates, actorUserId) {
 export async function setTenantStatus(tenantId, status, actorUserId) {
   const existing = await tenantsRepository.findById(tenantId);
   if (!existing) throw notFound('Tenant not found');
+
+  // Suspending the internal platform tenant would lock every platform
+  // administrator out of /platform permanently — login refuses a
+  // non-active tenant, so there would be no way back in short of direct
+  // database access. Refuse it outright rather than let one click brick
+  // the console.
+  if (isPlatformTenantSlug(existing.slug)) {
+    throw new AppError('FORBIDDEN', 'The internal platform tenant cannot be suspended or modified', { status: 403 });
+  }
+
   if (existing.status === status) return existing;
 
   const updated = await tenantsRepository.updateStatus(tenantId, status);
+
+  // Suspension takes effect NOW, not at each session's next refresh.
+  // auth.service.js#refresh and memberAuth.service.js#refresh both also
+  // re-check tenant status (so a session can never outlive a suspension
+  // even if this step were skipped) — this makes it immediate rather than
+  // "within one access-token TTL", by killing the refresh tokens that
+  // would otherwise still be sitting valid in a browser. Deliberately does
+  // NOT touch anything else: no user/contributor row, no financial record,
+  // nothing is deleted — reactivation just lets login succeed again.
+  if (status === 'suspended') {
+    const [users, contributors] = await Promise.all([
+      usersRepository.findAllByTenant(tenantId),
+      contributorsRepository.findAllByTenant(tenantId),
+    ]);
+    await Promise.all([
+      ...users.map((u) => refreshTokensRepository.revokeAllForUser(u.id)),
+      ...contributors.map((c) => contributorRefreshTokensRepository.revokeAllForContributor(c.id)),
+    ]);
+  }
 
   // Suspending a tenant only ever flips this one enum column — every
   // contribution/expense/receipt/user row is untouched, exactly as

@@ -25,7 +25,6 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import PageTransition from './ui/PageTransition.jsx';
-import ThemeSwitcher from './ui/ThemeSwitcher.jsx';
 
 // Grouped to match the product's real workflow shape (docs/MASTER_TODO.md
 // Phase 10 §10.5), adapted to what actually exists: Income and
@@ -84,15 +83,31 @@ const SIDEBAR_WIDTH = 240;
 const SIDEBAR_WIDTH_COLLAPSED = 76;
 const COLLAPSE_STORAGE_KEY = 'clix.sidebarCollapsed';
 
+// Slides in from the RIGHT edge (+100%, not -100%) to match the
+// right-anchored drawer in layout.css. Spring rather than a fixed
+// duration so it settles with weight instead of arriving linearly.
 const drawerVariants = {
-  hidden: { x: '-100%' },
-  visible: { x: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
-  exit: { x: '-100%', transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } },
+  hidden: { x: '100%' },
+  visible: { x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
+  exit: { x: '100%', transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
 };
 const overlayVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.2 } },
   exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+
+// Nav links cascade in behind the drawer. Own variant names (not
+// hidden/visible) so these never collide with the drawer's variants via
+// Framer's parent→child propagation. Links slide LEFT into place, i.e.
+// from the right edge they entered from.
+const navListVariants = {
+  navHidden: {},
+  navVisible: { transition: { staggerChildren: 0.05, delayChildren: 0.12 } },
+};
+const navItemVariants = {
+  navHidden: { opacity: 0, x: 24 },
+  navVisible: { opacity: 1, x: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
 };
 
 export default function Layout() {
@@ -179,32 +194,39 @@ export default function Layout() {
           </button>
         )}
       </div>
-      <div className="app-sidebar__nav">
+      <motion.div
+        className="app-sidebar__nav"
+        variants={navListVariants}
+        initial="navHidden"
+        animate="navVisible"
+      >
         {visibleGroups.map((group, i) => (
           <div className="app-sidebar__group" key={i}>
-            {group.labelKey && <div className="app-sidebar__group-label">{t(group.labelKey)}</div>}
+            {group.labelKey && (
+              <motion.div className="app-sidebar__group-label" variants={navItemVariants}>
+                {t(group.labelKey)}
+              </motion.div>
+            )}
             {group.items.map(({ to, icon: Icon, labelKey, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                title={isCollapsedDesktop ? t(labelKey) : undefined}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
-              >
-                <Icon aria-hidden="true" />
-                <span>{t(labelKey)}</span>
-              </NavLink>
+              <motion.div key={to} variants={navItemVariants}>
+                <NavLink
+                  to={to}
+                  end={end}
+                  title={isCollapsedDesktop ? t(labelKey) : undefined}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{t(labelKey)}</span>
+                </NavLink>
+              </motion.div>
             ))}
           </div>
         ))}
-      </div>
+      </motion.div>
       <div className="app-sidebar__footer">
         <div className="app-sidebar__footer-details">
           <div>{session?.user?.full_name}</div>
-          <div style={{ marginTop: 10 }}>
-            <ThemeSwitcher />
-          </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <select
               value={locale}

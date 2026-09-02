@@ -50,11 +50,46 @@
   }
 }
 
+/* ---------- Staggered page entrance ----------
+   Every page renders as a stack of top-level sections (page header, stat
+   grid, cards) inside its own root element, which PageTransition wraps in
+   .page-stack. The `.page-stack > *` step reaches that page root, so the
+   ladder below staggers the page's real sections — one CSS block instead of
+   a Framer variant tree duplicated across 14 page components.
+
+   `> *` (not `> .card`) so the delay ladder counts EVERY sibling: an alert
+   or a PermissionGate-suppressed section still occupies a child index, and
+   skipping it would leave a visible gap in the cascade. Only the elements
+   named in the first rule actually animate.
+
+   Capped at 6 — past that the last section arrives late enough to read as a
+   loading bug rather than a flourish.
+
+   `backwards` fill is load-bearing: without it each section paints at full
+   opacity first and only then jumps to its start frame when the delay
+   elapses, producing a flash-then-fade. */
+.page-stack > * > .card,
+.page-stack > * > .page-header,
+.page-stack > * > .stat-grid {
+  animation: slideInUp 0.44s var(--ease-premium) backwards;
+}
+
+.page-stack > * > *:nth-child(1) { animation-delay: 0.02s; }
+.page-stack > * > *:nth-child(2) { animation-delay: 0.08s; }
+.page-stack > * > *:nth-child(3) { animation-delay: 0.14s; }
+.page-stack > * > *:nth-child(4) { animation-delay: 0.2s; }
+.page-stack > * > *:nth-child(5) { animation-delay: 0.26s; }
+.page-stack > * > *:nth-child(n + 6) { animation-delay: 0.32s; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    /* Delay too, not just duration — the entrance ladder above uses
+       `backwards` fill, so a surviving delay would hold sections invisible
+       for up to 320ms before snapping them in. */
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;

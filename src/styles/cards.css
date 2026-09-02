@@ -7,13 +7,15 @@
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  /* Navy hairline at 7%, not the generic grey --border: the edge is felt
+     rather than seen, and the diffuse shadow does the separating. */
+  border: 1px solid rgba(var(--color-primary-rgb), 0.07);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-lg);
   min-width: 0;
-  /* background-color/border-color here (not just box-shadow) so switching
-     Aurora/Midnight/Frost fades every card in place instead of the card
-     itself hard-snapping while only body's text/bg color cross-fades. */
+  /* background-color/border-color transition alongside box-shadow so a
+     card settles smoothly rather than hard-snapping when its surface
+     tokens change. */
   transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium),
     box-shadow var(--motion-base) var(--ease-premium);
 }
@@ -124,11 +126,10 @@
 }
 
 /* Featured hero financial card — one per page, the single most important
-   figure. Uses --gradient-hero (a dedicated, deliberately rich/dark
-   gradient in all three themes) rather than a flat primary fill, so white
-   text stays legible even in Midnight where --color-primary itself is a
-   bright, light blue. Kept deliberately compact (not a giant block) —
-   "premium means restrained," not oversized. */
+   figure. Uses --gradient-hero (a dedicated, deliberately rich/dark navy
+   gradient) rather than a flat primary fill, which is what keeps the white
+   figure text legible across the whole card. Kept deliberately compact
+   (not a giant block) — "premium means restrained," not oversized. */
 .hero-card {
   background: var(--gradient-hero);
   color: #ffffff;
@@ -355,36 +356,49 @@
 }
 
 /* ---------- Badges ---------- */
+/* Tinted fill + a matching 1px ring in the same hue. The ring is what makes
+   a status badge read as a deliberate chip rather than a coloured
+   highlight, and it holds its shape against the zebra-striped table rows
+   these mostly sit in. */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
+  gap: 5px;
+  padding: 4px 11px;
+  border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+  transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium),
+    border-color var(--motion-slow) var(--ease-premium);
 }
 
 .badge--success {
   background: var(--color-success-bg);
   color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 26%, transparent);
 }
 .badge--danger {
   background: var(--color-danger-bg);
   color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 26%, transparent);
 }
 .badge--warning {
   background: var(--color-warning-bg);
   color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 .badge--neutral {
-  background: var(--bg-muted);
+  background: rgba(var(--color-primary-rgb), 0.06);
   color: var(--text-muted);
+  border-color: rgba(var(--color-primary-rgb), 0.14);
 }
 .badge--accent {
   background: var(--color-accent-light);
   color: var(--color-accent-dark);
+  border-color: rgba(var(--color-accent-rgb), 0.3);
 }
 
 /* ---------- Alerts ---------- */
@@ -467,10 +481,6 @@
   animation: skeletonPulse 1.4s ease-in-out infinite;
 }
 
-[data-theme='midnight'] .skeleton::after {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-}
-
 .skeleton-text {
   height: 12px;
   margin-bottom: 8px;
@@ -541,4 +551,85 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-heading);
   flex-shrink: 0;
+}
+
+/* ---------- Fund allocation tiles (DashboardPage) ---------- */
+/* One tile per fund the church has defined. Same surface language as
+   .stat-tile but with a heavier accent treatment, since this is the
+   "where the money sits" block rather than a plain metric. */
+.fund-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.fund-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--motion-base) var(--ease-premium), transform var(--motion-fast) var(--ease-premium);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .fund-tile:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+}
+
+.fund-tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.fund-tile__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 16px;
+}
+
+/* Share-of-total badge — the premium green accent, used here because it
+   genuinely encodes something (proportion of funds held), not decoration. */
+.fund-tile__share {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fund-tile__name {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.fund-tile__value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
 }

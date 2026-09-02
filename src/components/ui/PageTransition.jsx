@@ -18,7 +18,17 @@ export default function PageTransition() {
 
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={location.pathname} variants={variants} initial="initial" animate="animate" exit="exit">
+      {/* .page-stack is a styling hook, not a layout class — animations.css
+          uses it to reach the page component's own root and stagger that
+          root's top-level sections (see "Staggered page entrance"). */}
+      <motion.div
+        className="page-stack"
+        key={location.pathname}
+        variants={variants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+      >
         {outlet}
       </motion.div>
     </AnimatePresence>
