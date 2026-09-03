@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import {
   PLATFORM_ONLY_ROLES,
   PLATFORM_ONLY_PERMISSIONS,
+  SUPER_ADMIN_ROLE,
   SYSTEM_ROLES,
 } from '../../src/db/seeds/permissionCatalog.js';
 
@@ -92,6 +93,51 @@ describe('self-lockout guards', () => {
     const removeRole = file.slice(file.indexOf('export async function removeRole'), file.indexOf('export async function disableUser'));
     expect(removeRole).toContain('userId === actorUserId');
     expect(removeRole).toContain('forbidden');
+  });
+});
+
+describe('Super Administrator is immutable from inside a tenant workspace', () => {
+  const file = src('modules/users/users.service.js');
+
+  it('exports a Super Administrator role constant rather than a duplicated string literal', () => {
+    expect(SUPER_ADMIN_ROLE).toBe('Super Administrator');
+    expect(Object.keys(SYSTEM_ROLES)).toContain(SUPER_ADMIN_ROLE);
+  });
+
+  // It is the 'ALL' grant that makes this account load-bearing: disabling it
+  // can leave a tenant with nobody able to administer it.
+  it('the protected role is the one holding the ALL grant', () => {
+    expect(SYSTEM_ROLES[SUPER_ADMIN_ROLE]).toBe('ALL');
+  });
+
+  it('defines a single shared guard, not a check copy-pasted per call site', () => {
+    expect(file).toContain('async function assertNotSuperAdministrator');
+    expect(file).toContain('SUPER_ADMIN_ROLE');
+    expect(file).toContain('forbidden(');
+  });
+
+  it.each([
+    ['disableUser', 'export async function disableUser'],
+    ['removeRole', 'export async function removeRole'],
+  ])('%s calls the guard', (_name, marker) => {
+    const start = file.indexOf(marker);
+    expect(start).toBeGreaterThan(-1);
+    // Scan only this function's body, not the rest of the file.
+    const body = file.slice(start, start + 1400);
+    expect(body).toContain('assertNotSuperAdministrator');
+  });
+
+  // listRoleIdsForUser is keyed by user_id alone and is NOT tenant-scoped,
+  // so disableUser must confirm the target belongs to this tenant before
+  // probing its roles — otherwise a foreign user id becomes an oracle.
+  it('disableUser verifies tenant ownership before the role lookup', () => {
+    const start = file.indexOf('export async function disableUser');
+    const body = file.slice(start, start + 1400);
+    const ownershipCheck = body.indexOf('usersRepository.findById');
+    const roleCheck = body.indexOf('assertNotSuperAdministrator');
+    expect(ownershipCheck).toBeGreaterThan(-1);
+    expect(roleCheck).toBeGreaterThan(-1);
+    expect(ownershipCheck).toBeLessThan(roleCheck);
   });
 });
 

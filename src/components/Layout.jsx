@@ -27,6 +27,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import PageTransition from './ui/PageTransition.jsx';
 import ThemeToggle from './ui/ThemeToggle.jsx';
 import NotificationsMenu from './ui/NotificationsMenu.jsx';
+import BottomNav from './ui/BottomNav.jsx';
 
 // Grouped to match the product's real workflow shape (docs/MASTER_TODO.md
 // Phase 10 §10.5), adapted to what actually exists: Income and
@@ -79,6 +80,23 @@ const NAV_GROUPS = [
     labelKey: 'nav.group.administration',
     items: [{ to: '/users', icon: FiUserCheck, labelKey: 'nav.users', permission: 'users.view' }],
   },
+];
+
+// The four things a treasurer does on a phone. Deliberately NOT a subset of
+// NAV_GROUPS' 14 links — a dock with more than four targets stops being a
+// shortcut. /contributions is the Sadaka/Zaka wizard, the single most-used
+// action in the product.
+//
+// The fourth slot is Users, not "Settings": there is no settings page in
+// this product (Layout's own NAV_GROUPS comment explains why — Roles-editing
+// and Church Settings have no backend module behind them yet). A gear icon
+// leading to user management would be a mislabelled shortcut, so this uses
+// the same FiUserCheck the sidebar already uses for that destination.
+const QUICK_NAV = [
+  { to: '/', icon: FiHome, labelKey: 'nav.dashboard', end: true, permission: null },
+  { to: '/contributions', icon: FiDollarSign, labelKey: 'nav.contributions', permission: 'income.view' },
+  { to: '/reports', icon: FiBarChart2, labelKey: 'nav.reports', permission: 'reports.view' },
+  { to: '/users', icon: FiUserCheck, labelKey: 'nav.users', permission: 'users.view' },
 ];
 
 const SIDEBAR_WIDTH = 240;
@@ -334,6 +352,8 @@ export default function Layout() {
           <PageTransition />
         </main>
       </div>
+
+      <BottomNav items={QUICK_NAV} />
     </div>
   );
 }

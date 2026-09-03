@@ -72,6 +72,12 @@ export const PLATFORM_ONLY_PERMISSIONS = ['platform.manage'];
 // list alone is not a control — the API accepts a roleId directly.
 export const PLATFORM_ONLY_ROLES = ['Platform Administrator'];
 
+// The tenant-side root account. Holds the 'ALL' grant, so it is what keeps a
+// church's workspace administrable. users.service.js refuses to disable it
+// or strip its roles from inside the tenant workspace — see
+// assertNotSuperAdministrator there for why.
+export const SUPER_ADMIN_ROLE = 'Super Administrator';
+
 // System-default roles. tenant_id NULL — shared across every tenant.
 // "ALL" grants every permission in the catalog above EXCEPT platform.manage
 // (see its own comment) — Super Administrator is the top tenant-level role,

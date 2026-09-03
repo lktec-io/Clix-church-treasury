@@ -35,18 +35,22 @@ const SLIDES = [
   { image: '/fonts/slide3.jpg', headlineKey: 'auth.login.slide3' },
   { image: '/fonts/slide4.jpg', headlineKey: 'auth.login.slide4' },
 ];
-const SLIDE_INTERVAL_MS = 6500;
+const SLIDE_INTERVAL_MS = 3000;
 
+// Crossfade timings are scaled to the 3s cycle: a 1.1s fade inside a 3s
+// slide would leave the panel mid-transition for a third of its life, which
+// reads as a flicker rather than a fade. The Ken Burns scale runs the full
+// 3s so it never visibly stops and restarts.
 const slideVariants = {
-  enter: { opacity: 0, scale: 1.06 },
-  center: { opacity: 1, scale: 1, transition: { opacity: { duration: 1.1 }, scale: { duration: 7 } } },
-  exit: { opacity: 0, transition: { duration: 0.9 } },
+  enter: { opacity: 0, scale: 1.05 },
+  center: { opacity: 1, scale: 1, transition: { opacity: { duration: 0.6 }, scale: { duration: 3 } } },
+  exit: { opacity: 0, transition: { duration: 0.5 } },
 };
 
 const headlineVariants = {
-  enter: { opacity: 0, y: 14 },
-  center: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
-  exit: { opacity: 0, y: -12, transition: { duration: 0.3 } },
+  enter: { opacity: 0, y: 12 },
+  center: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.22 } },
 };
 
 export default function LoginPage() {

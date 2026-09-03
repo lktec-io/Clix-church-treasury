@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiDollarSign, FiLayers, FiPlus, FiX, FiRefreshCw, FiCheck, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
+import { FiDollarSign, FiLayers, FiPlus, FiX, FiCheck, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi, pledgesApi, receiptsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -12,6 +12,7 @@ import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
+import SmsDispatchIndicator from '../components/ui/SmsDispatchIndicator.jsx';
 import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -245,10 +246,14 @@ export default function ContributionsPage() {
       // honest and recoverable without re-entering the whole contribution.
       if (result.sms) {
         setSmsNotice({
+          // Bumped on every dispatch so the indicator replays its sequence
+          // for a resend instead of sitting on the previous result.
+          dispatchId: Date.now(),
           contributionId: result.id,
           status: result.sms.status,
           reasonCode: result.sms.reasonCode,
           reason: result.sms.errorMessage,
+          preview: result.sms.preview,
         });
       }
     } catch (err) {
@@ -264,12 +269,15 @@ export default function ContributionsPage() {
     try {
       const { sms } = await contributionsApi.resendSms(smsNotice.contributionId);
       setSmsNotice({
+        dispatchId: Date.now(),
         contributionId: smsNotice.contributionId,
         status: sms.status,
         reasonCode: sms.reasonCode,
         reason: sms.errorMessage,
+        preview: sms.preview,
       });
-      if (sms.status === 'sent') toast.success(t('contributions.sms.sent'));
+      // No success toast on resend — the indicator's tick already says it,
+      // and two simultaneous success signals for one action reads as a bug.
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -299,28 +307,22 @@ export default function ContributionsPage() {
     <div>
       <PageHeader title={t('contributions.title')} subtitle={t('contributions.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
-      {smsNotice && smsNotice.status !== 'sent' && (
-        <div className={`alert ${smsNotice.status === 'failed' ? 'alert--warning' : 'alert--info'}`} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <span>{t(`contributions.sms.${smsNotice.status}`)}</span>
-            {smsNotice.status === 'failed' && (
-              <button type="button" className="btn btn--secondary btn--sm" onClick={handleRetrySms} disabled={resendingSms}>
-                <FiRefreshCw aria-hidden="true" /> {resendingSms ? t('common.loading') : t('contributions.retrySms')}
-              </button>
-            )}
-          </div>
-          {/* Staff-only page — safe to show the concrete (non-secret) reason
-              a treasurer would need to know whether this is a "contact IT
-              about the SMS provider" situation vs. "this contributor's
-              phone number is wrong" situation. */}
-          {smsNotice.reasonCode ? (
-            <span className="text-caption--inherit">{t(`contributions.sms.reasonCode.${smsNotice.reasonCode}`)}</span>
-          ) : (
-            smsNotice.reason && (
-              <span className="text-caption--inherit">{t('contributions.sms.reason', { reason: smsNotice.reason })}</span>
-            )
-          )}
-        </div>
+      {/* Shown for EVERY outcome now, not just failures: a clerk who has
+          just recorded someone's Zaka should be able to see that the
+          confirmation actually went out, and see the exact text that was
+          sent. Staff-only page, so the concrete (non-secret) failure reason
+          is safe to surface — it's the difference between "contact IT about
+          the SMS provider" and "this contributor's phone number is wrong". */}
+      {smsNotice && (
+        <SmsDispatchIndicator
+          key={smsNotice.dispatchId}
+          status={smsNotice.status}
+          reasonCode={smsNotice.reasonCode}
+          reason={smsNotice.reason}
+          preview={smsNotice.preview}
+          onRetry={handleRetrySms}
+          retrying={resendingSms}
+        />
       )}
 
       <PermissionGate permission="income.create">

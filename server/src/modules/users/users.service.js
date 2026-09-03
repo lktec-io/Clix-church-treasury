@@ -10,7 +10,7 @@ import { passwordResetTokensRepository } from '../auth/passwordResetTokens.repos
 import { refreshTokensRepository } from '../auth/refreshTokens.repository.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
 import { generateRefreshToken, hashToken } from '../auth/tokens.js';
-import { PLATFORM_ONLY_ROLES } from '../../db/seeds/permissionCatalog.js';
+import { PLATFORM_ONLY_ROLES, SUPER_ADMIN_ROLE } from '../../db/seeds/permissionCatalog.js';
 
 function toPublicUser(user) {
   // eslint-disable-next-line no-unused-vars
@@ -125,6 +125,10 @@ export async function removeRole(tenantId, userId, roleId, actorUserId) {
     throw forbidden('You cannot remove a role from your own account');
   }
 
+  // Same immutability rule as disableUser: stripping the Super
+  // Administrator role is simply a slower way of disabling the account.
+  await assertNotSuperAdministrator(userId, 'modified');
+
   await userRolesRepository.remove(userId, roleId);
 
   await recordAuditLog({
@@ -139,10 +143,41 @@ export async function removeRole(tenantId, userId, roleId, actorUserId) {
   return { userId, roleId };
 }
 
+// The Super Administrator account is IMMUTABLE from inside the tenant
+// workspace.
+//
+// Super Administrator carries the 'ALL' grant, so it is the account that
+// holds a church's books together. Any other user with users.manage —
+// an assistant, a clerk given the role for one task, a compromised
+// session — could otherwise disable it or strip its roles, leaving the
+// tenant with nobody able to administer it and no in-product way back.
+// Managing that account is the platform owner's job, via /platform.
+//
+// Checked by ROLE, not by user id: there is no "first user" flag in the
+// schema, and a tenant may legitimately have more than one Super
+// Administrator. Every one of them is protected.
+async function assertNotSuperAdministrator(userId, action) {
+  const roleIds = await userRolesRepository.listRoleIdsForUser(userId);
+  if (roleIds.length === 0) return;
+  const roles = await Promise.all(roleIds.map((roleId) => rolesRepository.findById(roleId)));
+  if (roles.some((role) => role?.name === SUPER_ADMIN_ROLE)) {
+    throw forbidden(
+      `The ${SUPER_ADMIN_ROLE} account cannot be ${action} from within a church workspace. Only a Platform Administrator can manage it.`
+    );
+  }
+}
+
 export async function disableUser(tenantId, userId, actorUserId) {
   if (userId === actorUserId) {
     throw forbidden('You cannot disable your own account');
   }
+  // Confirm the target belongs to THIS tenant before the role lookup —
+  // listRoleIdsForUser is keyed by user_id alone and is not tenant-scoped,
+  // so probing it with a foreign id must not be possible.
+  const target = await usersRepository.findById(tenantId, userId);
+  if (!target) throw notFound('User not found');
+  await assertNotSuperAdministrator(userId, 'disabled');
+
   const user = await usersRepository.setStatus(tenantId, userId, 'disabled');
   if (!user) throw notFound('User not found');
 

@@ -668,6 +668,100 @@
   margin: 0 auto;
 }
 
+/* ---------- Mobile bottom nav dock ---------- */
+/* Hidden on desktop: the sidebar is permanently visible there, and a second
+   persistent nav would be redundant chrome. */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 90;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: stretch;
+  background: rgba(11, 31, 77, 0.85);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-top: 1px solid rgba(16, 185, 129, 0.15);
+  box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.6);
+  /* Clears the iOS home indicator / Android gesture bar, and collapses to
+     0 on devices that have neither. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 900px) {
+  .bottom-nav {
+    display: none;
+  }
+}
+
+.bottom-nav__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  /* 56px keeps every target comfortably over the ~44px minimum. */
+  min-height: 56px;
+  padding: 8px 4px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10.5px;
+  font-weight: 600;
+  transition: color var(--motion-fast) var(--ease-premium);
+}
+
+.bottom-nav__item.is-active {
+  color: #ffffff;
+}
+
+.bottom-nav__item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(var(--color-accent-rgb), 0.6);
+  border-radius: var(--radius-sm);
+}
+
+/* The travelling pill — Framer moves this between items via layoutId. */
+.bottom-nav__pill {
+  position: absolute;
+  inset: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-accent-rgb), 0.18);
+  box-shadow: inset 0 0 0 1px rgba(var(--color-accent-rgb), 0.42);
+}
+
+.bottom-nav__icon {
+  position: relative;
+  display: inline-flex;
+  font-size: 18px;
+  transition: transform var(--motion-fast) var(--ease-premium);
+}
+
+.bottom-nav__item.is-active .bottom-nav__icon {
+  color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.bottom-nav__label {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Reserve the dock's height so the last card on a page is never trapped
+   underneath it. Applied to the scroll container's padding rather than a
+   spacer element so it also covers short pages. */
+@media (max-width: 899px) {
+  .app-content {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* ---------- Page header ---------- */
 .page-header {
   display: flex;

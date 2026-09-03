@@ -7,6 +7,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import PageTransition from './ui/PageTransition.jsx';
 import ThemeToggle from './ui/ThemeToggle.jsx';
+import BottomNav from './ui/BottomNav.jsx';
 
 // Deliberately its own small layout, not a reuse of Layout.jsx's markup —
 // the platform console has exactly two destinations and no collapse
@@ -19,6 +20,8 @@ const NAV_ITEMS = [
   { to: '/platform', icon: FiGrid, labelKey: 'platform.nav.dashboard', end: true },
   { to: '/platform/tenants', icon: FiBriefcase, labelKey: 'platform.nav.tenants' },
 ];
+
+const QUICK_NAV = NAV_ITEMS.map((item) => ({ ...item, permission: null }));
 
 // Mirrors Layout.jsx exactly — right-anchored drawer, spring entry,
 // staggered links. See that file for the reasoning on the variant names.
@@ -196,6 +199,14 @@ export default function PlatformLayout() {
           <PageTransition />
         </main>
       </div>
+
+      {/* Same dock as the tenant app. The platform console has only two
+          destinations, so QUICK_NAV here is NAV_ITEMS itself — no separate
+          shortlist to drift out of sync. permission: null throughout: reaching
+          this layout at all already required platform.manage
+          (PlatformProtectedRoute), so a second per-item check would be
+          re-testing a gate that has already passed. */}
+      <BottomNav items={QUICK_NAV} />
     </div>
   );
 }

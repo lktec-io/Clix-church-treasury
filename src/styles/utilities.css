@@ -251,10 +251,12 @@
   inset: 0;
   pointer-events: none;
   background-image:
-    /* Text-bed: strongest at the left edge where the copy is anchored. */
-    linear-gradient(100deg, rgba(4, 12, 32, 0.82) 0%, rgba(4, 12, 32, 0.55) 38%, rgba(4, 12, 32, 0) 72%),
-    /* Even wash, per the specified 0.45 → 0.60 ramp. */
-    linear-gradient(to bottom, rgba(11, 31, 77, 0.45), rgba(7, 20, 50, 0.6));
+    /* Text-bed, softened from 0.82 to 0.55 at the anchor and pulled in to
+       fade out by 58% — the photo now reads across roughly the right half
+       of the panel instead of a third of it. */
+    linear-gradient(100deg, rgba(4, 12, 32, 0.55) 0%, rgba(4, 12, 32, 0.28) 30%, rgba(4, 12, 32, 0) 58%),
+    /* Even wash, per the specified 0.45 → 0.55 ramp. */
+    linear-gradient(to bottom, rgba(11, 31, 77, 0.45), rgba(7, 20, 50, 0.55));
 }
 
 /* On narrow screens the panel is short and the text spans its full width, so
@@ -263,8 +265,8 @@
 @media (max-width: 899px) {
   .auth-split__scrim {
     background-image:
-      linear-gradient(to bottom, rgba(4, 12, 32, 0.5) 0%, rgba(4, 12, 32, 0.8) 100%),
-      linear-gradient(to bottom, rgba(11, 31, 77, 0.45), rgba(7, 20, 50, 0.6));
+      linear-gradient(to bottom, rgba(4, 12, 32, 0.24) 0%, rgba(4, 12, 32, 0.58) 100%),
+      linear-gradient(to bottom, rgba(11, 31, 77, 0.45), rgba(7, 20, 50, 0.55));
   }
 }
 
@@ -371,15 +373,21 @@
   max-width: 15ch;
   /* Small lift against a photograph: the scrim carries the contrast, this
      just keeps the edges crisp where a bright highlight sits behind. */
-  text-shadow: 0 1px 12px rgba(4, 12, 32, 0.45);
+  text-shadow: 0 1px 4px rgba(4, 12, 32, 0.85), 0 2px 18px rgba(4, 12, 32, 0.6);
 }
 
+/* Solid #ffffff, not a translucent white. Against a photograph, alpha text
+   picks up whatever is behind it and turns muddy; the hierarchy is carried
+   by size and weight instead. The shadow is what replaces the contrast the
+   softened scrim gave up — a tight dark halo that only shows where a bright
+   part of the image sits directly behind a glyph. */
 .auth-split__lede {
   margin: 0;
   font-size: 14.5px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.76);
+  color: #ffffff;
   max-width: 46ch;
+  text-shadow: 0 1px 3px rgba(4, 12, 32, 0.8), 0 2px 14px rgba(4, 12, 32, 0.55);
 }
 
 .auth-split__points {
@@ -396,8 +404,9 @@
   align-items: center;
   gap: 10px;
   font-size: 13.5px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.88);
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(4, 12, 32, 0.8);
 }
 
 .auth-split__point svg {

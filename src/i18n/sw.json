@@ -428,5 +428,8 @@
   "auth.login.slide2": "Uwakili ambao kusanyiko lako linaweza kuuona.",
   "auth.login.slide3": "Zaka na Sadaka, zimeandikwa kwa uangalifu.",
   "auth.login.slide4": "Imejengwa kwa ajili ya watunza hazina wanaohudumu.",
-  "auth.login.goToSlide": "Nenda slaidi ya {{number}}"
+  "auth.login.goToSlide": "Nenda slaidi ya {{number}}",
+  "nav.quickAccess": "Ufikiaji wa haraka",
+  "contributions.sms.dispatching": "Inatuma SMS kwa mchangiaji…",
+  "contributions.sms.deliveredTitle": "Ujumbe umetumwa kikamilifu"
 }

@@ -428,5 +428,8 @@
   "auth.login.slide2": "Stewardship your congregation can see.",
   "auth.login.slide3": "Zaka and Sadaka, recorded with care.",
   "auth.login.slide4": "Built for the treasurers who serve.",
-  "auth.login.goToSlide": "Go to slide {{number}}"
+  "auth.login.goToSlide": "Go to slide {{number}}",
+  "nav.quickAccess": "Quick access",
+  "contributions.sms.dispatching": "Sending SMS to the contributor…",
+  "contributions.sms.deliveredTitle": "Ujumbe umetumwa kikamilifu"
 }

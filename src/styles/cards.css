@@ -726,6 +726,127 @@
   text-align: center;
 }
 
+/* ==========================================================================
+   SMS DISPATCH INDICATOR
+   ========================================================================== */
+.sms-dispatch {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+  box-shadow: var(--shadow-md);
+  transition: border-color var(--motion-slow) var(--ease-premium),
+    box-shadow var(--motion-slow) var(--ease-premium);
+}
+
+.sms-dispatch.is-sent {
+  border-color: rgba(var(--color-accent-rgb), 0.35);
+  box-shadow: 0 10px 30px -18px rgba(var(--color-accent-rgb), 0.5);
+}
+
+.sms-dispatch__progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sms-dispatch__percent {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.sms-dispatch__track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(var(--color-primary-rgb), 0.1);
+  overflow: hidden;
+}
+
+.sms-dispatch__bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+  box-shadow: 0 0 12px 0 rgba(var(--color-accent-rgb), 0.55);
+}
+
+.sms-dispatch__result {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sms-dispatch__tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-size: 20px;
+  box-shadow: 0 0 0 5px rgba(var(--color-accent-rgb), 0.16), 0 8px 20px -8px rgba(var(--color-accent-rgb), 0.7);
+}
+
+.sms-dispatch__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  font-size: 17px;
+}
+.sms-dispatch__icon.is-failed {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.sms-dispatch__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.sms-dispatch__title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.sms-dispatch__reason {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* The exact text the member received. Monospace + preserved newlines so a
+   clerk reads it as the SMS it is, not as reflowed prose. */
+.sms-dispatch__preview {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-primary-rgb), 0.04);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
 /* ---------- Skeletons ---------- */
 /* The loading hero mirrors the real hero card's plane rather than sitting
    in a flat grey box, so the swap to loaded content doesn't visibly jump.
