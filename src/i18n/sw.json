@@ -423,5 +423,10 @@
   "platform.tenants.deleteConfirmLabel": "Andika {{slug}} kuthibitisha",
   "platform.tenants.deleteConfirmHint": "Lazima ilingane sawasawa na kitambulisho cha kanisa.",
   "platform.tenants.deleteConfirmAction": "Futa kabisa",
-  "platform.tenants.deletedToast": "Kanisa limefutwa kabisa"
+  "platform.tenants.deletedToast": "Kanisa limefutwa kabisa",
+  "auth.login.slide1": "Kila sadaka imehesabiwa kwa uaminifu.",
+  "auth.login.slide2": "Uwakili ambao kusanyiko lako linaweza kuuona.",
+  "auth.login.slide3": "Zaka na Sadaka, zimeandikwa kwa uangalifu.",
+  "auth.login.slide4": "Imejengwa kwa ajili ya watunza hazina wanaohudumu.",
+  "auth.login.goToSlide": "Nenda slaidi ya {{number}}"
 }

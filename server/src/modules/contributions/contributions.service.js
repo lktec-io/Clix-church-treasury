@@ -57,7 +57,7 @@ async function sendContributionConfirmationSms(tenantId, contribution) {
     contributorId: contributor.id,
     phone: contributor.phone,
     templateKey: 'contribution_confirmation',
-    locale: contributor.locale ?? tenant?.locale_default ?? 'en',
+    locale: contributor.locale ?? tenant?.locale_default ?? 'sw',
     params: {
       churchName: tenant?.name,
       memberName: contributor.full_name,

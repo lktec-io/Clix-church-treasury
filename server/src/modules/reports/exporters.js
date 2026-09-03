@@ -36,46 +36,115 @@ export async function toExcelBuffer(rows, columns, sheetName = 'Report') {
 // generated timestamp, a table, and a totals line if provided. A4,
 // paginated automatically by pdfkit as content overflows a page
 // (docs/MASTER_TODO.md Phase 9: "properly paginated").
+// The product's palette, mirrored from src/styles/themes.css so an exported
+// PDF is recognisably the same system as the screen it came from.
+const NAVY = '#0b1f4d';
+const GREEN = '#10b981';
+const INK = '#1e293b';
+const MUTED = '#5b6b8c';
+const HAIRLINE = '#dbe2ef';
+const ZEBRA = '#f4f7fc';
+
 export function streamPdfReport({ tenant, title, filterSummary, columns, rows, totals }, stream) {
   const doc = new PDFDocument({ size: 'A4', margin: 40, layout: 'landscape' });
   doc.pipe(stream);
 
-  doc.fontSize(14).font('Helvetica-Bold').text(tenant.name);
-  doc.fontSize(16).font('Helvetica-Bold').text(title, { align: 'left' });
-  doc.fontSize(9).font('Helvetica').fillColor('#555555');
-  if (filterSummary) doc.text(filterSummary);
-  doc.text(`Generated: ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC`);
-  doc.fillColor('#000000');
-  doc.moveDown(0.5);
-  doc.moveTo(doc.x, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#cccccc').stroke();
-  doc.moveDown(0.5);
+  const left = 40;
+  const right = doc.page.width - 40;
+  const contentWidth = right - left;
 
-  const colWidth = (doc.page.width - 80) / columns.length;
+  // --- Branded masthead: solid navy band with a green rule beneath it ---
+  const drawMasthead = () => {
+    doc.rect(0, 0, doc.page.width, 74).fill(NAVY);
+    doc.rect(0, 74, doc.page.width, 3).fill(GREEN);
+
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(15);
+    doc.text(tenant?.name ?? '', left, 20, { width: contentWidth * 0.62, ellipsis: true });
+    doc.font('Helvetica').fontSize(10).fillColor('#c7d2e8');
+    doc.text(title, left, 42, { width: contentWidth * 0.62, ellipsis: true });
+
+    // Right-aligned metadata block.
+    doc.fontSize(8).fillColor('#c7d2e8');
+    doc.text(`Generated ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC`, left, 24, {
+      width: contentWidth,
+      align: 'right',
+    });
+    if (tenant?.slug) {
+      doc.text(tenant.slug, left, 38, { width: contentWidth, align: 'right' });
+    }
+    doc.fillColor(INK);
+  };
+
+  drawMasthead();
+  doc.y = 92;
+
+  if (filterSummary) {
+    doc.font('Helvetica').fontSize(9).fillColor(MUTED).text(filterSummary, left, doc.y, { width: contentWidth });
+    doc.moveDown(0.4);
+  }
+  doc.fillColor(INK);
+
+  const colWidth = contentWidth / columns.length;
   const rowHeight = 18;
 
-  const drawRow = (values, { bold = false } = {}) => {
+  // Right-align anything that reads as money so figures line up on the
+  // decimal — the single biggest legibility win in a financial table.
+  const alignFor = (col) => (col.align === 'right' || /amount|total|balance|debit|credit/i.test(col.key ?? '') ? 'right' : 'left');
+
+  const drawRow = (values, { bold = false, fill = null, color = INK } = {}) => {
     const y = doc.y;
-    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9);
+    if (fill) doc.rect(left, y - 4, contentWidth, rowHeight).fill(fill);
+    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor(color);
     values.forEach((value, i) => {
-      doc.text(cellToString(value), 40 + i * colWidth, y, { width: colWidth - 6, ellipsis: true });
+      doc.text(cellToString(value), left + i * colWidth, y, {
+        width: colWidth - 8,
+        ellipsis: true,
+        align: alignFor(columns[i] ?? {}),
+      });
     });
     doc.y = y + rowHeight;
-    if (doc.y > doc.page.height - 60) {
+    if (doc.y > doc.page.height - 56) {
       doc.addPage();
+      drawMasthead();
+      doc.y = 92;
+      drawHeaderRow();
     }
   };
 
-  drawRow(columns.map((c) => c.header), { bold: true });
-  doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#cccccc').stroke();
-  doc.moveDown(0.2);
+  // Navy header strip, repeated on every page so a multi-page export stays
+  // readable rather than becoming anonymous columns of numbers.
+  function drawHeaderRow() {
+    const y = doc.y;
+    doc.rect(left, y - 4, contentWidth, rowHeight + 2).fill(NAVY);
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#ffffff');
+    columns.forEach((col, i) => {
+      doc.text(String(col.header ?? '').toUpperCase(), left + i * colWidth, y, {
+        width: colWidth - 8,
+        ellipsis: true,
+        align: alignFor(col),
+      });
+    });
+    doc.y = y + rowHeight + 2;
+    doc.fillColor(INK);
+  }
 
-  rows.forEach((row) => drawRow(columns.map((c) => row[c.key])));
+  drawHeaderRow();
+
+  rows.forEach((row, i) => {
+    drawRow(
+      columns.map((c) => row[c.key]),
+      { fill: i % 2 === 1 ? ZEBRA : null }
+    );
+  });
 
   if (totals) {
-    doc.moveDown(0.3);
-    doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#cccccc').stroke();
-    doc.moveDown(0.2);
-    drawRow(columns.map((c) => totals[c.key] ?? ''), { bold: true });
+    doc.moveTo(left, doc.y).lineTo(right, doc.y).lineWidth(1).strokeColor(HAIRLINE).stroke();
+    doc.moveDown(0.25);
+    // Totals in green — the one figure a reader is usually looking for.
+    drawRow(
+      columns.map((c) => totals[c.key] ?? ''),
+      { bold: true, color: GREEN }
+    );
   }
 
   doc.end();

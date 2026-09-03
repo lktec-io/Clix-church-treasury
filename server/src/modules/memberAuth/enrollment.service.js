@@ -106,7 +106,7 @@ export async function enablePortalAccess(tenantId, contributorId, actorUserId) {
     contributorId: contributor.id,
     phone: contributor.phone,
     templateKey: 'member_registration',
-    locale: contributor.locale ?? tenant?.locale_default ?? 'en',
+    locale: contributor.locale ?? tenant?.locale_default ?? 'sw',
     params: {
       churchName: tenant?.name,
       memberName: contributor.full_name,
@@ -155,7 +155,7 @@ export async function resetPin(tenantId, contributorId, actorUserId) {
     contributorId: updated.id,
     phone: updated.phone,
     templateKey: 'member_registration',
-    locale: updated.locale ?? tenant?.locale_default ?? 'en',
+    locale: updated.locale ?? tenant?.locale_default ?? 'sw',
     params: {
       churchName: tenant?.name,
       memberName: updated.full_name,

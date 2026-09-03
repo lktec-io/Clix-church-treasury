@@ -68,9 +68,9 @@ export async function statementPdf(req, res, next) {
     ]);
     const contributor = await contributorsRepository.findById(req.tenantId, req.contributorId);
     const categoriesById = new Map(categories.map((c) => [c.id, c.name]));
-    const locale = req.query.locale === 'sw' ? 'sw' : contributor?.locale ?? tenant?.locale_default ?? 'en';
+    const locale = req.query.locale === 'sw' ? 'sw' : contributor?.locale ?? tenant?.locale_default ?? 'sw';
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="statement-${year}-${month}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="statement-${year}-${month}.pdf"`);
     renderStatementPdf({ tenant, churchSettings, contributor, ...statementData, categoriesById }, res, locale);
   } catch (err) {
     next(err);
@@ -85,7 +85,7 @@ export async function receiptPdf(req, res, next) {
     }
     const locale = req.query.locale === 'sw' ? 'sw' : data.tenant.locale_default === 'sw' ? 'sw' : 'en';
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${data.receipt.receipt_number}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${data.receipt.receipt_number}.pdf"`);
     renderReceiptPdf(data, res, locale);
   } catch (err) {
     next(err);

@@ -57,6 +57,21 @@ export const PERMISSIONS = [
 // separation exists to prevent).
 export const PLATFORM_ONLY_PERMISSIONS = ['platform.manage'];
 
+// System roles that exist OUTSIDE the tenant world entirely.
+//
+// System roles are stored with tenant_id IS NULL so that every tenant can
+// share one definition (Treasurer, Auditor, Viewer...). That sharing is
+// exactly why this list is needed: "Platform Administrator" is also a
+// tenant_id IS NULL row, so without an explicit exclusion it appears in
+// every church's role picker AND passes assignRole's "is this role visible
+// to my tenant?" check — letting any church admin with users.manage grant
+// themselves platform.manage and take over every tenant on the platform.
+//
+// Two places consume this, and BOTH are required: roles.repository.js
+// (never list it) and users.service.js (never assign it). Filtering the
+// list alone is not a control — the API accepts a roleId directly.
+export const PLATFORM_ONLY_ROLES = ['Platform Administrator'];
+
 // System-default roles. tenant_id NULL — shared across every tenant.
 // "ALL" grants every permission in the catalog above EXCEPT platform.manage
 // (see its own comment) — Super Administrator is the top tenant-level role,

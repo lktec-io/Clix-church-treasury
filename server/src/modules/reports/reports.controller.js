@@ -47,22 +47,43 @@ async function respond(req, res, { title, columns, rows, exportRows = rows, tota
   if (!req.permissions?.includes('reports.export')) {
     throw forbidden('Missing permission: reports.export');
   }
+  // Every export is named for the church and the report rather than
+  // "report.pdf" — a treasurer downloading three reports in a row otherwise
+  // ends up with report.pdf, report(1).pdf, report(2).pdf and no way to tell
+  // them apart. ASCII-only and punctuation-stripped so the filename survives
+  // Content-Disposition without needing RFC 5987 encoding.
+  const exportTenant = await tenantsRepository.findById(req.tenantId);
+  const slugify = (value) =>
+    String(value ?? '')
+      .normalize('NFKD')
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .toLowerCase()
+      .slice(0, 60);
+  const stamp = new Date().toISOString().slice(0, 10);
+  const baseName = [slugify(exportTenant?.slug ?? exportTenant?.name), slugify(title), stamp]
+    .filter(Boolean)
+    .join('_') || 'report';
+
   if (format === 'csv') {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="report.csv"');
+    res.setHeader('Content-Disposition', `attachment; filename="${baseName}.csv"`);
     return res.send(toCsv(exportRows, columns));
   }
   if (format === 'xlsx') {
     const buffer = await toExcelBuffer(exportRows, columns, title);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="report.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="${baseName}.xlsx"`);
     return res.send(buffer);
   }
   if (format === 'pdf') {
-    const tenant = await tenantsRepository.findById(req.tenantId);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename="report.pdf"');
-    return streamPdfReport({ tenant, title, filterSummary, columns, rows: exportRows, totals }, res);
+    res.setHeader('Content-Disposition', `attachment; filename="${baseName}.pdf"`);
+    return streamPdfReport(
+      { tenant: exportTenant, title, filterSummary, columns, rows: exportRows, totals },
+      res
+    );
   }
   throw validationError('Invalid format', { format: 'must be one of: json, csv, xlsx, pdf' });
 }

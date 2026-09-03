@@ -53,7 +53,7 @@ export function validateUpdateTenant(body) {
   if (!CURRENCY_RE.test(baseCurrency)) {
     fields.baseCurrency = 'must be a 3-letter currency code (e.g. TZS)';
   }
-  const localeDefault = body.localeDefault ?? 'en';
+  const localeDefault = body.localeDefault ?? 'sw';
   if (!LOCALE_RE.test(localeDefault)) {
     fields.localeDefault = 'must be a 2-letter locale code (e.g. en, sw)';
   }

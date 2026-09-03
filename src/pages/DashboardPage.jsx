@@ -150,8 +150,16 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const periods = await financialPeriodsApi.list();
-      const current = periods.find((p) => p.status === 'open') ?? null;
+      // Gated like every other fetch below it. This one was unconditional,
+      // which meant a session without financial_period.view (a platform
+      // admin holds ONLY platform.manage) fired a guaranteed 403 — and
+      // because it sits outside the gates but inside this try, that 403 also
+      // painted an error banner across a dashboard that was working fine.
+      let current = null;
+      if (hasPermission('financial_period.view')) {
+        const periods = await financialPeriodsApi.list();
+        current = periods.find((p) => p.status === 'open') ?? null;
+      }
       setOpenPeriod(current);
 
       const requests = [];
@@ -283,7 +291,12 @@ export default function DashboardPage() {
       </motion.section>
       {error && <div className="alert alert--error">{error}</div>}
 
-      {openPeriod === null ? (
+      {/* "No open period — create one" is only true if we actually looked.
+          A session without financial_period.view never fetched the list, so
+          its openPeriod is null for a different reason entirely; showing
+          that empty state there would be telling the user something false
+          about their church's books. */}
+      {hasPermission('financial_period.view') && openPeriod === null ? (
         <div className="card">
           <EmptyState
             icon={FiCalendar}

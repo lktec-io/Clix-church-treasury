@@ -423,5 +423,10 @@
   "platform.tenants.deleteConfirmLabel": "Type {{slug}} to confirm",
   "platform.tenants.deleteConfirmHint": "The tenant slug must match exactly.",
   "platform.tenants.deleteConfirmAction": "Delete permanently",
-  "platform.tenants.deletedToast": "Tenant deleted permanently"
+  "platform.tenants.deletedToast": "Tenant deleted permanently",
+  "auth.login.slide1": "Every offering faithfully counted.",
+  "auth.login.slide2": "Stewardship your congregation can see.",
+  "auth.login.slide3": "Zaka and Sadaka, recorded with care.",
+  "auth.login.slide4": "Built for the treasurers who serve.",
+  "auth.login.goToSlide": "Go to slide {{number}}"
 }

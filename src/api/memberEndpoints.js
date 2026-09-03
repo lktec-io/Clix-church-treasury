@@ -1,4 +1,8 @@
 import { memberApiClient } from './memberClient.js';
+// Shared with the staff client so both portals save files identically —
+// a member on a phone gets a real download, not a new tab, exactly like a
+// treasurer on a desktop.
+import { triggerDownload, filenameFromResponse } from './endpoints.js';
 
 const unwrap = (res) => res.data.data;
 
@@ -17,17 +21,13 @@ export const memberApi = {
       params: { year, month, ...(locale ? { locale } : {}) },
       responseType: 'blob',
     });
-    const url = URL.createObjectURL(res.data);
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    triggerDownload(res.data, filenameFromResponse(res, `statement-${year}-${month}.pdf`));
   },
   async openReceiptPdf(receiptId, locale) {
     const res = await memberApiClient.get(`/member/receipts/${receiptId}/pdf`, {
       params: locale ? { locale } : {},
       responseType: 'blob',
     });
-    const url = URL.createObjectURL(res.data);
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    triggerDownload(res.data, filenameFromResponse(res, `receipt-${receiptId}.pdf`));
   },
 };

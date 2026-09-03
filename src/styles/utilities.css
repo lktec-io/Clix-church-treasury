@@ -217,27 +217,101 @@
   flex-direction: column;
   justify-content: center;
   gap: 18px;
-  padding: 34px 24px 30px;
+  /* Extra bottom padding clears the absolutely-positioned pagination dots. */
+  padding: 34px 24px 62px;
   color: #ffffff;
   background-image: var(--gradient-hero);
   background-color: var(--color-primary);
 }
 
-/* Photo backdrop. The gradient is listed BEFORE the url() because CSS paints
-   background layers first-listed-on-top — so the navy scrim sits over the
-   image, not under it. At 0.88 → 0.92 alpha the white headline clears AA
-   against any photo that lands here, however bright; that ceiling is why
-   the overlay is opaque enough to look almost solid on its own. */
-.auth-split__panel::before {
-  content: '';
+/* Slide layer. Each .auth-slide is a full-bleed photo; the scrim lives in a
+   SEPARATE layer above them (.auth-split__scrim) so a crossfade between two
+   photos never fades the scrim with them — which would flash the raw image
+   mid-transition and drop the headline to unreadable for ~300ms. */
+.auth-slide {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(to bottom, rgba(11, 31, 77, 0.88), rgba(7, 20, 50, 0.92)),
-    url('/fonts/loginpage.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   pointer-events: none;
+}
+
+/* The scrim, lightened from 0.88/0.92 to 0.45/0.60 so the photograph reads
+   through it.
+
+   CONTRAST: at 0.45 the scrim alone no longer guarantees AA for white text
+   over an arbitrary bright photo — 0.88 did, which is why it was set there.
+   The legibility is now carried by the second layer below: a much darker
+   gradient anchored to the left/bottom, exactly where the text sits, fading
+   to nothing over the rest of the panel. The photo stays visible across most
+   of its area while the text column keeps a dark bed under it. */
+.auth-split__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    /* Text-bed: strongest at the left edge where the copy is anchored. */
+    linear-gradient(100deg, rgba(4, 12, 32, 0.82) 0%, rgba(4, 12, 32, 0.55) 38%, rgba(4, 12, 32, 0) 72%),
+    /* Even wash, per the specified 0.45 → 0.60 ramp. */
+    linear-gradient(to bottom, rgba(11, 31, 77, 0.45), rgba(7, 20, 50, 0.6));
+}
+
+/* On narrow screens the panel is short and the text spans its full width, so
+   the horizontal text-bed gradient has nothing to anchor to — swap it for a
+   vertical one. */
+@media (max-width: 899px) {
+  .auth-split__scrim {
+    background-image:
+      linear-gradient(to bottom, rgba(4, 12, 32, 0.5) 0%, rgba(4, 12, 32, 0.8) 100%),
+      linear-gradient(to bottom, rgba(11, 31, 77, 0.45), rgba(7, 20, 50, 0.6));
+  }
+}
+
+/* ---- Slide pagination dots ---- */
+.auth-slides__dots {
+  position: absolute;
+  left: 24px;
+  bottom: 22px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-slides__dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.34);
+  cursor: pointer;
+  transition: background-color var(--motion-base) var(--ease-premium);
+}
+
+.auth-slides__dot:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.auth-slides__dot.is-active {
+  background: var(--color-accent);
+  box-shadow: 0 0 12px 1px rgba(var(--color-accent-rgb), 0.75);
+}
+
+.auth-slides__dot:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.45);
+}
+
+@media (min-width: 900px) {
+  .auth-slides__dots {
+    left: 52px;
+    bottom: 40px;
+  }
 }
 
 /* Soft green bloom over the navy so the panel isn't a flat wash. */
@@ -278,6 +352,16 @@
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* Reserves the tallest headline's height so swapping slides never shifts
+   the lede and trust-points below it. min-height, not a fixed height, so an
+   unusually long translation still wraps rather than clipping. */
+.auth-split__headline-slot {
+  position: relative;
+  min-height: 96px;
+  display: flex;
+  align-items: flex-start;
+}
+
 .auth-split__headline {
   font-size: 26px;
   line-height: 1.22;
@@ -285,6 +369,9 @@
   letter-spacing: -0.02em;
   margin: 0;
   max-width: 15ch;
+  /* Small lift against a photograph: the scrim carries the contrast, this
+     just keeps the edges crisp where a bright highlight sits behind. */
+  text-shadow: 0 1px 12px rgba(4, 12, 32, 0.45);
 }
 
 .auth-split__lede {
@@ -340,8 +427,11 @@
   .auth-split__panel {
     flex: 1 1 46%;
     max-width: 560px;
-    padding: 56px 52px;
+    padding: 56px 52px 82px;
     gap: 22px;
+  }
+  .auth-split__headline-slot {
+    min-height: 132px;
   }
   .auth-split__headline {
     font-size: 38px;

@@ -10,6 +10,7 @@ import { passwordResetTokensRepository } from '../auth/passwordResetTokens.repos
 import { refreshTokensRepository } from '../auth/refreshTokens.repository.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
 import { generateRefreshToken, hashToken } from '../auth/tokens.js';
+import { PLATFORM_ONLY_ROLES } from '../../db/seeds/permissionCatalog.js';
 
 function toPublicUser(user) {
   // eslint-disable-next-line no-unused-vars
@@ -77,6 +78,19 @@ export async function assignRole(tenantId, userId, roleId, actorUserId) {
     throw notFound('Role not found');
   }
 
+  // Platform Administrator is a system role (tenant_id IS NULL), so the
+  // check above accepted it — which meant any church admin holding
+  // users.manage could grant themselves platform.manage and take control of
+  // every tenant on the platform. It is filtered out of listForTenant too,
+  // but this endpoint takes a roleId directly: hiding it from a dropdown is
+  // not a control. Reported as "not found" rather than "forbidden" so the
+  // API doesn't confirm the role's existence to a tenant that must not know
+  // about it. Platform admins are provisioned only by
+  // scripts/bootstrapPlatformAdmin.js.
+  if (role.tenant_id === null && PLATFORM_ONLY_ROLES.includes(role.name)) {
+    throw notFound('Role not found');
+  }
+
   await userRolesRepository.assign(userId, roleId);
 
   await recordAuditLog({
@@ -94,6 +108,22 @@ export async function assignRole(tenantId, userId, roleId, actorUserId) {
 export async function removeRole(tenantId, userId, roleId, actorUserId) {
   const user = await usersRepository.findById(tenantId, userId);
   if (!user) throw notFound('User not found');
+
+  // Self-lockout guard, the counterpart to disableUser's own check.
+  //
+  // Removing your own role is the quietest way to lock yourself out of this
+  // system: a Super Administrator who drops their Super Administrator role
+  // loses users.manage in the same instant, so nothing in the product can
+  // ever give it back — recovery requires direct database access. Unlike
+  // disabling yourself (which at least fails loudly at the next login),
+  // this one leaves you logged in and slowly discovering that every page
+  // has become a 403.
+  //
+  // Removing a role from SOMEONE ELSE is unaffected; this only refuses the
+  // self-directed case.
+  if (userId === actorUserId) {
+    throw forbidden('You cannot remove a role from your own account');
+  }
 
   await userRolesRepository.remove(userId, roleId);
 

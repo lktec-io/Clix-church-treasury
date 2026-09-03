@@ -66,11 +66,11 @@ export async function statementPdf(req, res, next) {
       categoriesRepository.findAllByTenant(req.tenantId),
     ]);
     const categoriesById = new Map(categories.map((c) => [c.id, c.name]));
-    const locale = req.query.locale === 'sw' ? 'sw' : contributor.locale ?? tenant?.locale_default ?? 'en';
+    const locale = req.query.locale === 'sw' ? 'sw' : contributor.locale ?? tenant?.locale_default ?? 'sw';
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `inline; filename="statement-${contributor.member_number ?? contributor.id}-${year}-${month}.pdf"`
+      `attachment; filename="statement-${contributor.member_number ?? contributor.id}-${year}-${month}.pdf"`
     );
     renderStatementPdf({ tenant, churchSettings, contributor, ...statementData, categoriesById }, res, locale);
   } catch (err) {

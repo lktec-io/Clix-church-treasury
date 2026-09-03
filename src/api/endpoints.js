@@ -2,6 +2,49 @@ import { apiClient } from './client.js';
 
 const unwrap = (res) => res.data.data;
 
+// Pulls the server's own filename out of Content-Disposition so a saved file
+// is named "statement-M0042-2026-9.pdf" rather than a random blob id. Falls
+// back to the caller's suggestion when the header is absent or unparseable
+// (a CORS setup that doesn't expose the header, for instance).
+export function filenameFromResponse(res, fallback) {
+  const header = res?.headers?.['content-disposition'];
+  if (typeof header !== 'string') return fallback;
+  // Handles both filename="x.pdf" and RFC 5987 filename*=UTF-8''x.pdf
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(header);
+  if (!match) return fallback;
+  try {
+    return decodeURIComponent(match[1].trim());
+  } catch {
+    return match[1].trim();
+  }
+}
+
+// Saves a blob to disk WITHOUT leaving the current page.
+//
+// These routes are authenticated, so a plain <a href> can't be used — it
+// carries no Bearer token. The file is fetched through the API client as a
+// blob and handed to a synthetic download link. Previously PDFs called
+// window.open() on the object URL, which popped a new tab (and was silently
+// swallowed by popup blockers); only CSV/XLSX took the download path. All
+// formats now behave identically.
+//
+// The link is appended to the DOM before clicking: a detached <a> is a
+// no-op in Firefox, so a download would simply never start there.
+export function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.rel = 'noopener';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoked on a delay rather than immediately — some browsers read the URL
+  // asynchronously after the click, and revoking too early aborts the save.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 // No registerTenant — there is no public tenant-registration endpoint
 // (see server/src/modules/auth/auth.routes.js's own comment). Every
 // tenant is created by a Platform Administrator via platformApi.createTenant.
@@ -66,9 +109,7 @@ export const contributorsApi = {
       params: { year, month, ...(locale ? { locale } : {}) },
       responseType: 'blob',
     });
-    const url = URL.createObjectURL(res.data);
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    triggerDownload(res.data, filenameFromResponse(res, `statement-${year}-${month}.pdf`));
   },
 };
 
@@ -103,18 +144,15 @@ export const pledgesApi = {
 };
 
 export const receiptsApi = {
-  // A plain <a href> can't carry the Bearer token, and this route is
-  // authenticated like every other — so the PDF is fetched through the
-  // normal API client (auth header attached automatically) as a blob, then
-  // opened via a local object URL.
+  // Fetched through the normal API client (Bearer header attached
+  // automatically) as a blob, then saved via triggerDownload — never
+  // window.open, which cost the user their place on the dashboard.
   async openPdf(receiptId, locale) {
     const res = await apiClient.get(`/receipts/${receiptId}/pdf`, {
       params: locale ? { locale } : {},
       responseType: 'blob',
     });
-    const url = URL.createObjectURL(res.data);
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    triggerDownload(res.data, filenameFromResponse(res, `receipt-${receiptId}.pdf`));
   },
   async openPdfForContribution(contributionId, locale) {
     const receipt = await apiClient.get(`/receipts/by-contribution/${contributionId}`).then(unwrap);
@@ -174,15 +212,7 @@ export const reportsApi = {
       params: { ...params, format },
       responseType: 'blob',
     });
-    const url = URL.createObjectURL(res.data);
-    if (format === 'pdf') {
-      window.open(url, '_blank', 'noopener');
-    } else {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${reportKey}.${format}`;
-      link.click();
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    // One path for every format now — pdf used to branch into window.open.
+    triggerDownload(res.data, filenameFromResponse(res, `${reportKey}.${format}`));
   },
 };

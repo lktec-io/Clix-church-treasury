@@ -26,7 +26,7 @@ export async function downloadPdf(req, res, next) {
     const locale = req.query.locale === 'sw' ? 'sw' : data.tenant.locale_default === 'sw' ? 'sw' : 'en';
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${data.receipt.receipt_number}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${data.receipt.receipt_number}.pdf"`);
     renderReceiptPdf(data, res, locale);
   } catch (err) {
     next(err);
