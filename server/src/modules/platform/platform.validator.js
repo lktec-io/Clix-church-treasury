@@ -93,6 +93,18 @@ export function validateUpdateTenantAdmin(body) {
   return { userId: Number(body.userId), fullName: body.fullName.trim(), email: body.email.trim().toLowerCase() };
 }
 
+// Only shape-checks that a confirmation string was supplied. Whether it
+// actually MATCHES the tenant is decided in platform.service.js#deleteTenant,
+// which is the only layer that has the tenant row to compare against.
+export function validateDeleteTenant(body) {
+  if (typeof body.confirmationSlug !== 'string' || body.confirmationSlug.trim().length === 0) {
+    throw validationError('Deletion requires confirmation', {
+      confirmationSlug: 'type the tenant slug to confirm deletion',
+    });
+  }
+  return { confirmationSlug: body.confirmationSlug.trim() };
+}
+
 export function validateResetTenantAdminPassword(body) {
   const fields = {};
   if (typeof body.userId !== 'number' && typeof body.userId !== 'string') {

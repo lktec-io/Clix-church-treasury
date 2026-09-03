@@ -22,6 +22,12 @@ export const platformApi = {
   setTenantStatus: (id, status) => apiClient.patch(`/platform/tenants/${id}/status`, { status }).then(unwrap),
   updateTenantAdmin: (id, body) => apiClient.patch(`/platform/tenants/${id}/admin`, body).then(unwrap),
   resetTenantAdminPassword: (id, body) => apiClient.post(`/platform/tenants/${id}/admin/reset-password`, body).then(unwrap),
+  // DELETE carries a body ({ confirmationSlug }), which axios needs passed
+  // as `data` rather than as a second positional argument the way post/patch
+  // take it. The server re-checks the slug itself — this is not a
+  // client-side-only confirmation.
+  deleteTenant: (id, confirmationSlug) =>
+    apiClient.delete(`/platform/tenants/${id}`, { data: { confirmationSlug } }).then(unwrap),
 };
 
 export const accountsApi = {

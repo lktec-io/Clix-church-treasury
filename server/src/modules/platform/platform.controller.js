@@ -5,6 +5,7 @@ import {
   validateTenantStatus,
   validateUpdateTenantAdmin,
   validateResetTenantAdminPassword,
+  validateDeleteTenant,
 } from './platform.validator.js';
 
 export async function listTenants(req, res, next) {
@@ -50,6 +51,16 @@ export async function setTenantStatus(req, res, next) {
     const { status } = validateTenantStatus(req.body ?? {});
     const tenant = await platformService.setTenantStatus(Number(req.params.id), status, req.auth.userId);
     res.json({ success: true, data: tenant });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteTenant(req, res, next) {
+  try {
+    const { confirmationSlug } = validateDeleteTenant(req.body ?? {});
+    const result = await platformService.deleteTenant(Number(req.params.id), confirmationSlug, req.auth.userId);
+    res.json({ success: true, data: result });
   } catch (err) {
     next(err);
   }

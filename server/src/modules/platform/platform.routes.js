@@ -14,6 +14,9 @@ export function platformRoutes() {
   router.get('/tenants/:id', platformController.getTenant);
   router.patch('/tenants/:id', platformController.updateTenant);
   router.patch('/tenants/:id/status', platformController.setTenantStatus);
+  // Irreversible. Guarded in the service by: not-the-platform-tenant,
+  // must-already-be-suspended, and a server-side slug confirmation.
+  router.delete('/tenants/:id', platformController.deleteTenant);
   router.patch('/tenants/:id/admin', platformController.updateTenantAdmin);
   router.post('/tenants/:id/admin/reset-password', platformController.resetTenantAdminPassword);
   return router;

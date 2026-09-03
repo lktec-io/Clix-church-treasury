@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiPlus, FiEdit2, FiPlayCircle, FiPauseCircle, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiPlayCircle, FiPauseCircle, FiX, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import { platformApi } from '../../api/endpoints.js';
 import { unwrapApiError } from '../../api/client.js';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
@@ -186,6 +186,101 @@ function ResetAdminPasswordModal({ tenant, onClose, onDone }) {
   );
 }
 
+// Irreversible deletion. The operator must type the tenant's slug exactly —
+// the submit button stays disabled until it matches, so "click through
+// without reading" is not a path that exists here. The server re-checks the
+// same slug (platform.service.js#deleteTenant); this modal is the
+// affordance, not the control.
+function DeleteTenantModal({ tenant, onClose, onDeleted }) {
+  const { t } = useLocale();
+  const toast = useToast();
+  const [typed, setTyped] = useState('');
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const matches = typed.trim() === tenant.slug;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!matches) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await platformApi.deleteTenant(tenant.id, typed.trim());
+      toast.success(t('platform.tenants.deletedToast'));
+      onDeleted();
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      className="modal-overlay"
+      variants={overlayVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      onMouseDown={onClose}
+    >
+      <motion.div
+        className="modal"
+        variants={modalVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-tenant-title"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="card__header">
+          <h2 id="delete-tenant-title">{t('platform.tenants.deleteTitle')}</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={t('common.cancel')}>
+            <FiX aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="alert alert--error">
+          <FiAlertTriangle aria-hidden="true" />
+          <span>{t('platform.tenants.deleteWarning', { name: tenant.name })}</span>
+        </div>
+
+        {error && <div className="alert alert--error">{error}</div>}
+
+        <form onSubmit={handleSubmit}>
+          <div className="field field--full">
+            <label htmlFor="deleteConfirm">{t('platform.tenants.deleteConfirmLabel', { slug: tenant.slug })}</label>
+            <input
+              id="deleteConfirm"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              autoComplete="off"
+              autoFocus
+              placeholder={tenant.slug}
+            />
+            <span className="field-hint">{t('platform.tenants.deleteConfirmHint')}</span>
+          </div>
+          <div className="modal__actions">
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={submitting}>
+              {t('common.cancel')}
+            </button>
+            <button
+              type="submit"
+              className={`btn btn--danger${submitting ? ' btn--loading' : ''}`}
+              disabled={!matches || submitting}
+            >
+              <FiTrash2 aria-hidden="true" /> {t('platform.tenants.deleteConfirmAction')}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function EditTenantModal({ tenant, onClose, onSaved }) {
   const { t } = useLocale();
   const toast = useToast();
@@ -327,6 +422,7 @@ export default function PlatformTenantsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editingTenant, setEditingTenant] = useState(null);
+  const [deletingTenant, setDeletingTenant] = useState(null);
   const [actioningId, setActioningId] = useState(null);
 
   const load = useCallback(async () => {
@@ -452,6 +548,19 @@ export default function PlatformTenantsPage() {
                           </>
                         )}
                       </button>
+                      {/* Deletion requires the tenant to be suspended first
+                          (enforced server-side too). Rather than let the
+                          operator click through to a 409, the button is
+                          disabled with a title explaining the prerequisite. */}
+                      <button
+                        type="button"
+                        className="btn btn--danger btn--sm"
+                        disabled={tn.status === 'active' || actioningId === tn.id}
+                        title={tn.status === 'active' ? t('platform.tenants.deleteNeedsSuspend') : undefined}
+                        onClick={() => setDeletingTenant(tn)}
+                      >
+                        <FiTrash2 aria-hidden="true" /> {t('platform.tenants.delete')}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -465,6 +574,16 @@ export default function PlatformTenantsPage() {
         {creating && <CreateTenantModal onClose={() => setCreating(false)} onCreated={handleCreated} />}
         {editingTenant && (
           <EditTenantModal tenant={editingTenant} onClose={() => setEditingTenant(null)} onSaved={handleSaved} />
+        )}
+        {deletingTenant && (
+          <DeleteTenantModal
+            tenant={deletingTenant}
+            onClose={() => setDeletingTenant(null)}
+            onDeleted={() => {
+              setDeletingTenant(null);
+              load();
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

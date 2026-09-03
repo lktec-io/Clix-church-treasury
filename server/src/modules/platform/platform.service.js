@@ -41,9 +41,25 @@ export async function listTenants() {
   return rows.filter((row) => !isPlatformTenantSlug(row.slug)).map(toPublicTenantRow);
 }
 
-export async function getTenantDetail(tenantId) {
+// Single guard for "this operation must not target the internal platform
+// tenant". Previously this check was inlined in updateTenant and
+// setTenantStatus only, which left getTenantDetail, updateTenantAdmin and
+// resetTenantAdminPassword reachable for the platform tenant by id — the
+// tenant is hidden from listTenants(), but hiding a row is not access
+// control. That gap let any platform admin read the platform tenant's user
+// list and silently reset another platform admin's password. Every
+// tenant-targeting operation now routes through here.
+async function loadManageableTenant(tenantId) {
   const tenant = await tenantsRepository.findById(tenantId);
   if (!tenant) throw notFound('Tenant not found');
+  if (isPlatformTenantSlug(tenant.slug)) {
+    throw new AppError('FORBIDDEN', 'The internal platform tenant cannot be viewed or modified here', { status: 403 });
+  }
+  return tenant;
+}
+
+export async function getTenantDetail(tenantId) {
+  const tenant = await loadManageableTenant(tenantId);
   const users = await usersRepository.findAllByTenant(tenantId);
   return {
     id: tenant.id,
@@ -201,6 +217,71 @@ export async function setTenantStatus(tenantId, status, actorUserId) {
   return updated;
 }
 
+// PERMANENT tenant deletion. There is no undo and no archive table — every
+// row scoped to this tenant is destroyed.
+//
+// Four independent gates, in order:
+//   1. platform.manage        (enforced at the route mount in app.js)
+//   2. not the platform tenant (loadManageableTenant)
+//   3. the tenant must be suspended first — deleting a live church's ledger
+//      in one click is a mis-click away from unrecoverable; suspending first
+//      is a deliberate, reversible step that also cuts off active sessions
+//   4. confirmationSlug must match the tenant's real slug, re-checked HERE
+//      on the server. The frontend asks the operator to type it, but a
+//      client-side confirmation is a UX affordance, not a control — anything
+//      holding a platform token can call this endpoint directly.
+//
+// The audit record is written with tenantId: null, NOT the deleted tenant's
+// id. audit_logs.tenant_id is nullable with an ON DELETE RESTRICT foreign
+// key, so a row pointing at the deleted tenant would either block the
+// delete or be destroyed by it — either way the evidence that the deletion
+// happened would not survive it. actor_user_id is ON DELETE SET NULL and
+// the acting admin lives in a different tenant, so the "who" persists.
+export async function deleteTenant(tenantId, confirmationSlug, actorUserId) {
+  const tenant = await loadManageableTenant(tenantId);
+
+  if (tenant.status !== 'suspended') {
+    throw new AppError(
+      'TENANT_NOT_SUSPENDED',
+      'Suspend the tenant before deleting it. This is a deliberate two-step guard on an irreversible action.',
+      { status: 409 }
+    );
+  }
+
+  if (typeof confirmationSlug !== 'string' || confirmationSlug.trim() !== tenant.slug) {
+    throw new AppError('CONFIRMATION_MISMATCH', 'The confirmation text does not match this tenant\'s slug', {
+      status: 400,
+      fields: { confirmationSlug: 'must exactly match the tenant slug' },
+    });
+  }
+
+  // Snapshot before the rows are gone — this is the only surviving record
+  // of what the tenant was.
+  const snapshot = {
+    id: tenant.id,
+    name: tenant.name,
+    slug: tenant.slug,
+    status: tenant.status,
+    createdAt: tenant.created_at,
+  };
+
+  const deletedCounts = await withTransaction(async (connection) =>
+    tenantsRepository.hardDeleteWithAllData(tenantId, connection)
+  );
+
+  await recordAuditLog({
+    tenantId: null,
+    actorUserId,
+    action: 'platform.tenant_deleted',
+    entityType: 'tenants',
+    entityId: tenantId,
+    before: snapshot,
+    after: { deleted: true, deletedCounts },
+  });
+
+  return { deleted: true, tenant: snapshot, deletedCounts };
+}
+
 function toPublicAdminUser(user) {
   return { id: user.id, email: user.email, fullName: user.full_name, status: user.status };
 }
@@ -213,6 +294,7 @@ function toPublicAdminUser(user) {
 // auth.service.js's resetPassword vs. no combined "update everything"
 // endpoint anywhere in this app).
 export async function updateTenantAdmin(tenantId, userId, { fullName, email }, actorUserId) {
+  await loadManageableTenant(tenantId);
   const existing = await usersRepository.findById(tenantId, userId);
   if (!existing) throw notFound('Tenant admin user not found');
 
@@ -250,6 +332,9 @@ export async function updateTenantAdmin(tenantId, userId, { fullName, email }, a
 // refreshing indefinitely after a platform-admin-forced reset; the user
 // must log in again with the new password at the normal /login page.
 export async function resetTenantAdminPassword(tenantId, userId, newPassword, actorUserId) {
+  // Without this, a platform admin who knows the platform tenant's id could
+  // reset a PEER platform admin's password and take over their account.
+  await loadManageableTenant(tenantId);
   const existing = await usersRepository.findById(tenantId, userId);
   if (!existing) throw notFound('Tenant admin user not found');
 

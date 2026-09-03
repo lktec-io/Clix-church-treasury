@@ -414,5 +414,15 @@
   "auth.login.hidePassword": "Hide password",
   "dashboard.fundAllocation.total": "Total allocated",
   "dashboard.fundAllocation.empty": "No fund balances to chart yet.",
-  "dashboard.welcomeFallback": "Welcome back"
+  "dashboard.welcomeFallback": "Welcome back",
+  "common.edit": "Edit",
+  "common.delete": "Delete",
+  "platform.tenants.delete": "Delete",
+  "platform.tenants.deleteTitle": "Delete tenant permanently",
+  "platform.tenants.deleteWarning": "This permanently destroys every record belonging to {{name}} — contributions, expenses, contributors, receipts, users and audit history. This cannot be undone.",
+  "platform.tenants.deleteConfirmLabel": "Type {{slug}} to confirm",
+  "platform.tenants.deleteConfirmHint": "The tenant slug must match exactly.",
+  "platform.tenants.deleteConfirmAction": "Delete permanently",
+  "platform.tenants.deleteNeedsSuspend": "Deactivate this tenant before it can be deleted.",
+  "platform.tenants.deletedToast": "Tenant deleted permanently"
 }
