@@ -325,7 +325,23 @@
   pointer-events: none;
 }
 
-.auth-split__panel > * {
+/* Lifts the PANEL CONTENT above the backdrop layers.
+ *
+ * The three exclusions are load-bearing, not tidiness. This rule is declared
+ * after .auth-slide / .auth-split__scrim / .auth-slides__dots and matches
+ * with equal specificity, so without them `position: relative` wins on
+ * source order and overrides those layers' `position: absolute`. A slide has
+ * no content and no intrinsic height, so once it is pulled back into flow it
+ * collapses to zero and the photograph never paints — which is exactly how
+ * the images "disappeared" while their paths were correct all along.
+ *
+ * :not() also raises this selector's specificity above the layer rules, so
+ * re-ordering the file later cannot resurrect the bug.
+ *
+ * Paint order inside the panel: .auth-slide (auto) → .auth-split__scrim
+ * (auto, later in DOM) → ::after bloom → content and dots (z-index 1 / 2).
+ */
+.auth-split__panel > *:not(.auth-slide):not(.auth-split__scrim):not(.auth-slides__dots) {
   position: relative;
   z-index: 1;
 }
