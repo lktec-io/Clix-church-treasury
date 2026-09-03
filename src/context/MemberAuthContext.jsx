@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { memberApiClient, setMemberAccessToken, setOnMemberAuthExpired } from '../api/memberClient.js';
 import { memberAuthApi } from '../api/memberEndpoints.js';
 import { unwrapApiError } from '../api/client.js';
@@ -13,6 +14,7 @@ const MemberAuthContext = createContext(null);
 export function MemberAuthProvider({ children }) {
   const [session, setSession] = useState(null); // { contributor, mustChangePin } | null
   const [status, setStatus] = useState('checking'); // 'checking' | 'authenticated' | 'anonymous'
+  const { pathname } = useLocation();
 
   const clearSession = useCallback(() => {
     setMemberAccessToken(null);
@@ -24,8 +26,37 @@ export function MemberAuthProvider({ children }) {
     setOnMemberAuthExpired(clearSession);
   }, [clearSession]);
 
+  // Session restore is SCOPED TO THE MEMBER PORTAL.
+  //
+  // This provider is mounted app-wide (main.jsx) so that a member session
+  // and a staff session can coexist. It used to bootstrap unconditionally on
+  // mount, which meant every staff and platform-admin page load also fired
+  // POST /member/auth/refresh — a guaranteed 401 for anyone who is not a
+  // member, on every single load. It never broke the staff session (the two
+  // Axios clients hold entirely separate token state), but it filled the
+  // console with authentication failures that masked real errors.
+  //
+  // Now the refresh only runs while the user is actually inside /member.
+  // Outside it, we settle straight to 'anonymous' with no network call.
+  const bootstrapped = useRef(false);
+  const isMemberScope = typeof pathname === 'string' && (pathname === '/member' || pathname.startsWith('/member/'));
+
   useEffect(() => {
+    if (!isMemberScope) {
+      // Never downgrade an already-established session — a member who
+      // navigates out of the portal and back must not be logged out.
+      if (!bootstrapped.current) setStatus('anonymous');
+      return undefined;
+    }
+    if (bootstrapped.current) return undefined;
+    bootstrapped.current = true;
+
     let cancelled = false;
+    // Back to 'checking' before the request: if the app first loaded on a
+    // non-member route we settled to 'anonymous' above, and entering the
+    // portal now would otherwise let MemberProtectedRoute bounce the user
+    // to the login screen before this refresh has had a chance to answer.
+    setStatus('checking');
     (async () => {
       try {
         const { accessToken } = (await memberApiClient.post('/member/auth/refresh')).data.data;
@@ -45,7 +76,7 @@ export function MemberAuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isMemberScope]);
 
   const login = useCallback(async ({ tenantSlug, memberNumber, pin }) => {
     try {

@@ -85,7 +85,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const { config, response } = error;
-    const isAuthEndpoint = config?.url?.startsWith('/auth/');
+    // typeof guard, not just optional chaining: a request config built with
+    // a URL object or a non-string url would make .startsWith throw inside
+    // the interceptor, turning a recoverable 401 into an unhandled crash.
+    const url = config?.url;
+    const isAuthEndpoint = typeof url === 'string' && url.startsWith('/auth/');
     if (response?.status === 401 && !config._retried && !isAuthEndpoint) {
       config._retried = true;
       try {

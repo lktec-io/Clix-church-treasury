@@ -423,6 +423,5 @@
   "platform.tenants.deleteConfirmLabel": "Type {{slug}} to confirm",
   "platform.tenants.deleteConfirmHint": "The tenant slug must match exactly.",
   "platform.tenants.deleteConfirmAction": "Delete permanently",
-  "platform.tenants.deleteNeedsSuspend": "Deactivate this tenant before it can be deleted.",
   "platform.tenants.deletedToast": "Tenant deleted permanently"
 }

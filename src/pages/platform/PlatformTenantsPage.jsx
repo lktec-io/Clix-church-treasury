@@ -548,15 +548,12 @@ export default function PlatformTenantsPage() {
                           </>
                         )}
                       </button>
-                      {/* Deletion requires the tenant to be suspended first
-                          (enforced server-side too). Rather than let the
-                          operator click through to a 409, the button is
-                          disabled with a title explaining the prerequisite. */}
+                      {/* Single-step deletion: available whatever the
+                          tenant's status. The typed-slug modal is the only
+                          confirmation, and the server re-checks that slug. */}
                       <button
                         type="button"
                         className="btn btn--danger btn--sm"
-                        disabled={tn.status === 'active' || actioningId === tn.id}
-                        title={tn.status === 'active' ? t('platform.tenants.deleteNeedsSuspend') : undefined}
                         onClick={() => setDeletingTenant(tn)}
                       >
                         <FiTrash2 aria-hidden="true" /> {t('platform.tenants.delete')}

@@ -59,7 +59,9 @@ memberApiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const { config, response } = error;
-    const isAuthEndpoint = config?.url?.startsWith('/member/auth/');
+    // See client.js — same typeof guard, same reason.
+    const url = config?.url;
+    const isAuthEndpoint = typeof url === 'string' && url.startsWith('/member/auth/');
     if (response?.status === 401 && !config._retried && !isAuthEndpoint) {
       config._retried = true;
       try {

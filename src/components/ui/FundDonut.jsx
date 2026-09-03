@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
-import { formatMoney } from '../../utils/format.js';
+import { formatMoney, sumMoneyStrings } from '../../utils/format.js';
 
 // Fund-allocation donut, drawn as plain SVG rather than pulling in a chart
 // library — one ring of arcs doesn't justify ~50kB of Recharts/Chart.js, and
@@ -23,11 +23,19 @@ export default function FundDonut({ funds = [], total = 0 }) {
 
   // Only positive balances can be drawn — a negative fund has no arc length,
   // and including it would make the shares sum to more than 100%.
+  //
+  // Two representations are kept per segment, deliberately:
+  //   value   — a Number, used ONLY for arc geometry and percentages
+  //   display — the untouched decimal string from the API, used for text
+  // Money is never rendered from the numeric form. Passing the Number to
+  // formatMoney is what blanked the dashboard after login, and even with
+  // formatMoney now hardened, round-tripping a DECIMAL(14,2) through a JS
+  // float to display it is the wrong thing to do with someone's balance.
   const segments = useMemo(() => {
     if (!(total > 0)) return [];
     let cumulative = 0;
     return funds
-      .map((fund) => ({ ...fund, value: Number(fund.balance) }))
+      .map((fund) => ({ ...fund, value: Number(fund.balance), display: fund.balance }))
       .filter((fund) => Number.isFinite(fund.value) && fund.value > 0)
       .map((fund, i) => {
         const fraction = fund.value / total;
@@ -41,6 +49,11 @@ export default function FundDonut({ funds = [], total = 0 }) {
         return segment;
       });
   }, [funds, total]);
+
+  // Total shown at rest. Summed from the original decimal strings with the
+  // integer-cents helper rather than reusing the numeric `total` prop, so
+  // the headline figure never passes through a float.
+  const totalDisplay = useMemo(() => sumMoneyStrings(segments.map((s) => s.display)), [segments]);
 
   if (segments.length === 0) {
     return <div className="fund-donut__empty">{t('dashboard.fundAllocation.empty')}</div>;
@@ -98,7 +111,7 @@ export default function FundDonut({ funds = [], total = 0 }) {
             {active ? active.name : t('dashboard.fundAllocation.total')}
           </span>
           <span className="fund-donut__center-value tabular-nums">
-            {formatMoney(active ? active.value : total)}
+            {formatMoney(active ? active.display : totalDisplay)}
           </span>
           {active && (
             <span className="fund-donut__center-share">{Math.round(active.fraction * 100)}%</span>

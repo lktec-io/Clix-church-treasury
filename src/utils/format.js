@@ -2,8 +2,39 @@
 // the API as a decimal string (docs/FINANCIAL_ARCHITECTURE.md §1) and stays
 // a string here too; this only inserts thousands separators, it never
 // parses through a JS float for arithmetic.
-export function formatMoney(amountString) {
-  if (amountString === null || amountString === undefined) return '—';
+// Accepts a decimal string (the normal case, straight from the API), a
+// plain number (display-side aggregates — the dashboard's fund totals and
+// the donut's per-segment values are produced by reduce/arithmetic), or
+// null/undefined. It must never throw: this runs inside render, so an
+// exception here unmounts the React tree and blanks the whole page. That
+// is not hypothetical — passing a Number here was exactly what blanked the
+// dashboard after login.
+//
+// NOTE on the coercion: `?? ''` and NOT `|| ''`. A legitimate zero is
+// falsy, so `amount || ''` would turn the number 0 and the string "0.00"
+// into an em dash — silently hiding a real, meaningful balance of zero.
+export function formatMoney(amount) {
+  if (amount === null || amount === undefined) return '—';
+
+  let amountString;
+  if (typeof amount === 'string') {
+    amountString = amount;
+  } else if (typeof amount === 'number') {
+    // NaN/Infinity have no sensible money rendering.
+    if (!Number.isFinite(amount)) return '—';
+    amountString = amount.toFixed(2);
+  } else if (typeof amount === 'bigint') {
+    amountString = `${amount}.00`;
+  } else {
+    // An object, array, boolean or anything else is a caller bug, not a
+    // value to render. Degrade to the same placeholder as null instead of
+    // crashing the page around it.
+    return '—';
+  }
+
+  amountString = amountString.trim();
+  if (amountString === '') return '—';
+
   const negative = amountString.startsWith('-');
   const [whole, frac = '00'] = (negative ? amountString.slice(1) : amountString).split('.');
   const withSeparators = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -37,11 +68,19 @@ export function formatCurrency(amountString) {
 // calculation, never recomputed from scratch on the frontend.
 export function sumMoneyStrings(values) {
   const toCents = (v) => {
+    if (v === null || v === undefined) return 0;
+    // String(v) first, so `whole` is always a string and .startsWith is
+    // always callable — a number or bigint input is safe here.
     const [whole, frac = ''] = String(v).split('.');
     const sign = whole.startsWith('-') ? -1 : 1;
-    return sign * (Math.abs(Number(whole)) * 100 + Number(frac.padEnd(2, '0').slice(0, 2)));
+    const wholeCents = Math.abs(Number(whole));
+    const fracCents = Number(frac.padEnd(2, '0').slice(0, 2));
+    // A non-numeric entry (empty string, "abc") would make Number() NaN and
+    // poison the entire sum, turning a whole page of totals into "NaN".
+    if (!Number.isFinite(wholeCents) || !Number.isFinite(fracCents)) return 0;
+    return sign * (wholeCents * 100 + fracCents);
   };
-  const cents = values.reduce((sum, v) => sum + toCents(v), 0);
+  const cents = (Array.isArray(values) ? values : []).reduce((sum, v) => sum + toCents(v), 0);
   const sign = cents < 0 ? '-' : '';
   const abs = Math.abs(cents);
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;

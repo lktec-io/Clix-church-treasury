@@ -223,13 +223,14 @@ export async function setTenantStatus(tenantId, status, actorUserId) {
 // Four independent gates, in order:
 //   1. platform.manage        (enforced at the route mount in app.js)
 //   2. not the platform tenant (loadManageableTenant)
-//   3. the tenant must be suspended first — deleting a live church's ledger
-//      in one click is a mis-click away from unrecoverable; suspending first
-//      is a deliberate, reversible step that also cuts off active sessions
-//   4. confirmationSlug must match the tenant's real slug, re-checked HERE
+//   3. confirmationSlug must match the tenant's real slug, re-checked HERE
 //      on the server. The frontend asks the operator to type it, but a
 //      client-side confirmation is a UX affordance, not a control — anything
 //      holding a platform token can call this endpoint directly.
+//
+// A "must be suspended first" prerequisite was removed at the operator's
+// explicit request: deletion is single-step, and the typed-slug confirmation
+// is the only thing standing between a click and permanent data loss.
 //
 // The audit record is written with tenantId: null, NOT the deleted tenant's
 // id. audit_logs.tenant_id is nullable with an ON DELETE RESTRICT foreign
@@ -239,14 +240,6 @@ export async function setTenantStatus(tenantId, status, actorUserId) {
 // the acting admin lives in a different tenant, so the "who" persists.
 export async function deleteTenant(tenantId, confirmationSlug, actorUserId) {
   const tenant = await loadManageableTenant(tenantId);
-
-  if (tenant.status !== 'suspended') {
-    throw new AppError(
-      'TENANT_NOT_SUSPENDED',
-      'Suspend the tenant before deleting it. This is a deliberate two-step guard on an irreversible action.',
-      { status: 409 }
-    );
-  }
 
   if (typeof confirmationSlug !== 'string' || confirmationSlug.trim() !== tenant.slug) {
     throw new AppError('CONFIRMATION_MISMATCH', 'The confirmation text does not match this tenant\'s slug', {

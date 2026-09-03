@@ -423,6 +423,5 @@
   "platform.tenants.deleteConfirmLabel": "Andika {{slug}} kuthibitisha",
   "platform.tenants.deleteConfirmHint": "Lazima ilingane sawasawa na kitambulisho cha kanisa.",
   "platform.tenants.deleteConfirmAction": "Futa kabisa",
-  "platform.tenants.deleteNeedsSuspend": "Zima kanisa hili kabla ya kulifuta.",
   "platform.tenants.deletedToast": "Kanisa limefutwa kabisa"
 }
