@@ -15,6 +15,82 @@ import { subtractMoney, sumMoney } from '../financial/money.js';
 // the dashboard/ledger it's describing structurally cannot disagree,
 // because they're the same query.
 
+// Rolling monthly income/expense series for the dashboard trend panel,
+// plus a forecast for the month after the window.
+//
+// THE FORECAST IS A DERIVED ESTIMATE, NOT RECORDED MONEY. It is a trailing
+// average of the last `FORECAST_BASIS_MONTHS` months with actual activity —
+// deliberately the simplest defensible projection rather than a regression
+// that would imply more confidence than a church's giving data supports.
+// It is returned under its own `forecast` key (never mixed into `series`)
+// and carries `basisMonths` so the UI can state what it was computed from.
+// If there is not enough history, forecast is null and the UI draws nothing.
+const FORECAST_BASIS_MONTHS = 3;
+
+function monthKey(date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+export async function getMonthlyTrends(tenantId, { months = 12 } = {}) {
+  const now = new Date();
+  // First day of the window, `months - 1` months back, so the current month
+  // is the last bucket.
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+  const dateFrom = start.toISOString().slice(0, 10);
+  const dateTo = end.toISOString().slice(0, 10);
+
+  const [incomeRows, expenseRows] = await Promise.all([
+    transactionsRepository.monthlyTotalsByType(tenantId, 'income', { dateFrom, dateTo }),
+    transactionsRepository.monthlyTotalsByType(tenantId, 'expense', { dateFrom, dateTo }),
+  ]);
+
+  const incomeByPeriod = new Map(incomeRows.map((r) => [r.period, String(r.total)]));
+  const expenseByPeriod = new Map(expenseRows.map((r) => [r.period, String(r.total)]));
+
+  // Every month in the window appears, including quiet ones — a gap in the
+  // x-axis would make a month with no giving look like missing data rather
+  // than what it is.
+  const series = [];
+  for (let i = 0; i < months; i += 1) {
+    const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i, 1));
+    const period = monthKey(cursor);
+    series.push({
+      period,
+      year: cursor.getUTCFullYear(),
+      month: cursor.getUTCMonth() + 1,
+      income: incomeByPeriod.get(period) ?? '0.00',
+      expense: expenseByPeriod.get(period) ?? '0.00',
+    });
+  }
+
+  // Basis: the most recent months that actually had income. Months with
+  // nothing recorded are skipped rather than averaged in as zeroes, which
+  // would drag a new tenant's forecast toward zero purely because the
+  // system was not in use yet.
+  const basis = series
+    .filter((point) => Number(point.income) > 0)
+    .slice(-FORECAST_BASIS_MONTHS);
+
+  let forecast = null;
+  if (basis.length > 0) {
+    const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const average = sumMoney(basis.map((point) => point.income));
+    // Integer-cents division, so the projection is a clean money string
+    // rather than a float artefact like 41666.666666666664.
+    const cents = Math.round((Number(average) * 100) / basis.length);
+    forecast = {
+      period: monthKey(nextMonth),
+      year: nextMonth.getUTCFullYear(),
+      month: nextMonth.getUTCMonth() + 1,
+      amount: (cents / 100).toFixed(2),
+      basisMonths: basis.length,
+    };
+  }
+
+  return { series, forecast, dateFrom, dateTo };
+}
+
 export async function getIncomeReport(tenantId, filters) {
   const rows = await transactionsRepository.listHistory(tenantId, { ...filters, type: 'income', limit: 1000 });
   const total = await transactionsRepository.sumByType(tenantId, 'income', filters);

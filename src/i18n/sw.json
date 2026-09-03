@@ -431,5 +431,10 @@
   "auth.login.goToSlide": "Nenda slaidi ya {{number}}",
   "nav.quickAccess": "Ufikiaji wa haraka",
   "contributions.sms.dispatching": "Inatuma SMS kwa mchangiaji…",
-  "contributions.sms.deliveredTitle": "Ujumbe umetumwa kikamilifu"
+  "contributions.sms.deliveredTitle": "Ujumbe umetumwa kikamilifu",
+  "dashboard.trends.title": "Mwenendo wa Mapato & Makadirio",
+  "dashboard.trends.subtitle": "Income Trends & Forecast Insights",
+  "dashboard.trends.legend.actual": "Yaliyokusanywa",
+  "dashboard.trends.legend.forecast": "Makadirio",
+  "dashboard.trends.forecastNote": "Sehemu ya mistari iliyokatika ni makadirio, si mapato yaliyorekodiwa — wastani wa miezi {{months}} iliyopita yenye shughuli."
 }

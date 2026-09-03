@@ -19,5 +19,6 @@ export function reportsRoutes() {
   router.get('/budget-vs-actual', requirePermission('budget.view'), reportsController.budgetVsActual);
   router.get('/pledges', requirePermission('pledges.view'), reportsController.pledgeReport);
   router.get('/financial-summary', requirePermission('reports.view'), reportsController.financialSummary);
+  router.get('/monthly-trends', requirePermission('reports.view'), reportsController.monthlyTrends);
   return router;
 }

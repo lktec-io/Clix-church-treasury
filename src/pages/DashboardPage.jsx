@@ -27,6 +27,7 @@ import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonHero, SkeletonStatGrid, SkeletonTable } from '../components/ui/Skeleton.jsx';
 import FundDonut from '../components/ui/FundDonut.jsx';
+import TrendChart from '../components/ui/TrendChart.jsx';
 import { formatMoney, formatCurrency, formatDate } from '../utils/format.js';
 
 // Every figure here is read from the existing Financial Engine / Phase 9
@@ -107,6 +108,7 @@ export default function DashboardPage() {
   const [pledgeTotals, setPledgeTotals] = useState(null);
   const [budgetTotals, setBudgetTotals] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [trends, setTrends] = useState(null);
   const [pendingCount, setPendingCount] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -171,6 +173,13 @@ export default function DashboardPage() {
       if (hasPermission('reports.view')) {
         requests.push(
           reportsApi.run('transactionJournal', {}).then((data) => setRecentTransactions(data.rows.slice(0, 8))).catch(() => setRecentTransactions([]))
+        );
+        // Rolling 12-month series. One GROUP BY on the server rather than
+        // twelve range queries from here — see reports.service.js
+        // #getMonthlyTrends for why deriving this client-side from the
+        // income report would have been wrong (its rows cap at 1000).
+        requests.push(
+          reportsApi.run('monthlyTrends', { months: 12 }).then(setTrends).catch(() => setTrends(null))
         );
       }
       if (hasPermission('expense.approve')) {
@@ -464,6 +473,55 @@ export default function DashboardPage() {
                   })}
                 </motion.div>
               </div>
+            )}
+          </PermissionGate>
+
+          {/* Income trends — sits directly under the fund allocation grid,
+              sharing its padding and type scale (.analytics-canvas in
+              cards.css). Rendered only when the series actually contains
+              recorded money: an empty 12-month timeline is a flat line at
+              zero, which looks like a broken chart rather than a new
+              tenant. */}
+          <PermissionGate permission="reports.view">
+            {trends?.series?.some((point) => Number(point.income) > 0) && (
+              <motion.section
+                className="analytics-canvas"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.1 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="analytics-canvas__head">
+                  <div>
+                    <h2 className="analytics-canvas__title">{t('dashboard.trends.title')}</h2>
+                    <p className="analytics-canvas__subtitle">{t('dashboard.trends.subtitle')}</p>
+                  </div>
+                  <div className="analytics-canvas__legend">
+                    <span className="analytics-canvas__legend-item">
+                      <span className="analytics-canvas__swatch" aria-hidden="true" />
+                      {t('dashboard.trends.legend.actual')}
+                    </span>
+                    {trends.forecast && (
+                      <span className="analytics-canvas__legend-item">
+                        <span className="analytics-canvas__swatch analytics-canvas__swatch--forecast" aria-hidden="true" />
+                        {t('dashboard.trends.legend.forecast')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <TrendChart series={trends.series} forecast={trends.forecast} />
+
+                {/* States plainly that the dashed segment is an estimate and
+                    what it was calculated from — a projected figure sitting
+                    unlabelled next to recorded income would be read as money
+                    the church actually has. */}
+                {trends.forecast && (
+                  <p className="analytics-canvas__note">
+                    {t('dashboard.trends.forecastNote', { months: trends.forecast.basisMonths })}
+                  </p>
+                )}
+              </motion.section>
             )}
           </PermissionGate>
 

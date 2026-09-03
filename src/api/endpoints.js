@@ -200,6 +200,7 @@ const REPORT_PATHS = {
   budgetVsActual: () => '/reports/budget-vs-actual',
   pledges: () => '/reports/pledges',
   financialSummary: () => '/reports/financial-summary',
+  monthlyTrends: () => '/reports/monthly-trends',
 };
 
 export const reportsApi = {

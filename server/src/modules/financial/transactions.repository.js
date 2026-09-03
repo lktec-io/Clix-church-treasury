@@ -96,6 +96,42 @@ class TransactionsRepository extends TenantScopedRepository {
     return rows[0].total;
   }
 
+  // Posted totals grouped by calendar month, for the dashboard's trend
+  // timeline.
+  //
+  // This exists as its own aggregate rather than being derived on the client
+  // from listHistory(): that method caps at `limit` rows (1000 in the report
+  // service), so a busy month would be silently truncated and the chart
+  // would understate real income. A GROUP BY sums every posted row
+  // regardless of count, in one query instead of twelve round trips.
+  //
+  // Returns [{ period: 'YYYY-MM', total: '12345.67' }] ascending, with
+  // months that had no activity simply absent — the caller fills gaps, since
+  // only it knows the window it asked for.
+  async monthlyTotalsByType(tenantId, type, { dateFrom, dateTo, connection } = {}) {
+    assertTenantId(tenantId);
+    const conditions = ['tenant_id = ?', "status = 'posted'", 'type = ?'];
+    const params = [tenantId, type];
+    if (dateFrom !== undefined) {
+      conditions.push('DATE(posted_at) >= ?');
+      params.push(dateFrom);
+    }
+    if (dateTo !== undefined) {
+      conditions.push('DATE(posted_at) <= ?');
+      params.push(dateTo);
+    }
+    const [rows] = await this.runner(connection).query(
+      `SELECT DATE_FORMAT(posted_at, '%Y-%m') AS period,
+              CAST(COALESCE(SUM(amount), 0) AS DECIMAL(14,2)) AS total
+         FROM transactions
+        WHERE ${conditions.join(' AND ')}
+        GROUP BY period
+        ORDER BY period ASC`,
+      params
+    );
+    return rows;
+  }
+
   // Balance across every posted transaction belonging to a financial_period
   // whose start_date falls on or before `cutoffDate`. Used to derive a
   // period's opening balance (cutoff = the period's own start_date, exclusive

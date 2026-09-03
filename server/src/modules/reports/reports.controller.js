@@ -215,6 +215,20 @@ export async function pledgeReport(req, res, next) {
   }
 }
 
+export async function monthlyTrends(req, res, next) {
+  try {
+    // Clamped: the window drives a GROUP BY over the whole transactions
+    // table, and an unbounded ?months= from the query string would let a
+    // caller ask for a decade of buckets.
+    const requested = Number(req.query.months);
+    const months = Number.isFinite(requested) ? Math.min(Math.max(Math.trunc(requested), 3), 24) : 12;
+    const data = await reportsService.getMonthlyTrends(req.tenantId, { months });
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function financialSummary(req, res, next) {
   try {
     const data = await reportsService.getFinancialSummaryReport(req.tenantId, Number(req.query.financialPeriodId));
