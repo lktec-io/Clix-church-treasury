@@ -26,6 +26,7 @@ import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonHero, SkeletonStatGrid, SkeletonTable } from '../components/ui/Skeleton.jsx';
+import FundDonut from '../components/ui/FundDonut.jsx';
 import { formatMoney, formatCurrency, formatDate } from '../utils/format.js';
 
 // Every figure here is read from the existing Financial Engine / Phase 9
@@ -190,11 +191,17 @@ export default function DashboardPage() {
     loadRangeScoped();
   }, [openPeriod, loadRangeScoped]);
 
-  const todayLabel = new Date().toLocaleDateString(locale === 'sw' ? 'sw-TZ' : undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+  // Split into parts so the banner can stack them (big day numeral over
+  // weekday/month) instead of printing one run-on string.
+  const dateParts = useMemo(() => {
+    const now = new Date();
+    const tag = locale === 'sw' ? 'sw-TZ' : undefined;
+    return {
+      day: now.toLocaleDateString(tag, { day: 'numeric' }),
+      weekday: now.toLocaleDateString(tag, { weekday: 'long' }),
+      month: now.toLocaleDateString(tag, { month: 'long', year: 'numeric' }),
+    };
+  }, [locale]);
   const firstName = session?.user?.full_name?.split(' ')[0];
 
   // Denominator for each tile's share-of-total badge. Only positive
@@ -231,11 +238,49 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PageHeader
-        eyebrow={todayLabel}
-        title={firstName ? t('dashboard.greeting', { name: firstName }) : t('dashboard.title')}
-        subtitle={t('dashboard.summarySubtitle')}
-      />
+      {/* Welcome banner — the navy anchor the rest of the page hangs off.
+          Replaces the plain PageHeader on this one page; every other page
+          still uses PageHeader, so the dashboard reads as the destination
+          rather than one more list screen. */}
+      <motion.section
+        className="welcome-banner has-shimmer"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="welcome-banner__body">
+          <motion.h1
+            className="welcome-banner__title"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {firstName ? t('dashboard.greeting', { name: firstName }) : t('dashboard.welcomeFallback')}
+          </motion.h1>
+          <motion.p
+            className="welcome-banner__subtitle"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {t('dashboard.summarySubtitle')}
+          </motion.p>
+        </div>
+        {/* Structured date block: day numeral stacked over weekday and
+            month, rather than one run-on sentence. */}
+        <motion.div
+          className="welcome-banner__date"
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.45, delay: 0.26, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <span className="welcome-banner__date-day">{dateParts.day}</span>
+          <span className="welcome-banner__date-rest">
+            <span className="welcome-banner__date-weekday">{dateParts.weekday}</span>
+            <span className="welcome-banner__date-month">{dateParts.month}</span>
+          </span>
+        </motion.div>
+      </motion.section>
       {error && <div className="alert alert--error">{error}</div>}
 
       {openPeriod === null ? (
@@ -255,7 +300,7 @@ export default function DashboardPage() {
       ) : (
         <>
           <PermissionGate permission="reports.view">
-            <motion.div className="hero-card" custom={0} variants={cardEntrance} initial="initial" animate="animate">
+            <motion.div className="hero-card has-shimmer" custom={0} variants={cardEntrance} initial="initial" animate="animate">
               <div className="hero-card__top">
                 <div className="hero-card__label">{t('dashboard.totalBalance')}</div>
                 <span className="live-indicator">
@@ -380,6 +425,7 @@ export default function DashboardPage() {
                   <h2>{t('dashboard.fundAllocation')}</h2>
                   <Link to="/funds" className="btn btn--secondary btn--sm">{t('dashboard.viewAll')}</Link>
                 </div>
+                <FundDonut funds={summary.fundSummaries} total={fundAllocationTotal} />
                 <motion.div
                   className="fund-grid"
                   variants={revealContainer}

@@ -1,5 +1,5 @@
 {
-  "app.name": "Clix Treasury",
+  "app.name": "Church Treasury",
   "nav.dashboard": "Dashboard",
   "nav.contributions": "Income & Contributions",
   "nav.contributors": "Contributors",
@@ -23,7 +23,6 @@
   "nav.closeMenu": "Close navigation",
   "nav.collapseMenu": "Collapse menu",
   "nav.expandMenu": "Expand menu",
-
   "common.save": "Save",
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
@@ -46,7 +45,6 @@
   "common.rename": "Rename",
   "common.name": "Name",
   "common.saved": "Saved",
-
   "auth.login.title": "Sign in",
   "auth.login.subtitle": "Enter your church workspace, email, and password",
   "auth.login.tenantSlug": "Church workspace",
@@ -61,7 +59,6 @@
   "auth.login.point.reports": "Statements ready whenever they are asked for",
   "auth.login.welcome": "Welcome back",
   "auth.login.needAccount": "New church?",
-
   "auth.register.subtitle": "Register your church to get started",
   "auth.register.churchName": "Church name",
   "auth.register.adminFullName": "Your full name",
@@ -69,7 +66,6 @@
   "auth.register.passwordMismatch": "Passwords do not match",
   "auth.register.submit": "Register",
   "auth.register.haveAccount": "Already have an account?",
-
   "dashboard.title": "Dashboard",
   "dashboard.totalBalance": "Total balance",
   "dashboard.live": "Live",
@@ -96,7 +92,6 @@
   "dashboard.quickActions.addExpense": "Add Expense",
   "dashboard.quickActions.generateStatement": "Generate Statement",
   "dashboard.quickActions.viewReports": "View Reports",
-
   "contributions.title": "Income & Contributions",
   "contributions.recordNew": "Record contribution",
   "contributions.recorded": "Contribution recorded",
@@ -150,7 +145,6 @@
   "contributions.sms.reasonCode.provider_rejected": "The SMS provider rejected the message.",
   "contributions.sms.reasonCode.not_configured": "SMS sending is not configured yet.",
   "contributions.sms.reasonCode.unexpected_error": "An unexpected error occurred while sending the SMS.",
-
   "contributors.title": "Contributors",
   "contributors.addNew": "Add contributor",
   "contributors.created": "Contributor added",
@@ -172,7 +166,6 @@
   "contributors.searchPlaceholder": "Search by name, phone, or member number",
   "contributors.empty.title": "No contributors yet",
   "contributors.empty.message": "Add your first contributor to start recording their giving.",
-
   "expenses.title": "Expenses",
   "expenses.requestNew": "Request expense",
   "expenses.requested": "Expense requested",
@@ -193,7 +186,6 @@
   "expenses.status.approved": "Approved",
   "expenses.status.rejected": "Rejected",
   "expenses.status.paid": "Paid",
-
   "accounts.title": "Accounts",
   "accounts.addNew": "Add account",
   "accounts.created": "Account created",
@@ -204,7 +196,6 @@
   "accounts.type.cash": "Cash",
   "accounts.type.bank": "Bank",
   "accounts.type.mobile_money": "Mobile money",
-
   "funds.title": "Funds",
   "funds.addNew": "Add fund",
   "funds.created": "Fund created",
@@ -212,7 +203,6 @@
   "funds.deactivatedToast": "Fund deactivated",
   "funds.activatedToast": "Fund activated",
   "funds.restricted": "Restricted",
-
   "categories.title": "Categories",
   "categories.addNew": "Add category",
   "categories.created": "Category created",
@@ -226,7 +216,6 @@
   "categories.tithe": "Tithe",
   "categories.offering": "Offering",
   "categories.other": "Other",
-
   "transfers.title": "Transfers",
   "transfers.new": "New transfer",
   "transfers.created": "Transfer recorded",
@@ -234,13 +223,11 @@
   "transfers.toAccount": "To account",
   "transfers.fromFund": "From fund",
   "transfers.toFund": "To fund",
-
   "paymentMethod.cash": "Cash",
   "paymentMethod.bank": "Bank",
   "paymentMethod.mobile_money": "Mobile money",
   "paymentMethod.cheque": "Cheque",
   "paymentMethod.other": "Other",
-
   "pledges.title": "Pledges",
   "pledges.new": "New pledge",
   "pledges.created": "Pledge created",
@@ -258,9 +245,7 @@
   "pledges.cancelConfirm": "This pledge will no longer accept payments. This cannot be undone from here.",
   "pledges.cancelledToast": "Pledge cancelled",
   "pledges.recordPayment": "Record payment",
-
   "receipts.download": "Download receipt",
-
   "budgets.title": "Budgets",
   "budgets.new": "New budget",
   "budgets.created": "Budget created",
@@ -271,7 +256,6 @@
   "budgets.budgetAmount": "Budget amount",
   "budgets.actual": "Actual",
   "budgets.variance": "Variance",
-
   "financialPeriods.title": "Financial Periods",
   "financialPeriods.new": "New period",
   "financialPeriods.created": "Financial period created",
@@ -292,7 +276,6 @@
   "financialPeriods.totalIncome": "Total income",
   "financialPeriods.totalExpenses": "Total expenses",
   "financialPeriods.pendingExpenses": "Unpaid approved/pending expenses",
-
   "reports.title": "Reports",
   "reports.income": "Income Report",
   "reports.expense": "Expense Report",
@@ -321,7 +304,6 @@
   "reports.allCategories": "All categories",
   "reports.allMethods": "All methods",
   "reports.allStatuses": "All statuses",
-
   "users.title": "Users",
   "users.invite": "Invite user",
   "users.invited": "Invitation sent",
@@ -336,7 +318,6 @@
   "users.status.active": "Active",
   "users.status.invited": "Invited",
   "users.status.disabled": "Disabled",
-
   "memberStatements.title": "Member Statements",
   "memberStatements.subtitle": "Generate and send a member's monthly giving statement.",
   "memberStatements.generate": "Generate",
@@ -345,7 +326,6 @@
   "memberStatements.sms.failed": "The statement could not be sent by SMS. You can still download the PDF.",
   "memberStatements.sms.skipped_no_provider": "SMS sending is not configured yet — download the PDF instead.",
   "memberStatements.selectPrompt": "Select a member, year, and month, then generate their statement.",
-
   "member.language": "Language",
   "member.greeting": "Welcome, {{name}}",
   "member.nav.label": "Member navigation",
@@ -380,7 +360,6 @@
   "member.changePin.current": "Current PIN",
   "member.changePin.new": "New PIN",
   "member.changePin.confirm": "Confirm new PIN",
-
   "platform.brand": "Clix Platform",
   "platform.login.subtitle": "Platform Administrator sign-in.",
   "platform.login.submit": "Sign in",
@@ -389,14 +368,14 @@
   "platform.nav.dashboard": "Dashboard",
   "platform.nav.tenants": "Tenants",
   "platform.dashboard.title": "Platform Dashboard",
-  "platform.dashboard.subtitle": "Manage every church tenant on Clix Treasury from one place.",
+  "platform.dashboard.subtitle": "Manage every church tenant on Church Treasury from one place.",
   "platform.dashboard.totalTenants": "Total Tenants",
   "platform.dashboard.activeTenants": "Active Tenants",
   "platform.dashboard.suspendedTenants": "Suspended Tenants",
   "platform.dashboard.recentlyCreated": "Created (30 days)",
   "platform.dashboard.recentTenants": "Recent Tenants",
   "platform.tenants.title": "Tenants",
-  "platform.tenants.subtitle": "Every church using Clix Treasury.",
+  "platform.tenants.subtitle": "Every church using Church Treasury.",
   "platform.tenants.name": "Church / Tenant",
   "platform.tenants.admin": "Admin",
   "platform.tenants.created": "Created",
@@ -425,5 +404,15 @@
   "platform.tenants.activatedToast": "Tenant activated.",
   "platform.tenants.deactivatedToast": "Tenant deactivated.",
   "platform.tenants.empty.title": "No tenants yet",
-  "platform.tenants.empty.message": "Create the first church tenant to get started."
+  "platform.tenants.empty.message": "Create the first church tenant to get started.",
+  "nav.notifications": "Notifications",
+  "nav.notifications.empty": "You are all caught up",
+  "nav.theme.toDark": "Switch to dark mode",
+  "nav.theme.toLight": "Switch to light mode",
+  "nav.language": "Language",
+  "auth.login.showPassword": "Show password",
+  "auth.login.hidePassword": "Hide password",
+  "dashboard.fundAllocation.total": "Total allocated",
+  "dashboard.fundAllocation.empty": "No fund balances to chart yet.",
+  "dashboard.welcomeFallback": "Welcome back"
 }

@@ -1,5 +1,5 @@
 {
-  "app.name": "Hazina ya Clix",
+  "app.name": "Hazina ya Kanisa",
   "nav.dashboard": "Dashibodi",
   "nav.contributions": "Mapato na Michango",
   "nav.contributors": "Wachangiaji",
@@ -23,7 +23,6 @@
   "nav.closeMenu": "Funga menyu",
   "nav.collapseMenu": "Punguza menyu",
   "nav.expandMenu": "Panua menyu",
-
   "common.save": "Hifadhi",
   "common.cancel": "Ghairi",
   "common.confirm": "Thibitisha",
@@ -46,7 +45,6 @@
   "common.rename": "Badilisha jina",
   "common.name": "Jina",
   "common.saved": "Imehifadhiwa",
-
   "auth.login.title": "Ingia",
   "auth.login.subtitle": "Weka kanisa lako, barua pepe, na nenosiri",
   "auth.login.tenantSlug": "Kanisa",
@@ -61,7 +59,6 @@
   "auth.login.point.reports": "Taarifa tayari wakati wowote zinapohitajika",
   "auth.login.welcome": "Karibu tena",
   "auth.login.needAccount": "Kanisa jipya?",
-
   "auth.register.subtitle": "Sajili kanisa lako ili kuanza",
   "auth.register.churchName": "Jina la kanisa",
   "auth.register.adminFullName": "Jina lako kamili",
@@ -69,7 +66,6 @@
   "auth.register.passwordMismatch": "Manenosiri hayafanani",
   "auth.register.submit": "Jisajili",
   "auth.register.haveAccount": "Una akaunti tayari?",
-
   "dashboard.title": "Dashibodi",
   "dashboard.totalBalance": "Salio jumla",
   "dashboard.live": "Moja kwa moja",
@@ -96,7 +92,6 @@
   "dashboard.quickActions.addExpense": "Ongeza Matumizi",
   "dashboard.quickActions.generateStatement": "Tengeneza Taarifa",
   "dashboard.quickActions.viewReports": "Angalia Ripoti",
-
   "contributions.title": "Mapato na Michango",
   "contributions.recordNew": "Sajili mchango",
   "contributions.recorded": "Mchango umesajiliwa",
@@ -150,7 +145,6 @@
   "contributions.sms.reasonCode.provider_rejected": "Mtoa huduma wa SMS amekataa ujumbe.",
   "contributions.sms.reasonCode.not_configured": "Utumaji wa SMS bado haujawekwa.",
   "contributions.sms.reasonCode.unexpected_error": "Kuna tatizo lisilotarajiwa lililotokea wakati wa kutuma SMS.",
-
   "contributors.title": "Wachangiaji",
   "contributors.addNew": "Ongeza mchangiaji",
   "contributors.created": "Mchangiaji ameongezwa",
@@ -172,7 +166,6 @@
   "contributors.searchPlaceholder": "Tafuta kwa jina, simu, au namba ya uchangiaji",
   "contributors.empty.title": "Hakuna waumini bado",
   "contributors.empty.message": "Ongeza muumini wako wa kwanza ili kuanza kurekodi michango yake.",
-
   "expenses.title": "Matumizi",
   "expenses.requestNew": "Omba matumizi",
   "expenses.requested": "Ombi la matumizi limetumwa",
@@ -193,7 +186,6 @@
   "expenses.status.approved": "Imeidhinishwa",
   "expenses.status.rejected": "Imekataliwa",
   "expenses.status.paid": "Imelipwa",
-
   "accounts.title": "Akaunti",
   "accounts.addNew": "Ongeza akaunti",
   "accounts.created": "Akaunti imeundwa",
@@ -204,7 +196,6 @@
   "accounts.type.cash": "Fedha taslimu",
   "accounts.type.bank": "Benki",
   "accounts.type.mobile_money": "Pesa za simu",
-
   "funds.title": "Mifuko",
   "funds.addNew": "Ongeza mfuko",
   "funds.created": "Mfuko umeundwa",
@@ -212,7 +203,6 @@
   "funds.deactivatedToast": "Mfuko umezimwa",
   "funds.activatedToast": "Mfuko umewashwa",
   "funds.restricted": "Una masharti",
-
   "categories.title": "Aina za Fedha",
   "categories.addNew": "Ongeza aina",
   "categories.created": "Aina imeundwa",
@@ -226,7 +216,6 @@
   "categories.tithe": "Zaka",
   "categories.offering": "Sadaka",
   "categories.other": "Matoleo Mengine",
-
   "transfers.title": "Uhamisho",
   "transfers.new": "Uhamisho mpya",
   "transfers.created": "Uhamisho umesajiliwa",
@@ -234,13 +223,11 @@
   "transfers.toAccount": "Kwenda akaunti",
   "transfers.fromFund": "Kutoka mfuko",
   "transfers.toFund": "Kwenda mfuko",
-
   "paymentMethod.cash": "Fedha taslimu",
   "paymentMethod.bank": "Benki",
   "paymentMethod.mobile_money": "Pesa za simu",
   "paymentMethod.cheque": "Hundi",
   "paymentMethod.other": "Nyingine",
-
   "pledges.title": "Ahadi",
   "pledges.new": "Ahadi mpya",
   "pledges.created": "Ahadi imeundwa",
@@ -258,9 +245,7 @@
   "pledges.cancelConfirm": "Ahadi hii haitakubali tena malipo. Hatua hii haiwezi kubatilishwa hapa.",
   "pledges.cancelledToast": "Ahadi imefutwa",
   "pledges.recordPayment": "Sajili malipo",
-
   "receipts.download": "Pakua stakabadhi",
-
   "budgets.title": "Bajeti",
   "budgets.new": "Bajeti mpya",
   "budgets.created": "Bajeti imeundwa",
@@ -271,7 +256,6 @@
   "budgets.budgetAmount": "Kiasi cha bajeti",
   "budgets.actual": "Halisi",
   "budgets.variance": "Tofauti",
-
   "financialPeriods.title": "Vipindi vya Fedha",
   "financialPeriods.new": "Kipindi kipya",
   "financialPeriods.created": "Kipindi cha fedha kimeundwa",
@@ -292,7 +276,6 @@
   "financialPeriods.totalIncome": "Jumla ya mapato",
   "financialPeriods.totalExpenses": "Jumla ya matumizi",
   "financialPeriods.pendingExpenses": "Matumizi yasiyolipwa/yanayosubiri",
-
   "reports.title": "Ripoti",
   "reports.income": "Ripoti ya Mapato",
   "reports.expense": "Ripoti ya Matumizi",
@@ -321,7 +304,6 @@
   "reports.allCategories": "Aina zote",
   "reports.allMethods": "Njia zote",
   "reports.allStatuses": "Hali zote",
-
   "users.title": "Watumiaji",
   "users.invite": "Mualike mtumiaji",
   "users.invited": "Mwaliko umetumwa",
@@ -336,7 +318,6 @@
   "users.status.active": "Anatumika",
   "users.status.invited": "Amealikwa",
   "users.status.disabled": "Amezimwa",
-
   "memberStatements.title": "Taarifa za Wachangiaji",
   "memberStatements.subtitle": "Tengeneza na tuma taarifa ya matoleo ya mwezi kwa muumini.",
   "memberStatements.generate": "Tengeneza",
@@ -345,7 +326,6 @@
   "memberStatements.sms.failed": "Imeshindikana kutuma taarifa kwa SMS. Bado unaweza kupakua PDF.",
   "memberStatements.sms.skipped_no_provider": "Utumaji wa SMS bado haujawekwa — pakua PDF badala yake.",
   "memberStatements.selectPrompt": "Chagua muumini, mwaka, na mwezi, kisha tengeneza taarifa yake.",
-
   "member.language": "Lugha",
   "member.greeting": "Karibu, {{name}}",
   "member.nav.label": "Uongozaji wa mchangiaji",
@@ -380,7 +360,6 @@
   "member.changePin.current": "Nenosiri la sasa",
   "member.changePin.new": "Nenosiri jipya",
   "member.changePin.confirm": "Thibitisha nenosiri jipya",
-
   "platform.brand": "Jukwaa la Clix",
   "platform.login.subtitle": "Kuingia kwa Msimamizi wa Jukwaa.",
   "platform.login.submit": "Ingia",
@@ -389,14 +368,14 @@
   "platform.nav.dashboard": "Dashibodi",
   "platform.nav.tenants": "Makanisa",
   "platform.dashboard.title": "Dashibodi ya Jukwaa",
-  "platform.dashboard.subtitle": "Simamia kila kanisa linalotumia Clix Treasury mahali pamoja.",
+  "platform.dashboard.subtitle": "Simamia kila kanisa linalotumia Hazina ya Kanisa mahali pamoja.",
   "platform.dashboard.totalTenants": "Jumla ya Makanisa",
   "platform.dashboard.activeTenants": "Makanisa Yanayotumika",
   "platform.dashboard.suspendedTenants": "Makanisa Yaliyosimamishwa",
   "platform.dashboard.recentlyCreated": "Yaliyoongezwa (siku 30)",
   "platform.dashboard.recentTenants": "Makanisa ya Hivi Karibuni",
   "platform.tenants.title": "Makanisa",
-  "platform.tenants.subtitle": "Kila kanisa linalotumia Clix Treasury.",
+  "platform.tenants.subtitle": "Kila kanisa linalotumia Hazina ya Kanisa.",
   "platform.tenants.name": "Kanisa",
   "platform.tenants.admin": "Msimamizi",
   "platform.tenants.created": "Tarehe ya Kuundwa",
@@ -425,5 +404,15 @@
   "platform.tenants.activatedToast": "Kanisa limewezeshwa.",
   "platform.tenants.deactivatedToast": "Kanisa limesimamishwa.",
   "platform.tenants.empty.title": "Hakuna makanisa bado",
-  "platform.tenants.empty.message": "Ongeza kanisa la kwanza ili kuanza."
+  "platform.tenants.empty.message": "Ongeza kanisa la kwanza ili kuanza.",
+  "nav.notifications": "Arifa",
+  "nav.notifications.empty": "Hakuna arifa mpya",
+  "nav.theme.toDark": "Badilisha kwenda hali ya giza",
+  "nav.theme.toLight": "Badilisha kwenda hali ya mwanga",
+  "nav.language": "Lugha",
+  "auth.login.showPassword": "Onyesha nenosiri",
+  "auth.login.hidePassword": "Ficha nenosiri",
+  "dashboard.fundAllocation.total": "Jumla iliyogawanywa",
+  "dashboard.fundAllocation.empty": "Hakuna salio la mifuko la kuonyesha bado.",
+  "dashboard.welcomeFallback": "Karibu tena"
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiShield, FiLock, FiPieChart, FiFileText } from 'react-icons/fi';
+import { FiShield, FiLock, FiPieChart, FiFileText, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 
@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ tenantSlug: '', email: '', password: '' });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
@@ -120,14 +121,29 @@ export default function LoginPage() {
           </div>
           <div className="field">
             <label htmlFor="password">{t('auth.login.password')}</label>
-            <input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={handleChange('password')}
-              autoComplete="current-password"
-              required
-            />
+            {/* The toggle is positioned inside this wrapper, and the input
+                carries matching right padding so typed text never slides
+                under the button. */}
+            <div className="field__control">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+                onChange={handleChange('password')}
+                autoComplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                className="field__reveal"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')}
+                aria-pressed={showPassword}
+                tabIndex={-1}
+              >
+                {showPassword ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
+              </button>
+            </div>
           </div>
           <motion.button
             type="submit"

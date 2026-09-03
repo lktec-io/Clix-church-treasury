@@ -44,7 +44,8 @@
   /* Surfaces — soft translucent whites for the luxury card elevations */
   --color-card-bg: rgba(255, 255, 255, 0.7);
   --color-card-glass-bg: rgba(255, 255, 255, 0.55);
-  --color-navbar-bg: rgba(255, 255, 255, 0.62);
+  --color-navbar-bg: rgba(11, 31, 77, 0.75);
+  --navbar-height: 60px;
   --glass-panel-bg: rgba(255, 255, 255, 0.94);
   --modal-backdrop-bg: rgba(11, 31, 77, 0.65);
   --color-sidebar-bg: #0b1f4d;
@@ -86,9 +87,93 @@
   --ring-accent: 0 0 0 3px rgba(var(--color-accent-rgb), 0.18);
   --ring-accent-strong: 0 0 0 3px rgba(var(--color-accent-rgb), 0.28), 0 0 16px -2px rgba(var(--color-accent-rgb), 0.35);
 
-  /* Reserved for future charting — no chart component exists yet. */
-  --chart-1: #2f6bff;
+  /* Fund-allocation donut + any future series colour. Navy → green with two
+     supporting accents, so a chart never introduces a colour the rest of
+     the product doesn't already use. */
+  --chart-1: #0b1f4d;
   --chart-2: #10b981;
-  --chart-3: #22d3ee;
-  --chart-4: #8b5cf6;
+  --chart-3: #2f6bff;
+  --chart-4: #22d3ee;
+  --chart-5: #8b5cf6;
+  --chart-6: #f59e0b;
+}
+
+/* ==========================================================================
+   DARK PALETTE
+
+   Only the authoritative tokens above are redefined here — colors.css maps
+   every semantic alias onto them, so no component file needs a dark variant
+   of its own.
+
+   One deliberate impurity worth understanding: --color-primary and
+   --color-primary-rgb are DECOUPLED in dark mode. In light mode both mean
+   "the navy". But --color-primary-rgb is consumed almost entirely as a
+   low-alpha tint (rgba(var(--color-primary-rgb), 0.04) hovers, 0.16 input
+   borders, 0.025 table stripes) laid over a pale surface — and a dark tint
+   over a dark surface is invisible. So here --color-primary stays a solid
+   navy for button fills, while --color-primary-rgb becomes a LIGHT
+   periwinkle whose low-alpha tints read correctly against the dark ground.
+   Splitting them is what lets ~40 existing tint rules work unchanged in
+   both modes.
+   ========================================================================== */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Brand — lifted off the near-black ground so a navy button is visible. */
+  --color-primary: #1b3a75;
+  --color-primary-hover: #24488a;
+  --color-primary-deep: #142c5c;
+  --color-primary-rgb: 152, 180, 240; /* tint source, not the fill — see above */
+  --color-accent: #10b981;
+  --color-accent-hover: #34d399;
+  --color-blue: #4d80ff;
+
+  /* Neutrals */
+  --color-background: #060f24;
+  --color-border: rgba(255, 255, 255, 0.11);
+  --color-gray-light: #13203d;
+  --color-gray-dark: #b9c6e0;
+
+  /* Status — same hues, darkened fills so badge text still clears AA. */
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-danger-rgb: 248, 113, 113;
+  --color-info: #60a5fa;
+  --color-success-bg: rgba(16, 185, 129, 0.16);
+  --color-warning-bg: rgba(245, 158, 11, 0.16);
+  --color-danger-bg: rgba(239, 68, 68, 0.16);
+  --color-info-bg: rgba(47, 107, 255, 0.16);
+
+  /* Surfaces */
+  --color-card-bg: rgba(17, 31, 60, 0.72);
+  --color-card-glass-bg: rgba(17, 31, 60, 0.55);
+  --color-navbar-bg: rgba(8, 18, 42, 0.78);
+  --glass-panel-bg: rgba(13, 25, 50, 0.96);
+  --modal-backdrop-bg: rgba(2, 7, 20, 0.72);
+  --color-sidebar-bg: #08122a;
+
+  /* Text */
+  --color-text-primary: #e8eefc;
+  --color-text-secondary: #94a6c9;
+  --color-text-on-sidebar: #b9c8e6;
+
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+
+  --gradient-sidebar: linear-gradient(180deg, #08122a 0%, #0d1d3c 100%);
+  --gradient-hero: linear-gradient(115deg, #050e22 0%, #0e2650 45%, #0a5a41 85%, #0e2650 100%);
+
+  /* Navy-tinted shadows vanish against a near-black ground — dark mode
+     needs true black at higher alpha to read as elevation at all. */
+  --shadow-sm: 0 2px 8px -4px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 6px 18px -10px rgba(0, 0, 0, 0.66);
+  --shadow-lg: 0 10px 30px -15px rgba(0, 0, 0, 0.72);
+  --shadow-xl: 0 24px 60px -28px rgba(0, 0, 0, 0.8);
+
+  --chart-1: #4d80ff;
+  --chart-2: #10b981;
+  --chart-3: #38bdf8;
+  --chart-4: #22d3ee;
+  --chart-5: #a78bfa;
+  --chart-6: #fbbf24;
 }

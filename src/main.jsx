@@ -14,6 +14,7 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { MemberAuthProvider } from './context/MemberAuthContext.jsx'
 import { LocaleProvider } from './i18n/LocaleContext.jsx'
+import { ThemeProvider } from './context/ThemeContext.jsx'
 import { ToastProvider } from './components/Toast.jsx'
 import { ConfirmProvider } from './components/ConfirmDialog.jsx'
 
@@ -30,6 +31,9 @@ createRoot(document.getElementById('root')).render(
           Framer itself skip transform/layout animation whenever the OS
           reduced-motion setting is on, app-wide, from one place. */}
       <MotionConfig reducedMotion="user">
+        {/* Outermost app-level provider: it writes data-theme onto <html>,
+            which every stylesheet below reads. */}
+        <ThemeProvider>
         <LocaleProvider>
           <ToastProvider>
             <ConfirmProvider>
@@ -46,6 +50,7 @@ createRoot(document.getElementById('root')).render(
             </ConfirmProvider>
           </ToastProvider>
         </LocaleProvider>
+        </ThemeProvider>
       </MotionConfig>
     </BrowserRouter>
   </StrictMode>,

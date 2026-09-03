@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Clix Treasury — design system entry point.
+   Church Treasury — design system entry point.
 
    This file is intentionally just an import chain. Every rule lives in
    src/styles/*, one concern per file, loaded in this order. There is no

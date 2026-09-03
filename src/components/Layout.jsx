@@ -25,6 +25,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import PageTransition from './ui/PageTransition.jsx';
+import ThemeToggle from './ui/ThemeToggle.jsx';
+import NotificationsMenu from './ui/NotificationsMenu.jsx';
 
 // Grouped to match the product's real workflow shape (docs/MASTER_TODO.md
 // Phase 10 §10.5), adapted to what actually exists: Income and
@@ -87,9 +89,13 @@ const COLLAPSE_STORAGE_KEY = 'clix.sidebarCollapsed';
 // right-anchored drawer in layout.css. Spring rather than a fixed
 // duration so it settles with weight instead of arriving linearly.
 const drawerVariants = {
-  hidden: { x: '100%' },
-  visible: { x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-  exit: { x: '100%', transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
+  hidden: { x: '100%', opacity: 0 },
+  visible: {
+    x: 0,
+    opacity: 1,
+    transition: { type: 'spring', stiffness: 300, damping: 30, opacity: { duration: 0.18 } },
+  },
+  exit: { x: '100%', opacity: 0, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
 };
 const overlayVariants = {
   hidden: { opacity: 0 },
@@ -226,29 +232,38 @@ export default function Layout() {
       </motion.div>
       <div className="app-sidebar__footer">
         <div className="app-sidebar__footer-details">
-          <div>{session?.user?.full_name}</div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <select
-              value={locale}
-              onChange={(e) => setLocale(e.target.value)}
-              aria-label="Language"
-              style={{ fontSize: 12, padding: '2px 4px' }}
-            >
-              <option value="en">EN</option>
-              <option value="sw">SW</option>
-            </select>
-            <button type="button" className="btn btn--secondary btn--sm" onClick={handleLogout}>
-              <FiLogOut aria-hidden="true" /> {t('nav.logout')}
-            </button>
+          <div className="app-sidebar__user">
+            <span className="app-sidebar__avatar" aria-hidden="true">
+              {(session?.user?.full_name ?? '?').trim().charAt(0).toUpperCase()}
+            </span>
+            <span className="app-sidebar__user-name">{session?.user?.full_name}</span>
           </div>
+          {/* Language as a segmented control rather than a native <select>:
+              two options never justified a dropdown, and the native widget
+              was the last unstyled chrome element in the sidebar. */}
+          <div className="lang-switch" role="group" aria-label={t('nav.language')}>
+            {['en', 'sw'].map((code) => (
+              <button
+                key={code}
+                type="button"
+                className={`lang-switch__opt${locale === code ? ' is-active' : ''}`}
+                onClick={() => setLocale(code)}
+                aria-pressed={locale === code}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="sidebar-ghost-btn" onClick={handleLogout}>
+            <FiLogOut aria-hidden="true" /> <span>{t('nav.logout')}</span>
+          </button>
         </div>
         {isCollapsedDesktop && (
           <button
             type="button"
-            className="icon-btn"
+            className="sidebar-ghost-btn sidebar-ghost-btn--icon"
             onClick={handleLogout}
             aria-label={t('nav.logout')}
-            style={{ background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.15)', color: '#fff' }}
           >
             <FiLogOut aria-hidden="true" />
           </button>
@@ -297,16 +312,23 @@ export default function Layout() {
 
       <div className="app-main">
         <header className="app-topbar">
-          <button
-            type="button"
-            className="app-topbar__menu-btn"
-            onClick={() => setSidebarOpen((v) => !v)}
-            aria-label={t('nav.toggleMenu')}
-            aria-expanded={sidebarOpen}
-          >
-            <FiMenu />
-          </button>
-          <div className="app-topbar__title">{t('app.name')}</div>
+          <div className="app-topbar__title">
+            <span className="app-topbar__mark">C</span>
+            <span>{t('app.name')}</span>
+          </div>
+          <div className="app-topbar__actions">
+            <NotificationsMenu />
+            <ThemeToggle />
+            <button
+              type="button"
+              className="app-topbar__menu-btn"
+              onClick={() => setSidebarOpen((v) => !v)}
+              aria-label={t('nav.toggleMenu')}
+              aria-expanded={sidebarOpen}
+            >
+              <FiMenu />
+            </button>
+          </div>
         </header>
         <main className="app-content">
           <PageTransition />

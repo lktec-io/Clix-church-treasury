@@ -31,6 +31,10 @@
     radial-gradient(760px 520px at 96% 102%, rgba(var(--color-accent-rgb), 0.08), transparent 60%),
     var(--bg);
   background-attachment: fixed;
+  /* Clears the fixed navbar for BOTH columns at once. Putting this on
+     .app-main instead would leave the sidebar starting at y=0, underneath
+     the nav. */
+  padding-top: var(--navbar-height);
 }
 
 /* ---------- Sidebar (right-aligned) ----------
@@ -54,10 +58,15 @@
   display: flex;
   flex-direction: column;
   position: fixed;
-  inset-block: 0;
+  top: var(--navbar-height);
+  bottom: 0;
   right: 0;
   z-index: 20;
-  box-shadow: var(--shadow-lg);
+  /* Rounded on the inner (left) edge only — the right edge is flush with
+     the viewport, so rounding it would just show a sliver of page behind. */
+  border-top-left-radius: 24px;
+  border-bottom-left-radius: 24px;
+  box-shadow: var(--shadow-xl);
   /* border-color only, deliberately — `width` is already animated inline
      by Framer Motion (Layout.jsx's collapse/expand), so it's left out of
      this transition to avoid two animation systems fighting over the same
@@ -89,8 +98,14 @@
 @media (min-width: 900px) {
   .app-sidebar {
     position: sticky;
-    top: 0;
-    height: 100svh;
+    /* Sticks below the fixed navbar, and is exactly the remaining viewport
+       height so its own footer never hides under the fold. */
+    top: var(--navbar-height);
+    height: calc(100svh - var(--navbar-height));
+    /* Flush with the top of the content area on desktop; only the mobile
+       drawer floats as a detached panel. */
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
   }
   .app-main {
     min-width: 0;
@@ -284,10 +299,127 @@
   overflow: hidden;
 }
 
-.app-sidebar__footer > div:first-child {
+.app-sidebar__footer-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-sidebar__user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.app-sidebar__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(var(--color-accent-rgb), 0.18);
+  border: 1px solid rgba(var(--color-accent-rgb), 0.4);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.app-sidebar__user-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--sidebar-text-strong);
   font-weight: 600;
-  margin-bottom: 2px;
+}
+
+/* ---------- Language segmented control ---------- */
+/* Two options never justified a native <select> — and the native widget was
+   the last piece of unstyled OS chrome in the sidebar. */
+.lang-switch {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  align-self: flex-start;
+}
+
+.lang-switch__opt {
+  padding: 4px 12px;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--color-text-on-sidebar);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
+}
+
+.lang-switch__opt:hover {
+  color: #ffffff;
+}
+
+.lang-switch__opt.is-active {
+  background: rgba(var(--color-accent-rgb), 0.22);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(var(--color-accent-rgb), 0.45);
+}
+
+.lang-switch__opt:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+}
+
+/* ---------- Sidebar ghost button (logout) ---------- */
+/* A micro-framed ghost rather than .btn--secondary: that variant is built
+   for light page surfaces (white fill, navy text) and looked like a pasted-on
+   chip against the navy panel. */
+.sidebar-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-on-sidebar);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
+    color var(--motion-fast) var(--ease-premium);
+}
+
+/* Logout tints toward danger on hover — the one destructive action in the
+   sidebar should say so before it's clicked. */
+.sidebar-ghost-btn:hover {
+  background: rgba(var(--color-danger-rgb), 0.16);
+  border-color: rgba(var(--color-danger-rgb), 0.5);
+  color: #ffffff;
+}
+
+.sidebar-ghost-btn:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent-strong);
+}
+
+.sidebar-ghost-btn--icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin: 0 auto;
+  font-size: 16px;
 }
 
 /* ---------- Main column / topbar ---------- */
@@ -298,66 +430,217 @@
   min-width: 0;
 }
 
+/* Fixed full-width glass navbar. Because it now spans the viewport (not
+   just the main column) it also covers the sidebar's top edge — so
+   .app-shell carries a matching padding-top and the sidebar starts at
+   --navbar-height rather than 0. Those three values move together; changing
+   one alone will overlap the nav. */
 .app-topbar {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 24px;
+  padding: 0 24px;
+  height: var(--navbar-height);
   background: var(--color-navbar-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: fixed;
   top: 0;
-  z-index: 10;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+  color: #ffffff;
+  box-shadow: 0 8px 28px -18px rgba(0, 0, 0, 0.55);
   transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
 }
 
 @media (max-width: 480px) {
   .app-topbar {
-    padding: 12px 14px;
-    gap: 10px;
+    padding: 0 14px;
+    gap: 8px;
   }
 }
 
+.app-topbar__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  order: 1;
+  font-weight: 700;
+  font-size: 15.5px;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-topbar__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.app-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  order: 2;
+  flex-shrink: 0;
+}
+
+/* ---------- Topbar utility buttons (notifications, theme) ---------- */
+.topbar-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 17px;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
+    color var(--motion-fast) var(--ease-premium);
+}
+
+.topbar-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(var(--color-accent-rgb), 0.5);
+  color: #ffffff;
+}
+
+.topbar-btn:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent-strong);
+}
+
+/* Fixed-size stack so the sun/moon crossfade can't shift the topbar. */
+.topbar-btn__icon-stack {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+}
+.topbar-btn__icon-stack > span {
+  position: absolute;
+  display: inline-flex;
+}
+
+.topbar-btn__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+.topbar-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.topbar-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(280px, calc(100vw - 28px));
+  padding: 6px;
+  border-radius: var(--radius);
+  background: var(--glass-panel-bg);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+  box-shadow: var(--shadow-xl);
+  color: var(--text);
+  transform-origin: top right;
+  z-index: 110;
+}
+
+.topbar-panel__header {
+  padding: 9px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.topbar-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 14px 26px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.topbar-panel__empty svg {
+  font-size: 22px;
+  opacity: 0.5;
+}
+
+/* Sits last in .app-topbar__actions — far right, under the thumb, matching
+   the right-anchored drawer it opens. Styled as a topbar-btn sibling so the
+   three controls read as one set. */
 .app-topbar__menu-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  /* Sits at the far right of the topbar, under the thumb, matching the
-     right-anchored drawer it opens. */
-  order: 2;
-  width: 44px;
-  height: 44px;
-  margin: -10px;
-  background: none;
-  border: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   border-radius: var(--radius-sm);
-  font-size: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 19px;
   cursor: pointer;
-  color: var(--text);
-  transition: background-color var(--motion-fast) var(--ease-premium);
+  color: rgba(255, 255, 255, 0.88);
+  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
+    color var(--motion-fast) var(--ease-premium);
 }
 .app-topbar__menu-btn:hover {
-  background: var(--bg-muted);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(var(--color-accent-rgb), 0.5);
+  color: #ffffff;
+}
+.app-topbar__menu-btn:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent-strong);
 }
 
 @media (min-width: 900px) {
   .app-topbar__menu-btn {
     display: none;
   }
-}
-
-.app-topbar__title {
-  font-weight: 700;
-  color: var(--text-heading);
-  flex: 1;
-  order: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .app-overlay {

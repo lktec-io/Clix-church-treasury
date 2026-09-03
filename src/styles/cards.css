@@ -497,6 +497,235 @@
   max-width: 320px;
 }
 
+/* ==========================================================================
+   WELCOME BANNER (dashboard)
+   ========================================================================== */
+.welcome-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 26px 24px;
+  margin-bottom: 18px;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-primary);
+  background-image: var(--gradient-hero);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-xl);
+  color: #ffffff;
+}
+
+.welcome-banner__body {
+  min-width: 0;
+  /* Sits above the shimmer sweep. */
+  position: relative;
+  z-index: 1;
+}
+
+.welcome-banner__title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.welcome-banner__subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* Structured date: big numeral, weekday and month stacked beside it. */
+.welcome-banner__date {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.welcome-banner__date-day {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+
+.welcome-banner__date-rest {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.welcome-banner__date-weekday {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.welcome-banner__date-month {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.68);
+  white-space: nowrap;
+}
+
+@media (min-width: 700px) {
+  .welcome-banner {
+    padding: 30px 32px;
+  }
+  .welcome-banner__title {
+    font-size: 32px;
+  }
+}
+
+/* ==========================================================================
+   FUND ALLOCATION DONUT
+   ========================================================================== */
+.fund-donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 20px;
+}
+
+.fund-donut__chart {
+  position: relative;
+  width: 190px;
+  height: 190px;
+  flex-shrink: 0;
+  margin-inline: auto;
+}
+
+.fund-donut__chart svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.fund-donut__chart circle {
+  cursor: pointer;
+}
+
+.fund-donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  /* The ring underneath owns the hover — without this, moving onto the
+     centre readout would count as leaving the segment and reset it. */
+  pointer-events: none;
+  padding: 0 34px;
+}
+
+.fund-donut__center-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+.fund-donut__center-value {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+}
+
+.fund-donut__center-share {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.fund-donut__legend {
+  flex: 1 1 220px;
+  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fund-donut__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium);
+}
+
+.fund-donut__legend-item:hover,
+.fund-donut__legend-item.is-active {
+  background: rgba(var(--color-primary-rgb), 0.06);
+}
+
+.fund-donut__legend-item:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent);
+}
+
+.fund-donut__swatch {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.fund-donut__legend-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fund-donut__legend-share {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.fund-donut__empty {
+  padding: 22px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
 /* ---------- Skeletons ---------- */
 /* The loading hero mirrors the real hero card's plane rather than sitting
    in a flat grey box, so the swap to loaded content doesn't visibly jump.

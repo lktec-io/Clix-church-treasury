@@ -79,6 +79,54 @@
   min-height: unset;
 }
 
+/* ---------- Input with an inline control (password reveal) ---------- */
+.field__control {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Reserve room for the button so typed characters never run underneath it. */
+.field__control input {
+  padding-right: 46px;
+}
+
+.field__reveal {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
+}
+
+.field__reveal:hover {
+  background: rgba(var(--color-primary-rgb), 0.07);
+  color: var(--color-primary);
+}
+
+/* tabIndex={-1} on the button keeps it out of the tab order — Tab should go
+   password → Sign in, not password → eye → Sign in. It's still reachable by
+   click and by screen readers, so :focus-visible styling stays worthwhile
+   for the pointer-then-keyboard case. */
+.field__reveal:focus-visible {
+  outline: none;
+  color: var(--color-accent);
+  box-shadow: var(--ring-accent);
+}
+
 /* Navy at rest, green ring on focus — the accent colour is reserved for
    "you are here / this is live", and an active field qualifies. */
 .field input:hover:not(:disabled),

@@ -50,6 +50,44 @@
   }
 }
 
+/* A slow band of light travelling across a surface — the "this data is
+   live" signal on the hero and welcome banner. Deliberately long (6s) and
+   low-opacity: a fast or bright sweep on a screen showing account balances
+   reads as a rendering fault, not as polish. */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(320%) skewX(-18deg);
+  }
+}
+
+/* Applied to a ::after inside a positioned, overflow-hidden parent. */
+.has-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.has-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 28%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.09) 45%,
+    rgba(var(--color-accent-rgb), 0.14) 55%,
+    transparent 100%
+  );
+  animation: shimmer 6s var(--ease-premium) infinite;
+}
+
 /* ---------- Staggered page entrance ----------
    Every page renders as a stack of top-level sections (page header, stat
    grid, cards) inside its own root element, which PageTransition wraps in
