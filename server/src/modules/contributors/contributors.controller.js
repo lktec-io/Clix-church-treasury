@@ -8,6 +8,7 @@ import { churchSettingsRepository } from '../tenants/churchSettings.repository.j
 import { categoriesRepository } from '../categories/categories.repository.js';
 import { formatMoney } from '../financial/moneyFormat.js';
 import { sendSms } from '../sms/sms.service.js';
+import { formatSmsMonthYear } from '../sms/smsTemplates.js';
 import { enablePortalAccess, resetPin } from '../memberAuth/enrollment.service.js';
 
 export async function list(req, res, next) {
@@ -86,15 +87,19 @@ export async function sendStatementSms(req, res, next) {
     }
     const statementData = await getMonthlyStatement(req.tenantId, contributor.id, year, month);
     const tenant = await tenantsRepository.findById(req.tenantId);
+    // Resolved once so the month label and the template body cannot end up
+    // in different languages ("Ripoti ya Utoaji ya September 2026").
+    const statementLocale = contributor.locale ?? tenant?.locale_default ?? 'sw';
     const sms = await sendSms(req.tenantId, {
       contributorId: contributor.id,
       phone: contributor.phone,
       templateKey: 'monthly_statement',
-      locale: contributor.locale ?? tenant?.locale_default ?? 'en',
+      locale: statementLocale,
       params: {
         churchName: tenant?.name,
         memberName: contributor.full_name,
-        month: `${String(month).padStart(2, '0')}-${year}`,
+        month: formatSmsMonthYear(year, month, statementLocale),
+        currency: tenant?.base_currency ?? 'TZS',
         tithe: formatMoney(statementData.tithe),
         offering: formatMoney(statementData.offering),
         other: formatMoney(statementData.other),

@@ -19,10 +19,16 @@
 // Credentials are NEVER hardcoded here and NEVER logged — they come from
 // environment variables the operator sets for this one invocation only:
 //
-//   PLATFORM_ADMIN_EMAIL       (required)
+//   PLATFORM_ADMIN_EMAIL       (required) — also the login identifier
 //   PLATFORM_ADMIN_PASSWORD    (required, same 10-char minimum as every
 //                                other password in this app)
+//                                alias: PLATFORM_ADMIN_PASS
 //   PLATFORM_ADMIN_FULL_NAME   (optional, defaults to "Platform Administrator")
+//                                alias: PLATFORM_ADMIN_USER
+//
+// There is deliberately no separate "username": this app authenticates by
+// email + tenant slug (auth.service.js#login), and the users table has no
+// username column.
 //
 // Idempotent: running it twice never creates a duplicate account. If the
 // email already exists (in the dedicated platform-admin tenant this
@@ -54,9 +60,16 @@ function fail(message) {
   process.exit(1);
 }
 
+// Aliases accepted so the shorter names read naturally on a one-off SSH
+// command line. PLATFORM_ADMIN_USER maps to the display name, NOT to a login
+// identifier: this app authenticates by email + tenant slug and the users
+// table has no username column, so there is nothing else it could mean.
 const email = process.env.PLATFORM_ADMIN_EMAIL?.trim().toLowerCase();
-const password = process.env.PLATFORM_ADMIN_PASSWORD;
-const fullName = process.env.PLATFORM_ADMIN_FULL_NAME?.trim() || 'Platform Administrator';
+const password = process.env.PLATFORM_ADMIN_PASSWORD || process.env.PLATFORM_ADMIN_PASS;
+const fullName =
+  process.env.PLATFORM_ADMIN_FULL_NAME?.trim() ||
+  process.env.PLATFORM_ADMIN_USER?.trim() ||
+  'Platform Administrator';
 
 if (!email) fail('PLATFORM_ADMIN_EMAIL is required (set it for this one command, never hardcode it).');
 try {
@@ -64,7 +77,7 @@ try {
 } catch {
   fail(`PLATFORM_ADMIN_EMAIL is not a valid email address.`);
 }
-if (!password) fail('PLATFORM_ADMIN_PASSWORD is required (set it for this one command, never hardcode it).');
+if (!password) fail('PLATFORM_ADMIN_PASSWORD (or PLATFORM_ADMIN_PASS) is required (set it for this one command, never hardcode it).');
 try {
   validatePassword(password);
 } catch {
@@ -121,8 +134,13 @@ try {
   } else {
     console.log(`[bootstrap-platform-admin] Created platform admin ${email} (user #${result.userId}) with the Platform Administrator role.`);
   }
-  console.log(`[bootstrap-platform-admin] They can now log in at /login using tenant "${result.tenantSlug}" and this email/password, and will land on /platform.`);
-  console.log('[bootstrap-platform-admin] Password was never logged or stored anywhere but its bcrypt hash.');
+  console.log('[bootstrap-platform-admin] ---------------------------------------------');
+  console.log('[bootstrap-platform-admin] SUCCESS');
+  console.log(`[bootstrap-platform-admin]   Sign-in page : /platform/login`);
+  console.log(`[bootstrap-platform-admin]   Workspace    : ${result.tenantSlug}`);
+  console.log(`[bootstrap-platform-admin]   Email        : ${email}`);
+  console.log(`[bootstrap-platform-admin]   Password     : (not shown — supplied via env, stored only as a bcrypt hash)`);
+  console.log('[bootstrap-platform-admin] ---------------------------------------------');
 
   await pool.end();
 } catch (error) {

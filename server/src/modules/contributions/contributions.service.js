@@ -61,7 +61,10 @@ async function sendContributionConfirmationSms(tenantId, contribution) {
     params: {
       churchName: tenant?.name,
       memberName: contributor.full_name,
-      amount: `${tenant?.base_currency ?? ''} ${formatMoney(contribution.amount)}`.trim(),
+      // currency is its own placeholder in the template now — amount must
+      // stay BARE here or the message renders "TZS TZS 50,000.00".
+      currency: tenant?.base_currency ?? 'TZS',
+      amount: formatMoney(contribution.amount),
       date: contribution.contribution_date,
       reference: receipt?.receipt_number ?? category?.name ?? '',
     },

@@ -14,13 +14,17 @@ describe('smsTemplates#renderTemplate', () => {
     const body = renderTemplate('contribution_confirmation', 'en', {
       churchName: 'Mwamoto SDA Church',
       memberName: 'Debora',
-      amount: 'TZS 10,000.00',
+      // currency and amount are SEPARATE params — amount must be bare, or
+      // the template's own {{currency}} produces "TZS TZS 10,000.00".
+      currency: 'TZS',
+      amount: '10,000.00',
       date: '2026-07-15',
       reference: 'RCT-2026-0001',
     });
     expect(body).not.toContain('{{');
     expect(body).toContain('Debora');
     expect(body).toContain('TZS 10,000.00');
+    expect(body).not.toContain('TZS TZS');
   });
 
   it('falls back to English for an unsupported locale', () => {

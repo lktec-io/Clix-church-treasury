@@ -37,6 +37,20 @@ async function allocateMemberNumber(tenantId, connection) {
   throw new Error('Could not allocate a unique member number');
 }
 
+// The member_registration SMS body embeds the member's RAW PIN, and
+// sendSms() now returns that rendered body as `preview` (added for the
+// contribution "Pop Preview" feature). It MUST be stripped before this
+// module's result reaches an API response — otherwise enabling portal
+// access or resetting a PIN would hand that PIN straight back over HTTP,
+// defeating the point of delivering it out-of-band by SMS. Delivery status,
+// reason code and error text are still reported in full.
+function withoutPinPreview(sms) {
+  if (!sms) return sms;
+  const safe = { ...sms };
+  delete safe.preview;
+  return safe;
+}
+
 // Staff-triggered (permission contributors.manage). Generates a member
 // number if the contributor doesn't already have one, generates and hashes
 // a random PIN, and — only after the DB transaction has committed — sends
@@ -104,7 +118,7 @@ export async function enablePortalAccess(tenantId, contributorId, actorUserId) {
     relatedId: contributor.id,
   });
 
-  return { contributor: toPublicContributor(contributor), sms };
+  return { contributor: toPublicContributor(contributor), sms: withoutPinPreview(sms) };
 }
 
 // Staff-triggered "forgot PIN" resolution — the answer to that requirement
@@ -153,5 +167,5 @@ export async function resetPin(tenantId, contributorId, actorUserId) {
     relatedId: updated.id,
   });
 
-  return { contributor: toPublicContributor(updated), sms };
+  return { contributor: toPublicContributor(updated), sms: withoutPinPreview(sms) };
 }

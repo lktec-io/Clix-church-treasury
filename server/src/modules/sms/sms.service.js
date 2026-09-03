@@ -83,5 +83,23 @@ export async function sendSms(
   // a stable machine-readable category (auth/bad_request/rate_limited/
   // timeout/network/invalid_phone/provider_error/provider_rejected) a UI
   // can branch on without parsing errorMessage's free text.
-  return { status: result.status, reasonCode: result.reasonCode ?? null, errorMessage: result.errorMessage ?? null };
+  //
+  // `preview` is the exact rendered body that was handed to the provider —
+  // the same string persisted to sms_log.body. It is returned so the UI can
+  // show a clerk precisely what the member received ("Pop Preview"), rather
+  // than the UI re-composing the message client-side and drifting from what
+  // was actually sent. Safe to expose: the body is built only from template
+  // text plus tenant/contributor fields the caller already has, and no
+  // template carries a credential.
+  //
+  // The one template whose body IS sensitive is member_registration, which
+  // embeds a raw PIN — enrollment.service.js must not forward this field to
+  // a client. Flagged here because the value is now available to every
+  // caller of sendSms().
+  return {
+    status: result.status,
+    reasonCode: result.reasonCode ?? null,
+    errorMessage: result.errorMessage ?? null,
+    preview: body,
+  };
 }
