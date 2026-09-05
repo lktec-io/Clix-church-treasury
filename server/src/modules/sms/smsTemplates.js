@@ -28,11 +28,35 @@ const TEMPLATES = {
     en: '{{churchName}}\nThank you {{memberName}} for your contribution of {{currency}} {{amount}} on {{date}}.\nReference: {{reference}}\nGod bless you.',
     sw: '{{churchName}}\nTunakushukuru {{memberName}} kwa mchango wako wa {{currency}} {{amount}} tarehe {{date}}.\nKumbukumbu: {{reference}}\nMungu akubariki sana.',
   },
+  // {{lines}} is a PRE-RENDERED block, not a scalar — build it with
+  // formatSmsLineItems() below and pass the result. It expands to one
+  // "- <Fund>: <CUR> <amount>" row per distinct giving purpose the member
+  // actually recorded that month (Zaka, Sadaka ya Kambi, Mfuko wa Ujenzi,
+  // Idara ya Watoto, …), replacing the previous fixed Zaka/Sadaka/Zinginezo
+  // triplet — which collapsed every designated fund into one anonymous
+  // "Zinginezo" figure and so could not tell a member what their building-fund
+  // gift was.
+  //
+  // The currency prefix is baked into each rendered line by
+  // formatSmsLineItems (it takes `currency` itself), so unlike {{total}}
+  // there is no {{currency}} in front of {{lines}} here.
   monthly_statement: {
-    en: '{{churchName}}\n{{month}} Giving Statement for {{memberName}}.\nTithe: {{currency}} {{tithe}}\nOffering: {{currency}} {{offering}}\nOther: {{currency}} {{other}}\nGrand Total: {{currency}} {{total}}\nGod bless you.',
-    sw: '{{churchName}}\nRipoti ya Utoaji ya {{month}} kwa {{memberName}}.\nZaka: {{currency}} {{tithe}}\nSadaka: {{currency}} {{offering}}\nZinginezo: {{currency}} {{other}}\nJumla Kuu: {{currency}} {{total}}\nMungu akubariki sana.',
+    en: '{{churchName}}\n{{month}} Giving Statement for {{memberName}}.\n{{lines}}\nGrand Total: {{currency}} {{total}}\nGod bless you.',
+    sw: '{{churchName}}\nRipoti ya Utoaji ya {{month}} kwa {{memberName}}.\n{{lines}}\nJumla Kuu: {{currency}} {{total}}\nMungu akubariki sana.',
   },
 };
+
+// Label used to roll up the tail of a very long breakdown. A member who gave
+// to fifteen funds in one month would otherwise get a six-segment SMS, which
+// is a real per-message cost to the church and is truncated outright by some
+// handsets. The rolled-up rows are never hidden — they are summed into one
+// visible line, and the full detail is always in the PDF statement.
+const OVERFLOW_LABEL = { en: 'Other funds', sw: 'Mifuko mingine' };
+
+// Beyond this many rows the remainder is summed into OVERFLOW_LABEL. Eight
+// named lines plus the header, total and blessing is ~4 SMS segments in
+// GSM-7 — the ceiling worth spending on a courtesy notification.
+const MAX_SMS_LINE_ITEMS = 8;
 
 // Month names for the {{month}} placeholder. The statement SMS previously
 // rendered "09-2026", which is a machine format in a message a church member
@@ -50,6 +74,35 @@ export function formatSmsMonthYear(year, month, locale = 'en') {
   const names = MONTH_NAMES[locale] ?? MONTH_NAMES.en;
   const name = names[Number(month) - 1];
   return name ? `${name} ${year}` : `${String(month).padStart(2, '0')}-${year}`;
+}
+
+// Renders statement.service.js's `lineItems` into the {{lines}} block of
+// monthly_statement. `formatAmount` is injected rather than imported so this
+// module stays dependency-free and unit-testable without the money helpers —
+// callers pass formatMoney (moneyFormat.js), exactly as they already do for
+// {{total}}.
+//
+// Returns '' for an empty month, which renders a statement with no line
+// block at all rather than a dangling header — a member with no recorded
+// giving still gets a coherent message.
+export function formatSmsLineItems(lineItems = [], currency = 'TZS', formatAmount = String, locale = 'en') {
+  if (!Array.isArray(lineItems) || lineItems.length === 0) return '';
+
+  const named = lineItems.slice(0, MAX_SMS_LINE_ITEMS);
+  const overflow = lineItems.slice(MAX_SMS_LINE_ITEMS);
+
+  const rows = named.map((item) => `- ${item.label}: ${currency} ${formatAmount(item.amount)}`);
+
+  if (overflow.length > 0) {
+    // Summed as a Number here rather than through sumMoney: this is display
+    // text for an SMS, not a ledger figure, and the authoritative total is
+    // {{total}} which is computed by the financial helpers upstream.
+    const rolled = overflow.reduce((sum, item) => sum + Number(item.amount), 0);
+    const label = OVERFLOW_LABEL[locale] ?? OVERFLOW_LABEL.en;
+    rows.push(`- ${label}: ${currency} ${formatAmount(rolled.toFixed(2))}`);
+  }
+
+  return rows.join('\n');
 }
 
 export function renderTemplate(templateKey, locale, params = {}) {

@@ -256,25 +256,32 @@ export default function Layout() {
             </span>
             <span className="app-sidebar__user-name">{session?.user?.full_name}</span>
           </div>
-          {/* Language as a segmented control rather than a native <select>:
-              two options never justified a dropdown, and the native widget
-              was the last unstyled chrome element in the sidebar. */}
-          <div className="lang-switch" role="group" aria-label={t('nav.language')}>
-            {['en', 'sw'].map((code) => (
-              <button
-                key={code}
-                type="button"
-                className={`lang-switch__opt${locale === code ? ' is-active' : ''}`}
-                onClick={() => setLocale(code)}
-                aria-pressed={locale === code}
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
+          {/* Language and logout share one row at the base of the panel.
+              Stacked, the two controls made the footer tall enough that
+              logout fell under the fixed bottom dock on a short phone; the
+              dock/drawer z-index inversion that let it be painted over is
+              fixed in layout.css alongside this. */}
+          <div className="app-sidebar__footer-row">
+            {/* Language as a segmented control rather than a native <select>:
+                two options never justified a dropdown, and the native widget
+                was the last unstyled chrome element in the sidebar. */}
+            <div className="lang-switch" role="group" aria-label={t('nav.language')}>
+              {['en', 'sw'].map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  className={`lang-switch__opt${locale === code ? ' is-active' : ''}`}
+                  onClick={() => setLocale(code)}
+                  aria-pressed={locale === code}
+                >
+                  {code.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="sidebar-ghost-btn" onClick={handleLogout}>
+              <FiLogOut aria-hidden="true" /> <span>{t('nav.logout')}</span>
+            </button>
           </div>
-          <button type="button" className="sidebar-ghost-btn" onClick={handleLogout}>
-            <FiLogOut aria-hidden="true" /> <span>{t('nav.logout')}</span>
-          </button>
         </div>
         {isCollapsedDesktop && (
           <button

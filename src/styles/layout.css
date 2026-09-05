@@ -61,7 +61,13 @@
   top: var(--navbar-height);
   bottom: 0;
   right: 0;
-  z-index: 20;
+  /* Above .bottom-nav (90), below .app-topbar (100) and modals/toasts (110).
+     This is the fix for the clipped mobile logout: the dock is also
+     `position: fixed; bottom: 0`, so at the drawer's old z-index of 20 the
+     dock painted straight over the footer — the logout button and language
+     switch were behind it and unclickable. The drawer starts below the
+     topbar anyway (top: var(--navbar-height)), so 92 never fights the nav. */
+  z-index: 92;
   /* Rounded on the inner (left) edge only — the right edge is flush with
      the viewport, so rounding it would just show a sliver of page behind. */
   border-top-left-radius: 24px;
@@ -297,6 +303,10 @@
   color: var(--color-text-on-sidebar);
   white-space: nowrap;
   overflow: hidden;
+  /* Clears the iOS home indicator / Android gesture bar on the mobile
+     drawer, which runs to `bottom: 0`. Collapses to the base 14px on any
+     device without one, and on desktop where the inset is always 0. */
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
 }
 
 .app-sidebar__footer-details {
@@ -304,6 +314,43 @@
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+}
+
+/* Language + logout share one horizontal row rather than stacking. Two
+   controls that each occupied a full-width line pushed the footer tall
+   enough that the drawer's own scroll was the only way to reach logout on a
+   short phone; side-by-side they fit above the fold on a 568px viewport.
+   `justify-content: space-between` anchors the segmented control left and
+   the destructive action right — the pairing the rest of the product uses
+   for "setting / action" (see .form-actions). */
+.app-sidebar__footer-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* .lang-switch is `align-self: flex-start` for the stacked column layout;
+   inside the row it must centre against the button instead. */
+.app-sidebar__footer-row .lang-switch {
+  align-self: auto;
+  flex-shrink: 0;
+}
+
+/* The ghost button is width:100% by default (it used to own its own line).
+   In the row it takes the remaining space instead, and keeps a floor wide
+   enough for the icon + "Log out" / "Ondoka" without wrapping. */
+.app-sidebar__footer-row .sidebar-ghost-btn {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-sidebar__footer-row .sidebar-ghost-btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-sidebar__user {
@@ -651,7 +698,10 @@
      than just dimming. */
   backdrop-filter: blur(12px) saturate(120%);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
-  z-index: 15;
+  /* Sits directly under the drawer (92) and above the dock (90), so an open
+     drawer dims the dock too rather than leaving it floating and tappable
+     over the backdrop. */
+  z-index: 91;
 }
 
 @media (min-width: 900px) {

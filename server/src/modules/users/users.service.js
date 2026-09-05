@@ -91,6 +91,31 @@ export async function assignRole(tenantId, userId, roleId, actorUserId) {
     throw notFound('Role not found');
   }
 
+  // Super Administrator cannot be GRANTED from inside the tenant workspace
+  // either — the missing half of assertNotSuperAdministrator.
+  //
+  // That guard makes a Super Administrator account immutable here: it cannot
+  // be disabled and its roles cannot be stripped. Until now nothing stopped
+  // this endpoint from creating one. Any holder of users.manage — an
+  // assistant given the role for an afternoon, or a stolen session — could
+  // therefore grant Super Administrator to an account they control and
+  // produce a permanent, un-removable, un-disableable backdoor into the
+  // church's books, with no in-product way to undo it. Being able to mint an
+  // account you are then forbidden to revoke is strictly worse than not
+  // being able to mint it at all.
+  //
+  // Provisioning the role stays where the other two guards already point:
+  // the platform console, and scripts/bootstrapPlatformAdmin.js. Unlike the
+  // platform-only case above this reports 403 rather than 404 — the role is
+  // legitimately visible to the tenant (it is in listForTenant, and existing
+  // holders are shown on the Users page), so pretending it does not exist
+  // would just look like a bug.
+  if (role.name === SUPER_ADMIN_ROLE) {
+    throw forbidden(
+      `The ${SUPER_ADMIN_ROLE} role cannot be granted from within a church workspace. Only a Platform Administrator can assign it.`
+    );
+  }
+
   await userRolesRepository.assign(userId, roleId);
 
   await recordAuditLog({
@@ -108,6 +133,20 @@ export async function assignRole(tenantId, userId, roleId, actorUserId) {
 export async function removeRole(tenantId, userId, roleId, actorUserId) {
   const user = await usersRepository.findById(tenantId, userId);
   if (!user) throw notFound('User not found');
+
+  // The same role-tenancy check assignRole performs, which this endpoint was
+  // missing. user_roles carries no tenant_id of its own, so the DELETE is
+  // keyed on a user_id this function has already tenant-verified — a foreign
+  // roleId could therefore never have removed another church's grant. What
+  // it DID do was write a `user.role_removed` audit entry naming a role id
+  // that this tenant does not own, for a delete that silently matched
+  // nothing. An audit trail that records revocations which never happened is
+  // worse than no entry at all, so the id is validated before anything is
+  // written.
+  const role = await rolesRepository.findById(roleId);
+  if (!role || (role.tenant_id !== null && role.tenant_id !== tenantId)) {
+    throw notFound('Role not found');
+  }
 
   // Self-lockout guard, the counterpart to disableUser's own check.
   //
@@ -137,7 +176,10 @@ export async function removeRole(tenantId, userId, roleId, actorUserId) {
     action: 'user.role_removed',
     entityType: 'users',
     entityId: userId,
-    before: { roleId },
+    // Name as well as id, matching what role_assigned already records — an
+    // auditor reading "role 7 removed" a year later has to go and resolve
+    // that id against a roles table that may since have changed.
+    before: { roleId, roleName: role.name },
   });
 
   return { userId, roleId };

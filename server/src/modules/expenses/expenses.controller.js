@@ -2,9 +2,20 @@ import * as expensesService from './expenses.service.js';
 import { validateCreateExpense, validateRejectExpense } from './expenses.validator.js';
 import { validationError } from '../../errors/AppError.js';
 
+// Mirrors the expenses.status ENUM in migration 0020. An unrecognised value
+// is rejected rather than passed through to the query: unfiltered it would
+// silently return an empty list, which reads to a treasurer as "there are no
+// pending approvals" — the one wrong answer this screen must never give.
+const EXPENSE_STATUSES = ['draft', 'submitted', 'approved', 'rejected', 'paid'];
+
 function parseFilters(query) {
   const filters = {};
-  if (query.status) filters.status = query.status;
+  if (query.status) {
+    if (!EXPENSE_STATUSES.includes(query.status)) {
+      throw validationError('Invalid payload', { status: `must be one of: ${EXPENSE_STATUSES.join(', ')}` });
+    }
+    filters.status = query.status;
+  }
   if (query.fundId) filters.fundId = Number(query.fundId);
   if (query.requestedByUserId) filters.requestedByUserId = Number(query.requestedByUserId);
   if (query.limit) filters.limit = Math.min(Number(query.limit), 200);

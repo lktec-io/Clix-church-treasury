@@ -1,7 +1,7 @@
 // Pure-unit coverage for the Swahili SMS pass. No DB, no network — these
 // assert the rendered text a church member actually receives.
 import { describe, it, expect } from 'vitest';
-import { renderTemplate, formatSmsMonthYear } from '../../src/modules/sms/smsTemplates.js';
+import { renderTemplate, formatSmsMonthYear, formatSmsLineItems } from '../../src/modules/sms/smsTemplates.js';
 
 describe('Swahili contribution receipt (Template A)', () => {
   const params = {
@@ -37,24 +37,29 @@ describe('Swahili contribution receipt (Template A)', () => {
 });
 
 describe('Swahili monthly statement (Template B)', () => {
+  // Mirrors what contributors.controller.js passes: `lines` is a
+  // pre-rendered block from formatSmsLineItems, not a scalar.
+  const lineItems = [
+    { label: 'Zaka', amount: '120000.00' },
+    { label: 'Sadaka ya Kambi', amount: '45000.00' },
+    { label: 'Mfuko wa Ujenzi', amount: '10000.00' },
+  ];
   const params = {
     churchName: 'Kanisa la Mfano',
     memberName: 'Neema Joseph',
     month: 'Septemba 2026',
     currency: 'TZS',
-    tithe: '120,000.00',
-    offering: '45,000.00',
-    other: '10,000.00',
+    lines: formatSmsLineItems(lineItems, 'TZS', (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 2 }), 'sw'),
     total: '175,000.00',
   };
 
-  it('renders the exact requested wording', () => {
+  it('renders the exact requested wording, one line per fund given to', () => {
     expect(renderTemplate('monthly_statement', 'sw', params)).toBe(
       'Kanisa la Mfano\n' +
         'Ripoti ya Utoaji ya Septemba 2026 kwa Neema Joseph.\n' +
-        'Zaka: TZS 120,000.00\n' +
-        'Sadaka: TZS 45,000.00\n' +
-        'Zinginezo: TZS 10,000.00\n' +
+        '- Zaka: TZS 120,000.00\n' +
+        '- Sadaka ya Kambi: TZS 45,000.00\n' +
+        '- Mfuko wa Ujenzi: TZS 10,000.00\n' +
         'Jumla Kuu: TZS 175,000.00\n' +
         'Mungu akubariki sana.'
     );
@@ -63,6 +68,48 @@ describe('Swahili monthly statement (Template B)', () => {
   it('prefixes every figure with the currency exactly once', () => {
     const body = renderTemplate('monthly_statement', 'sw', params);
     expect(body.match(/TZS/g)).toHaveLength(4);
+  });
+
+  it('names a designated fund explicitly instead of folding it into "Zinginezo"', () => {
+    const body = renderTemplate('monthly_statement', 'sw', params);
+    expect(body).toContain('Mfuko wa Ujenzi');
+    expect(body).not.toContain('Zinginezo');
+  });
+
+  it('leaves no unsubstituted placeholders', () => {
+    expect(renderTemplate('monthly_statement', 'sw', params)).not.toMatch(/\{\{|\}\}/);
+  });
+});
+
+describe('formatSmsLineItems', () => {
+  const fmt = (v) => Number(v).toFixed(2);
+
+  it('renders one dash-prefixed row per fund, currency-prefixed', () => {
+    expect(formatSmsLineItems([{ label: 'Zaka', amount: '1000.00' }], 'TZS', fmt, 'sw')).toBe('- Zaka: TZS 1000.00');
+  });
+
+  it('returns an empty block for a month with nothing recorded', () => {
+    expect(formatSmsLineItems([], 'TZS', fmt, 'sw')).toBe('');
+    expect(formatSmsLineItems(undefined, 'TZS', fmt, 'sw')).toBe('');
+  });
+
+  it('honours a non-TZS tenant currency', () => {
+    expect(formatSmsLineItems([{ label: 'Tithe', amount: '5.00' }], 'KES', fmt, 'en')).toBe('- Tithe: KES 5.00');
+  });
+
+  // The cost guard: a member giving to a dozen funds must not trigger a
+  // six-segment SMS. Everything past the eighth row is summed into one
+  // labelled line — rolled up, never dropped.
+  it('rolls the tail beyond eight funds into one summed line', () => {
+    const many = Array.from({ length: 11 }, (_, i) => ({ label: `Fund ${i + 1}`, amount: '100.00' }));
+    const rows = formatSmsLineItems(many, 'TZS', fmt, 'sw').split('\n');
+    expect(rows).toHaveLength(9);
+    expect(rows[8]).toBe('- Mifuko mingine: TZS 300.00');
+  });
+
+  it('labels the rolled-up line in English for an English statement', () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({ label: `Fund ${i + 1}`, amount: '50.00' }));
+    expect(formatSmsLineItems(many, 'TZS', fmt, 'en')).toContain('- Other funds: TZS 100.00');
   });
 });
 

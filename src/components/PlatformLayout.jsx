@@ -122,22 +122,27 @@ export default function PlatformLayout() {
             </span>
             <span className="app-sidebar__user-name">{session?.user?.full_name}</span>
           </div>
-          <div className="lang-switch" role="group" aria-label={t('nav.language')}>
-            {['en', 'sw'].map((code) => (
-              <button
-                key={code}
-                type="button"
-                className={`lang-switch__opt${locale === code ? ' is-active' : ''}`}
-                onClick={() => setLocale(code)}
-                aria-pressed={locale === code}
-              >
-                {code.toUpperCase()}
-              </button>
-            ))}
+          {/* Same single-row footer as the tenant shell (Layout.jsx) — the
+              platform console renders the identical dock, so it had the
+              identical collision. */}
+          <div className="app-sidebar__footer-row">
+            <div className="lang-switch" role="group" aria-label={t('nav.language')}>
+              {['en', 'sw'].map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  className={`lang-switch__opt${locale === code ? ' is-active' : ''}`}
+                  onClick={() => setLocale(code)}
+                  aria-pressed={locale === code}
+                >
+                  {code.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="sidebar-ghost-btn" onClick={handleLogout}>
+              <FiLogOut aria-hidden="true" /> <span>{t('nav.logout')}</span>
+            </button>
           </div>
-          <button type="button" className="sidebar-ghost-btn" onClick={handleLogout}>
-            <FiLogOut aria-hidden="true" /> <span>{t('nav.logout')}</span>
-          </button>
         </div>
       </div>
     </>

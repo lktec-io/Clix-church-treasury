@@ -53,9 +53,14 @@
   overflow-wrap: anywhere;
 }
 
+/* min(170px, 100%) rather than a bare 170px floor: a grid column whose
+   minimum exceeds the container width overflows it rather than shrinking,
+   so on any viewport narrower than the floor the track would push the page
+   sideways. Wrapping it in min() lets the last column collapse to the
+   container instead. Same reason on .fund-grid below. */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
   gap: 14px;
   margin-bottom: 16px;
 }
@@ -739,9 +744,23 @@
   box-shadow: var(--shadow-lg);
   /* min-width:0 lets this shrink inside a grid/flex parent; without it a
      wide SVG child sets the floor and pushes the page into horizontal
-     scroll on a 320px viewport. */
+     scroll on a 320px viewport. width/max-width pin it to the column it is
+     given rather than to its content, so nothing inside — the SVG, the
+     legend, or a long fund name in the tooltip — can widen the panel. */
   min-width: 0;
-  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  /* Deliberately NOT `overflow: hidden` any more. That clipped the hover
+     tooltip — which is a floating box anchored to a data point and can
+     legitimately sit slightly proud of the panel — in half at the first and
+     last month of the series. It cannot be `overflow-x: hidden` with a
+     visible y either: CSS computes the visible axis to `auto` when the other
+     is clipped, which would hang a scrollbar off the panel.
+     What actually prevents a sideways page break is the pair above (this
+     panel can never exceed the column it is given), the edge-aware tooltip
+     anchoring in TrendChart.jsx, and #root's own
+     `max-width: 100vw; overflow-x: hidden` backstop in layout.css. */
+  overflow: visible;
 }
 
 @media (min-width: 640px) {
@@ -821,12 +840,19 @@
 .trend-chart {
   position: relative;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
 }
 
+/* The SVG is fluid by construction: a fixed viewBox plus width:100% and
+   height:auto means the browser rescales all geometry to whatever width the
+   panel hands it, at any viewport, with no JS measurement and no fixed
+   pixel width anywhere in the chart. max-width pins it to the container so
+   the aspect-ratio box can never round up past its parent. */
 .trend-chart svg {
   display: block;
   width: 100%;
+  max-width: 100%;
   height: auto;
   overflow: visible;
 }
@@ -836,12 +862,18 @@
   outline-offset: 2px;
 }
 
-/* Navy glass tooltip. translate(-50%, -120%) anchors it above the node it
-   describes; pointer-events:none so it can never sit between the cursor and
-   the hit-area column underneath, which would make it flicker. */
+/* Navy glass tooltip. The `transform` that anchors it against the node is
+   set INLINE by TrendChart.jsx (tooltipPlacement), because the anchor has to
+   change near the panel edges — a fixed translate(-50%, -120%) here would be
+   overridden anyway and is left out so there is exactly one source of truth
+   for the placement. pointer-events:none so it can never sit between the
+   cursor and the hit-area column underneath, which would make it flicker. */
 .trend-chart__tooltip {
   position: absolute;
-  transform: translate(-50%, -120%);
+  /* Never wider than the panel it is clipped by — on a 360px phone the
+     150px floor plus padding would otherwise reach the edge regardless of
+     which way it is anchored. */
+  max-width: 100%;
   min-width: 150px;
   padding: 10px 12px;
   border-radius: var(--radius);
@@ -853,6 +885,13 @@
   color: #ffffff;
   pointer-events: none;
   z-index: 3;
+}
+
+/* Anchored below its node instead of above (top of the plot). The shadow is
+   thrown the other way so the box still reads as lifted off the panel rather
+   than pressed into it. */
+.trend-chart__tooltip.is-flipped {
+  box-shadow: 0 -18px 40px -20px rgba(0, 0, 0, 0.7);
 }
 
 .trend-chart__tooltip-month {
@@ -1107,7 +1146,7 @@
    "where the money sits" block rather than a plain metric. */
 .fund-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: 14px;
 }
 

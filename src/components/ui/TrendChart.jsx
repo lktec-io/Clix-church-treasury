@@ -26,6 +26,44 @@ const MONTH_SHORT = {
   sw: ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ago', 'Sep', 'Okt', 'Nov', 'Des'],
 };
 
+// The tooltip is a fixed-width (min 150px) HTML box positioned as a
+// percentage of the plot, inside a panel that clips its overflow
+// (.analytics-canvas). Centred on the node it would therefore be cut in half
+// at the first and last month — the whole left/right edge of the chart — and
+// cut off at the top whenever a month is the series maximum. That is
+// unmissable on a 360px phone, where the box is nearly half the panel width.
+//
+// So the anchor moves instead of the box being allowed to escape:
+//   · near the left edge  → left-aligned  (extends right, into the plot)
+//   · near the right edge → right-aligned (extends left, into the plot)
+//   · near the top        → flipped below the node instead of above
+// Everywhere else it stays centred above the node, which is the placement
+// that reads best and is what most points get.
+const EDGE_PCT = 24;
+const TOP_FLIP_PCT = 34;
+
+function tooltipPlacement(point) {
+  const leftPct = (point.x / VB_W) * 100;
+  const topPct = (point.y / VB_H) * 100;
+  const flipped = topPct < TOP_FLIP_PCT;
+
+  let translateX = '-50%';
+  if (leftPct < EDGE_PCT) translateX = '0';
+  else if (leftPct > 100 - EDGE_PCT) translateX = '-100%';
+
+  return {
+    flipped,
+    style: {
+      left: `${leftPct}%`,
+      top: `${topPct}%`,
+      // 20% below the node when flipped, 120% above it otherwise — both
+      // measured against the tooltip's own height, so neither depends on
+      // the rendered chart size.
+      transform: `translate(${translateX}, ${flipped ? '20%' : '-120%'})`,
+    },
+  };
+}
+
 export default function TrendChart({ series = [], forecast = null }) {
   const { t, locale } = useLocale();
   const [activeIndex, setActiveIndex] = useState(null);
@@ -70,6 +108,7 @@ export default function TrendChart({ series = [], forecast = null }) {
   const months = MONTH_SHORT[locale] ?? MONTH_SHORT.en;
   const labelFor = (point) => `${months[point.month - 1]} ${String(point.year).slice(2)}`;
   const active = activeIndex === null ? null : model.coords[activeIndex];
+  const tooltip = active ? tooltipPlacement(active) : null;
 
   return (
     <div className="trend-chart">
@@ -205,14 +244,17 @@ export default function TrendChart({ series = [], forecast = null }) {
       <AnimatePresence>
         {active && (
           <motion.div
-            className="trend-chart__tooltip"
-            initial={{ opacity: 0, y: 6, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.97, transition: { duration: 0.12 } }}
+            className={`trend-chart__tooltip${tooltip.flipped ? ' is-flipped' : ''}`}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.12 } }}
             transition={{ type: 'spring', stiffness: 460, damping: 30 }}
             // Positioned as a percentage of the plot so it tracks the node
-            // through any responsive width.
-            style={{ left: `${(active.x / VB_W) * 100}%`, top: `${(active.y / VB_H) * 100}%` }}
+            // through any responsive width, with the anchor flipped near the
+            // panel edges so the box is never clipped (see tooltipPlacement).
+            // The entry animation no longer animates `y`: Framer would write
+            // its own transform and clobber the placement translate.
+            style={tooltip.style}
           >
             <div className="trend-chart__tooltip-month">{labelFor(active)}</div>
             <div className="trend-chart__tooltip-row">

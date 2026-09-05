@@ -74,8 +74,16 @@ export default function UsersPage() {
   const handleAssignRole = async (user) => {
     const roleId = Number(roleChoice[user.id]);
     if (!roleId) return;
+    // Clear any banner from a previous attempt before starting a new one —
+    // otherwise a stale "you cannot remove a role from your own account"
+    // sits above a role change that has just succeeded.
+    setError(null);
     try {
       await usersApi.assignRole(user.id, roleId);
+      // Reset this row's picker so it does not keep displaying the role that
+      // has just been granted, which invites a second click that the server
+      // treats as a silent no-op (assign is INSERT IGNORE).
+      setRoleChoice((c) => ({ ...c, [user.id]: '' }));
       await load();
       toast.success(t('users.roleAssigned'));
     } catch (err) {
@@ -84,6 +92,7 @@ export default function UsersPage() {
   };
 
   const handleRemoveRole = async (user, roleId) => {
+    setError(null);
     try {
       await usersApi.removeRole(user.id, roleId);
       await load();
@@ -100,7 +109,11 @@ export default function UsersPage() {
       tone: 'danger',
       confirmLabel: t('users.disable'),
     });
+    // confirm() resolves to a bare boolean unless `requireReason` is set, in
+    // which case it resolves to { confirmed, reason } — see ConfirmDialog.jsx.
+    // No reason is required here, so this is the boolean form.
     if (!ok) return;
+    setError(null);
     try {
       await usersApi.disable(user.id);
       await load();
@@ -108,6 +121,16 @@ export default function UsersPage() {
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
+  };
+
+  const isSelf = (user) => user.id === session?.user?.id;
+
+  // Roles this user does not already hold. Offering the full catalog meant
+  // the picker listed roles the member already had, where "Assign" is an
+  // INSERT IGNORE no-op — a button that reports success and changes nothing.
+  const assignableRoles = (user) => {
+    const held = new Set(user.roles.map((r) => r.id));
+    return roles.filter((r) => !held.has(r.id));
   };
 
   return (
@@ -175,16 +198,23 @@ export default function UsersPage() {
                         : u.roles.map((r) => (
                             <span key={r.id} className="badge badge--neutral" style={{ marginRight: 4 }}>
                               {r.name}
-                              <PermissionGate permission="users.manage">
-                                <button
-                                  type="button"
-                                  className="badge__remove"
-                                  onClick={() => handleRemoveRole(u, r.id)}
-                                  aria-label={`${t('common.deactivate')} ${r.name}`}
-                                >
-                                  ×
-                                </button>
-                              </PermissionGate>
+                              {/* No remove control on your own roles: the
+                                  server refuses self-removal outright
+                                  (users.service.js guards against the
+                                  self-lockout it would cause), so the button
+                                  could only ever produce a 403. */}
+                              {!isSelf(u) && (
+                                <PermissionGate permission="users.manage">
+                                  <button
+                                    type="button"
+                                    className="badge__remove"
+                                    onClick={() => handleRemoveRole(u, r.id)}
+                                    aria-label={`${t('common.deactivate')} ${r.name}`}
+                                  >
+                                    ×
+                                  </button>
+                                </PermissionGate>
+                              )}
                             </span>
                           ))}
                     </td>
@@ -196,17 +226,26 @@ export default function UsersPage() {
                         <select
                           value={roleChoice[u.id] ?? ''}
                           onChange={(e) => setRoleChoice((c) => ({ ...c, [u.id]: e.target.value }))}
+                          aria-label={t('users.assignRole')}
+                          disabled={assignableRoles(u).length === 0}
                           style={{ maxWidth: 160 }}
                         >
                           <option value="">—</option>
-                          {roles.map((r) => (
+                          {assignableRoles(u).map((r) => (
                             <option key={r.id} value={r.id}>{r.name}</option>
                           ))}
                         </select>
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleAssignRole(u)}>
+                        <button
+                          type="button"
+                          className="btn btn--secondary btn--sm"
+                          // Nothing picked means the handler returns early;
+                          // disabling says so before the click instead.
+                          disabled={!roleChoice[u.id]}
+                          onClick={() => handleAssignRole(u)}
+                        >
                           {t('users.assignRole')}
                         </button>
-                        {u.status !== 'disabled' && u.id !== session?.user?.id && (
+                        {u.status !== 'disabled' && !isSelf(u) && (
                           <button type="button" className="btn btn--danger btn--sm" onClick={() => handleDisable(u)}>
                             {t('users.disable')}
                           </button>

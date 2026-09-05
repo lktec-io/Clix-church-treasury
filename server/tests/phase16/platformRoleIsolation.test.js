@@ -139,6 +139,36 @@ describe('Super Administrator is immutable from inside a tenant workspace', () =
     expect(roleCheck).toBeGreaterThan(-1);
     expect(ownershipCheck).toBeLessThan(roleCheck);
   });
+
+  // The other half of immutability, and the one that was missing: the guard
+  // above makes a Super Administrator account impossible to disable or strip
+  // — so being able to CREATE one from inside the workspace meant any
+  // users.manage holder could mint a permanent, un-revocable backdoor.
+  // Grant and revoke have to be locked together or the pair is incoherent.
+  it('assignRole refuses to grant the Super Administrator role', () => {
+    const start = file.indexOf('export async function assignRole');
+    const body = file.slice(start, file.indexOf('export async function removeRole'));
+    expect(body).toContain('SUPER_ADMIN_ROLE');
+    expect(body).toContain('forbidden(');
+  });
+});
+
+describe('role ids are validated against the tenant on every role endpoint', () => {
+  const file = src('modules/users/users.service.js');
+
+  // user_roles has no tenant_id of its own, so both sides of every grant are
+  // the calling service's responsibility. assignRole always did this;
+  // removeRole did not, and would write an audit row naming a role this
+  // tenant does not own for a delete that matched nothing.
+  it.each([
+    ['assignRole', 'export async function assignRole', 'export async function removeRole'],
+    ['removeRole', 'export async function removeRole', 'async function assertNotSuperAdministrator'],
+  ])('%s rejects a role belonging to another tenant', (_name, startMarker, endMarker) => {
+    const body = file.slice(file.indexOf(startMarker), file.indexOf(endMarker));
+    expect(body).toContain('rolesRepository.findById');
+    expect(body).toContain('role.tenant_id !== tenantId');
+    expect(body).toContain('notFound');
+  });
 });
 
 describe('SMS locale resolution defaults to Swahili', () => {

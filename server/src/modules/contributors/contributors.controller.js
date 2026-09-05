@@ -8,7 +8,7 @@ import { churchSettingsRepository } from '../tenants/churchSettings.repository.j
 import { categoriesRepository } from '../categories/categories.repository.js';
 import { formatMoney } from '../financial/moneyFormat.js';
 import { sendSms } from '../sms/sms.service.js';
-import { formatSmsMonthYear } from '../sms/smsTemplates.js';
+import { formatSmsMonthYear, formatSmsLineItems } from '../sms/smsTemplates.js';
 import { enablePortalAccess, resetPin } from '../memberAuth/enrollment.service.js';
 
 export async function list(req, res, next) {
@@ -90,6 +90,7 @@ export async function sendStatementSms(req, res, next) {
     // Resolved once so the month label and the template body cannot end up
     // in different languages ("Ripoti ya Utoaji ya September 2026").
     const statementLocale = contributor.locale ?? tenant?.locale_default ?? 'sw';
+    const currency = tenant?.base_currency ?? 'TZS';
     const sms = await sendSms(req.tenantId, {
       contributorId: contributor.id,
       phone: contributor.phone,
@@ -99,10 +100,13 @@ export async function sendStatementSms(req, res, next) {
         churchName: tenant?.name,
         memberName: contributor.full_name,
         month: formatSmsMonthYear(year, month, statementLocale),
-        currency: tenant?.base_currency ?? 'TZS',
-        tithe: formatMoney(statementData.tithe),
-        offering: formatMoney(statementData.offering),
-        other: formatMoney(statementData.other),
+        currency,
+        // One line per fund the member actually gave to this month, built
+        // from contribution_items.purpose where a breakdown exists and the
+        // category name otherwise (statement.service.js#buildLineItems).
+        // Replaces the old fixed tithe/offering/other triplet, which
+        // flattened every designated fund into a single "Zinginezo" figure.
+        lines: formatSmsLineItems(statementData.lineItems, currency, formatMoney, statementLocale),
         total: formatMoney(statementData.total),
       },
       relatedType: 'contributor_statement',

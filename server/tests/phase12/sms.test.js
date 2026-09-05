@@ -34,18 +34,20 @@ describe('smsTemplates#renderTemplate', () => {
   });
 
   it('renders Swahili with no leftover placeholders', () => {
+    // The statement now carries a dynamic {{lines}} block (one row per fund)
+    // instead of fixed tithe/offering/other slots — see
+    // phase16/smsSwahiliTemplates.test.js for the full wording assertions.
     const body = renderTemplate('monthly_statement', 'sw', {
       churchName: 'Kanisa',
       memberName: 'Debora',
-      month: '07-2026',
-      tithe: '0.00',
-      offering: '0.00',
-      other: '10,000.00',
+      month: 'Julai 2026',
+      currency: 'TZS',
+      lines: '- Zaka: TZS 10,000.00',
       total: '10,000.00',
     });
     expect(body).not.toContain('{{');
     expect(body).toContain('Zaka');
-    expect(body).toContain('Sadaka');
+    expect(body).toContain('Jumla Kuu');
   });
 });
 

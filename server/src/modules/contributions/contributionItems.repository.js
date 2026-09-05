@@ -28,6 +28,23 @@ class ContributionItemsRepository extends TenantScopedRepository {
     );
     return rows;
   }
+
+  // Batch sibling of findByContributionId for the monthly statement, which
+  // needs the items of every contribution in a month at once — one query
+  // rather than one per contribution, the same N+1 rule
+  // userRoles.repository.js#listRolesForUsers already follows.
+  async findByContributionIds(tenantId, contributionIds, connection) {
+    assertTenantId(tenantId);
+    if (!contributionIds || contributionIds.length === 0) return [];
+    const placeholders = contributionIds.map(() => '?').join(', ');
+    const [rows] = await this.runner(connection).query(
+      `SELECT * FROM contribution_items
+        WHERE tenant_id = ? AND contribution_id IN (${placeholders})
+        ORDER BY contribution_id, id`,
+      [tenantId, ...contributionIds]
+    );
+    return rows;
+  }
 }
 
 export const contributionItemsRepository = new ContributionItemsRepository();
