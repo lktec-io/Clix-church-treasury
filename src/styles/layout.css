@@ -44,7 +44,9 @@
    On mobile it's a fixed drawer anchored to the right edge, slid in from
    off-screen right by Framer Motion (Layout.jsx). */
 .app-sidebar {
-  width: 240px;
+  /* Same token .app-main's desktop margin-right is built from, so the panel
+     and the space reserved for it can never disagree. */
+  width: var(--sidebar-width);
   flex-shrink: 0;
   order: 2;
   overflow: hidden;
@@ -102,22 +104,60 @@
 }
 
 @media (min-width: 900px) {
+  /* FIXED, not sticky. `position: sticky` keeps an element pinned only while
+     its containing block is still on screen — the sticky box cannot travel
+     outside its parent. The parent here is .app-shell, which is exactly as
+     tall as the page content, so on a long page (a full contributions
+     table, a year of transactions) the sidebar reached the bottom of
+     .app-shell and scrolled away with it. `fixed` takes the panel out of
+     flow entirely and pins it to the viewport, which is what an admin
+     dashboard nav is expected to do.
+
+     NOT `top: 0; height: 100vh`, deliberately: .app-topbar is itself fixed,
+     full-width, and at z-index 100 versus this panel's 92. Starting the
+     sidebar at y=0 would slide its brand row and collapse control
+     underneath the topbar, permanently hidden. Offsetting by the navbar
+     height is the same visual intent, correctly aligned — the panel still
+     spans the entire remaining viewport and never scrolls. */
   .app-sidebar {
-    position: sticky;
-    /* Sticks below the fixed navbar, and is exactly the remaining viewport
-       height so its own footer never hides under the fold. */
+    position: fixed;
     top: var(--navbar-height);
-    height: calc(100svh - var(--navbar-height));
+    right: 0;
+    bottom: 0;
+    height: auto;
     /* Flush with the top of the content area on desktop; only the mobile
        drawer floats as a detached panel. */
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
   }
+
+  /* Taking the sidebar out of flow means .app-main would otherwise run the
+     full viewport width and slide underneath it. This margin is the
+     reservation that replaces the flex track the panel used to occupy. */
   .app-main {
     min-width: 0;
-    /* order 1 vs the sidebar's 2 — content left, nav right, without
-       touching DOM order. */
     order: 1;
+    margin-right: var(--sidebar-width);
+    /* Matches the 0.25s/--ease-premium width animation Layout.jsx drives on
+       the panel itself, so the content edge and the panel edge move as one
+       object rather than the content snapping while the panel eases. */
+    transition: margin-right var(--motion-base) var(--ease-premium);
+  }
+
+  /* Collapsed rail. The general sibling combinator works because the <nav>
+     precedes .app-main in DOM order in both Layout.jsx and
+     PlatformLayout.jsx — source order is nav-then-main for screen readers
+     and tab flow, with the visual right-hand placement done via `order`. */
+  .app-sidebar.is-collapsed ~ .app-main {
+    margin-right: var(--sidebar-width-collapsed);
+  }
+}
+
+/* Nothing reserves space for a panel that isn't in flow on mobile — the
+   drawer floats over the content there by design. */
+@media (max-width: 899px) {
+  .app-main {
+    margin-right: 0;
   }
 }
 

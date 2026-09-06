@@ -27,10 +27,14 @@ describe('smsTemplates#renderTemplate', () => {
     expect(body).not.toContain('TZS TZS');
   });
 
-  it('falls back to English for an unsupported locale', () => {
-    const en = renderTemplate('contribution_confirmation', 'en', { memberName: 'X' });
+  // Every tenant is a Tanzanian church, so an unrecognised locale must land
+  // on Swahili. Falling back to English (the previous behaviour) meant a
+  // missing or typo'd locale silently sent English to a Swahili congregation.
+  it('falls back to Swahili, not English, for an unsupported locale', () => {
+    const sw = renderTemplate('contribution_confirmation', 'sw', { memberName: 'X' });
     const fr = renderTemplate('contribution_confirmation', 'fr', { memberName: 'X' });
-    expect(fr).toBe(en);
+    expect(fr).toBe(sw);
+    expect(fr).not.toBe(renderTemplate('contribution_confirmation', 'en', { memberName: 'X' }));
   });
 
   it('renders Swahili with no leftover placeholders', () => {

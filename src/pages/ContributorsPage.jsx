@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiSearch, FiUsers, FiUserPlus, FiKey, FiRotateCcw } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiUserPlus, FiKey, FiRotateCcw, FiUpload } from 'react-icons/fi';
 import { contributorsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -9,6 +9,7 @@ import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
+import BulkImportPanel from '../components/ui/BulkImportPanel.jsx';
 
 function emptyForm() {
   return { fullName: '', phone: '', email: '', memberNumber: '' };
@@ -25,6 +26,7 @@ export default function ContributorsPage() {
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState(null);
   const [search, setSearch] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,11 +117,26 @@ export default function ContributorsPage() {
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="contributors.manage">
+        {/* The import panel expands in place, directly above the single-add
+            form, rather than opening a modal — the two are alternative ways
+            of doing the same job, so keeping them on one surface lets a
+            clerk see both without losing their place. */}
+        <BulkImportPanel open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
+
         <div className="card">
           <div className="card__header">
             <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <FiUserPlus aria-hidden="true" /> {t('contributors.addNew')}
             </h2>
+            {/* Secondary to the form's own primary "Save" — importing is the
+                bulk alternative to filling this form in, not the main
+                action on the page. Hidden while the panel is open, since it
+                would then just be a toggle for something already visible. */}
+            {!importOpen && (
+              <button type="button" className="btn btn--secondary btn--sm" onClick={() => setImportOpen(true)}>
+                <FiUpload aria-hidden="true" /> {t('contributors.import.open')}
+              </button>
+            )}
           </div>
           <form onSubmit={handleSubmit}>
             <div className="form-grid">

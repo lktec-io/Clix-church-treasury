@@ -29,6 +29,16 @@
   --motion-base: 0.25s;
   --motion-slow: 0.35s;
 
+  /* Sidebar geometry. These are the SAME two numbers as SIDEBAR_WIDTH /
+     SIDEBAR_WIDTH_COLLAPSED in src/components/Layout.jsx, which animates the
+     panel's inline width with Framer Motion. On desktop the sidebar is
+     `position: fixed`, so .app-main reserves its space with a matching
+     margin-right built from these tokens — the two values must move
+     together or content slides under the panel. Changing one without the
+     other in Layout.jsx is the bug this comment exists to prevent. */
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 76px;
+
   /* Nunito, self-hosted via @fontsource/nunito (main.jsx) — SIL Open Font
      License, freely bundleable. Weights 400/500/600/700 only. */
   --font-primary: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;

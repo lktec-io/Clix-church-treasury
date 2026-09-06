@@ -53,6 +53,14 @@ const TEMPLATES = {
 // visible line, and the full detail is always in the PDF statement.
 const OVERFLOW_LABEL = { en: 'Other funds', sw: 'Mifuko mingine' };
 
+// Swahili, not English, is the fallback everywhere in this module. Every
+// tenant is a Tanzanian church (tenants.locale_default defaults to 'sw',
+// migration 0034), so an unrecognised or missing locale resolving to English
+// is always the wrong guess — it produces an English message for a Swahili
+// congregation, which is precisely the failure this is meant to prevent.
+// Explicitly passing 'en' still renders English; only the FALLBACK changed.
+const DEFAULT_SMS_LOCALE = 'sw';
+
 // Beyond this many rows the remainder is summed into OVERFLOW_LABEL. Eight
 // named lines plus the header, total and blessing is ~4 SMS segments in
 // GSM-7 — the ceiling worth spending on a courtesy notification.
@@ -70,8 +78,8 @@ const MONTH_NAMES = {
 // `month` is 1-12 (as validated by validateYearMonth), not a 0-indexed JS
 // month. Falls back to the numeric form rather than throwing — a statement
 // SMS must never fail to send because of a label.
-export function formatSmsMonthYear(year, month, locale = 'en') {
-  const names = MONTH_NAMES[locale] ?? MONTH_NAMES.en;
+export function formatSmsMonthYear(year, month, locale = DEFAULT_SMS_LOCALE) {
+  const names = MONTH_NAMES[locale] ?? MONTH_NAMES[DEFAULT_SMS_LOCALE];
   const name = names[Number(month) - 1];
   return name ? `${name} ${year}` : `${String(month).padStart(2, '0')}-${year}`;
 }
@@ -85,24 +93,60 @@ export function formatSmsMonthYear(year, month, locale = 'en') {
 // Returns '' for an empty month, which renders a statement with no line
 // block at all rather than a dangling header — a member with no recorded
 // giving still gets a coherent message.
-export function formatSmsLineItems(lineItems = [], currency = 'TZS', formatAmount = String, locale = 'en') {
+export function formatSmsLineItems(lineItems = [], currency = 'TZS', formatAmount = String, locale = DEFAULT_SMS_LOCALE) {
   if (!Array.isArray(lineItems) || lineItems.length === 0) return '';
 
   const named = lineItems.slice(0, MAX_SMS_LINE_ITEMS);
   const overflow = lineItems.slice(MAX_SMS_LINE_ITEMS);
 
-  const rows = named.map((item) => `- ${item.label}: ${currency} ${formatAmount(item.amount)}`);
+  // No "- " bullet prefix. A dash renders as literal punctuation in a plain
+  // SMS — there is no list formatting to opt into — so it read as noise on
+  // the handset, and on a message whose first line happened to be a fund it
+  // put a stray dash at the very start of the text. One item per line,
+  // separated by \n, is the whole formatting mechanism a message body has.
+  const rows = named.map((item) => `${item.label}: ${currency} ${formatAmount(item.amount)}`);
 
   if (overflow.length > 0) {
     // Summed as a Number here rather than through sumMoney: this is display
     // text for an SMS, not a ledger figure, and the authoritative total is
     // {{total}} which is computed by the financial helpers upstream.
     const rolled = overflow.reduce((sum, item) => sum + Number(item.amount), 0);
-    const label = OVERFLOW_LABEL[locale] ?? OVERFLOW_LABEL.en;
-    rows.push(`- ${label}: ${currency} ${formatAmount(rolled.toFixed(2))}`);
+    const label = OVERFLOW_LABEL[locale] ?? OVERFLOW_LABEL[DEFAULT_SMS_LOCALE];
+    rows.push(`${label}: ${currency} ${formatAmount(rolled.toFixed(2))}`);
   }
 
   return rows.join('\n');
+}
+
+// Final pass over every rendered body, applied inside renderTemplate so no
+// call site can forget it.
+//
+// The problem it solves: templates embed block placeholders on their own
+// line (`...kwa {{memberName}}.\n{{lines}}\nJumla Kuu:...`). When the block
+// is empty — a member with nothing recorded that month — substitution leaves
+// `\n\n`, i.e. a blank line mid-message, and for a body whose first
+// placeholder is empty it leaves the text starting on a blank line. Rather
+// than making every template defend against its own empty params, the body
+// is normalised once, here:
+//
+//   · runs of blank lines collapse to a single newline
+//   · leading dashes / bullet ticks / whitespace are stripped from the START
+//     of the message (never from interior lines, which may legitimately
+//     contain a hyphenated fund name)
+//   · trailing whitespace is trimmed
+// No template in this module contains a deliberate blank line, so dropping
+// every empty line outright is both correct and simpler than trying to
+// preserve intentional ones.
+function tidySmsBody(body) {
+  const lines = body
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0);
+  // Leading bullet punctuation is stripped from the first line only.
+  // Interior lines are left alone: "Sadaka ya Kambi - Watoto" is a fund name
+  // a tenant may legitimately have typed, not formatting to clean up.
+  if (lines.length > 0) lines[0] = lines[0].replace(/^[\s\-–—•*]+/, '');
+  return lines.join('\n');
 }
 
 export function renderTemplate(templateKey, locale, params = {}) {
@@ -110,6 +154,12 @@ export function renderTemplate(templateKey, locale, params = {}) {
   if (!localeTemplates) {
     throw new Error(`Unknown SMS template key: ${templateKey}`);
   }
-  const template = localeTemplates[locale] ?? localeTemplates.en;
-  return template.replace(/\{\{(\w+)\}\}/g, (_match, key) => (params[key] !== undefined && params[key] !== null ? String(params[key]) : ''));
+  // Unknown/absent locale falls back to Swahili, never English — see
+  // DEFAULT_SMS_LOCALE. A tenant is a Tanzanian church; guessing English is
+  // guessing wrong.
+  const template = localeTemplates[locale] ?? localeTemplates[DEFAULT_SMS_LOCALE];
+  const body = template.replace(/\{\{(\w+)\}\}/g, (_match, key) =>
+    params[key] !== undefined && params[key] !== null ? String(params[key]) : ''
+  );
+  return tidySmsBody(body);
 }

@@ -24,7 +24,14 @@ export class TenantsRepository {
     return rows[0] ?? null;
   }
 
-  async create({ name, slug, baseCurrency = 'TZS', localeDefault = 'en' }, connection) {
+  // localeDefault defaults to 'sw', matching the column default migration
+  // 0034 set. It said 'en' until now, which quietly defeated that migration
+  // for every NEW church: 0034 moved the existing tenants to Swahili and
+  // changed the column default, but this parameter is passed explicitly on
+  // every INSERT, so the column default never applied and each newly
+  // registered church was created in English again — the exact failure 0034
+  // was written to fix, reintroduced one layer up.
+  async create({ name, slug, baseCurrency = 'TZS', localeDefault = 'sw' }, connection) {
     const now = nowSql();
     const [result] = await this.runner(connection).query(
       `INSERT INTO tenants (name, slug, base_currency, locale_default, status, created_at, updated_at)

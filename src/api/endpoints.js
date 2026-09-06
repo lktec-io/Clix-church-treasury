@@ -111,6 +111,22 @@ export const contributorsApi = {
     });
     triggerDownload(res.data, filenameFromResponse(res, `statement-${year}-${month}.pdf`));
   },
+
+  // Same blob → triggerDownload path every other file download here uses,
+  // so the template arrives through the authenticated axios client rather
+  // than a bare <a href> that would miss the Authorization header.
+  async downloadImportTemplate() {
+    const res = await apiClient.get('/contributors/bulk-import/template', { responseType: 'blob' });
+    triggerDownload(res.data, filenameFromResponse(res, 'contributors-import-template.xlsx'));
+  },
+
+  // The file is sent base64-encoded inside the ordinary JSON body rather
+  // than as multipart/form-data — the server has no multipart parser, and
+  // adding one for the single upload in this product was not worth a second
+  // body-parsing path. FileReader gives us the data: URL; everything after
+  // the comma is the payload.
+  bulkImport: (fileName, contentBase64) =>
+    apiClient.post('/contributors/bulk-import', { fileName, contentBase64 }).then(unwrap),
 };
 
 export const contributionsApi = {

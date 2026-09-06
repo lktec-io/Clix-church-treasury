@@ -36,9 +36,13 @@ describe('validateCreateTenant', () => {
 });
 
 describe('validateUpdateTenant', () => {
+  // Swahili, not English — the validator has defaulted to 'sw' since
+  // migration 0034 made it the tenant default, but this expectation was
+  // never updated with it, so it has been failing independently of the
+  // locale sweep this change is part of.
   it('accepts a valid payload with defaults for currency/locale', () => {
     const result = validateUpdateTenant({ name: 'Grace Church' });
-    expect(result).toEqual({ name: 'Grace Church', baseCurrency: 'TZS', localeDefault: 'en' });
+    expect(result).toEqual({ name: 'Grace Church', baseCurrency: 'TZS', localeDefault: 'sw' });
   });
 
   it('rejects a malformed currency code', () => {

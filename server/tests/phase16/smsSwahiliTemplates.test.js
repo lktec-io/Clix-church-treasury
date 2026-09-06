@@ -57,9 +57,9 @@ describe('Swahili monthly statement (Template B)', () => {
     expect(renderTemplate('monthly_statement', 'sw', params)).toBe(
       'Kanisa la Mfano\n' +
         'Ripoti ya Utoaji ya Septemba 2026 kwa Neema Joseph.\n' +
-        '- Zaka: TZS 120,000.00\n' +
-        '- Sadaka ya Kambi: TZS 45,000.00\n' +
-        '- Mfuko wa Ujenzi: TZS 10,000.00\n' +
+        'Zaka: TZS 120,000.00\n' +
+        'Sadaka ya Kambi: TZS 45,000.00\n' +
+        'Mfuko wa Ujenzi: TZS 10,000.00\n' +
         'Jumla Kuu: TZS 175,000.00\n' +
         'Mungu akubariki sana.'
     );
@@ -84,8 +84,11 @@ describe('Swahili monthly statement (Template B)', () => {
 describe('formatSmsLineItems', () => {
   const fmt = (v) => Number(v).toFixed(2);
 
-  it('renders one dash-prefixed row per fund, currency-prefixed', () => {
-    expect(formatSmsLineItems([{ label: 'Zaka', amount: '1000.00' }], 'TZS', fmt, 'sw')).toBe('- Zaka: TZS 1000.00');
+  // No bullet prefix: a dash is literal punctuation in an SMS, and on a
+  // message whose first line is a fund it left a stray dash at the very
+  // start of the text.
+  it('renders one plain row per fund, currency-prefixed, with no bullet dash', () => {
+    expect(formatSmsLineItems([{ label: 'Zaka', amount: '1000.00' }], 'TZS', fmt, 'sw')).toBe('Zaka: TZS 1000.00');
   });
 
   it('returns an empty block for a month with nothing recorded', () => {
@@ -94,7 +97,7 @@ describe('formatSmsLineItems', () => {
   });
 
   it('honours a non-TZS tenant currency', () => {
-    expect(formatSmsLineItems([{ label: 'Tithe', amount: '5.00' }], 'KES', fmt, 'en')).toBe('- Tithe: KES 5.00');
+    expect(formatSmsLineItems([{ label: 'Tithe', amount: '5.00' }], 'KES', fmt, 'en')).toBe('Tithe: KES 5.00');
   });
 
   // The cost guard: a member giving to a dozen funds must not trigger a
@@ -104,12 +107,52 @@ describe('formatSmsLineItems', () => {
     const many = Array.from({ length: 11 }, (_, i) => ({ label: `Fund ${i + 1}`, amount: '100.00' }));
     const rows = formatSmsLineItems(many, 'TZS', fmt, 'sw').split('\n');
     expect(rows).toHaveLength(9);
-    expect(rows[8]).toBe('- Mifuko mingine: TZS 300.00');
+    expect(rows[8]).toBe('Mifuko mingine: TZS 300.00');
   });
 
   it('labels the rolled-up line in English for an English statement', () => {
     const many = Array.from({ length: 10 }, (_, i) => ({ label: `Fund ${i + 1}`, amount: '50.00' }));
-    expect(formatSmsLineItems(many, 'TZS', fmt, 'en')).toContain('- Other funds: TZS 100.00');
+    expect(formatSmsLineItems(many, 'TZS', fmt, 'en')).toContain('Other funds: TZS 100.00');
+  });
+});
+
+describe('rendered bodies are clean text, never bullet-list debris', () => {
+  const TEMPLATE_KEYS = ['member_registration', 'contribution_confirmation', 'monthly_statement'];
+
+  // The invariant the "remove prefix dashes" pass exists to hold: whatever
+  // the params, no message may open with a dash or bullet tick.
+  it.each(TEMPLATE_KEYS)('%s never starts with a dash or bullet, even with empty params', (key) => {
+    expect(renderTemplate(key, 'sw', {})).not.toMatch(/^[\s\-–—•*]/);
+  });
+
+  it.each(TEMPLATE_KEYS)('%s never contains a blank line', (key) => {
+    expect(renderTemplate(key, 'sw', {})).not.toMatch(/\n\s*\n/);
+  });
+
+  // The specific case that produced one: {{lines}} sits on its own line, so
+  // a member with nothing recorded that month left `\n\n` mid-message.
+  it('drops the line block entirely for a member with nothing recorded', () => {
+    const body = renderTemplate('monthly_statement', 'sw', {
+      churchName: 'Kanisa la Mfano',
+      memberName: 'Neema Joseph',
+      month: 'Septemba 2026',
+      currency: 'TZS',
+      lines: formatSmsLineItems([], 'TZS', String, 'sw'),
+      total: '0.00',
+    });
+    expect(body).toBe(
+      'Kanisa la Mfano\n' +
+        'Ripoti ya Utoaji ya Septemba 2026 kwa Neema Joseph.\n' +
+        'Jumla Kuu: TZS 0.00\n' +
+        'Mungu akubariki sana.'
+    );
+  });
+
+  // A hyphen inside a tenant's own fund name is data, not formatting.
+  it('does not strip a dash from the middle of a line', () => {
+    const lines = formatSmsLineItems([{ label: 'Sadaka - Watoto', amount: '100.00' }], 'TZS', String, 'sw');
+    const body = renderTemplate('monthly_statement', 'sw', { churchName: 'K', memberName: 'N', lines, total: '100.00' });
+    expect(body).toContain('Sadaka - Watoto: TZS 100.00');
   });
 });
 
@@ -136,8 +179,12 @@ describe('formatSmsMonthYear', () => {
     expect(formatSmsMonthYear(2026, 0, 'sw')).toBe('00-2026');
   });
 
-  it('falls back to English month names for an unknown locale', () => {
-    expect(formatSmsMonthYear(2026, 9, 'fr')).toBe('September 2026');
+  it('falls back to Swahili month names for an unknown locale', () => {
+    expect(formatSmsMonthYear(2026, 9, 'fr')).toBe('Septemba 2026');
+  });
+
+  it('defaults to Swahili when no locale is supplied at all', () => {
+    expect(formatSmsMonthYear(2026, 9)).toBe('Septemba 2026');
   });
 });
 

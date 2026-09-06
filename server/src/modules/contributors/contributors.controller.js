@@ -1,5 +1,6 @@
 import * as contributorsService from './contributors.service.js';
-import { validateCreateContributor } from './contributors.validator.js';
+import { validateCreateContributor, validateBulkImport } from './contributors.validator.js';
+import { buildImportTemplateWorkbook } from './bulkImport.js';
 import { validationError } from '../../errors/AppError.js';
 import { getMonthlyStatement, validateYearMonth } from '../contributions/statement.service.js';
 import { renderStatementPdf } from '../contributions/statementPdf.js';
@@ -34,6 +35,34 @@ export async function create(req, res, next) {
     const data = validateCreateContributor(req.body ?? {});
     const contributor = await contributorsService.createContributor(req.tenantId, data);
     res.status(201).json({ success: true, data: contributor });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Starter file for the bulk import, generated on demand rather than served
+// as a checked-in binary — the columns it ships with are then guaranteed to
+// be the same TEMPLATE_COLUMNS the parser reads, and can never drift out of
+// sync with it the way a static asset would.
+export async function bulkImportTemplate(req, res, next) {
+  try {
+    const buffer = await buildImportTemplateWorkbook();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="contributors-import-template.xlsx"');
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function bulkImport(req, res, next) {
+  try {
+    const { contentBase64 } = validateBulkImport(req.body ?? {});
+    const result = await contributorsService.bulkImportContributors(req.tenantId, contentBase64, req.auth.userId);
+    // 200, not 201: a partially-skipped import is a normal, successful
+    // outcome that the client renders as a summary, not a creation of one
+    // identifiable resource.
+    res.json({ success: true, data: result });
   } catch (err) {
     next(err);
   }

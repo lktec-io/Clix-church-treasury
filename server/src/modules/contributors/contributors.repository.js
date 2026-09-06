@@ -29,13 +29,17 @@ class ContributorsRepository extends TenantScopedRepository {
     return rows[0] ?? null;
   }
 
-  async create(tenantId, { fullName, phone, email, memberNumber }, connection) {
+  async create(tenantId, { fullName, phone, email, gender, memberNumber }, connection) {
     return this.insert(
       tenantId,
       {
         full_name: fullName,
         phone: phone ?? null,
         email: email ?? null,
+        // NULL means "never recorded" — the column's own default. Callers
+        // that don't collect gender (the single-contributor form) simply
+        // don't pass it. See migration 0035.
+        gender: gender ?? null,
         member_number: memberNumber ?? null,
         is_active: true,
       },

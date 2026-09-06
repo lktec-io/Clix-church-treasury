@@ -32,7 +32,11 @@ function maskPhone(phone) {
 // requirement: "record enough information to diagnose").
 export async function sendSms(
   tenantId,
-  { contributorId = null, phone, templateKey, params = {}, locale = 'en', relatedType = null, relatedId = null }
+  // locale defaults to Swahili, not English: every caller already resolves
+  // `contributor.locale ?? tenant.locale_default ?? 'sw'`, so this default
+  // only applies to a caller that passed nothing at all — and for a
+  // Tanzanian church the safe assumption there is Swahili.
+  { contributorId = null, phone, templateKey, params = {}, locale = 'sw', relatedType = null, relatedId = null }
 ) {
   const body = renderTemplate(templateKey, locale, params);
   const normalizedPhone = normalizeTzPhone(phone);

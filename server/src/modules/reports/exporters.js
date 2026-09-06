@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
+import { PALETTE, trackingFor } from './pdfTheme.js';
 
 // Shared export infrastructure — every report in reports.service.js renders
 // through these three functions, never a bespoke exporter per report
@@ -36,14 +37,12 @@ export async function toExcelBuffer(rows, columns, sheetName = 'Report') {
 // generated timestamp, a table, and a totals line if provided. A4,
 // paginated automatically by pdfkit as content overflows a page
 // (docs/MASTER_TODO.md Phase 9: "properly paginated").
-// The product's palette, mirrored from src/styles/themes.css so an exported
-// PDF is recognisably the same system as the screen it came from.
-const NAVY = '#0b1f4d';
-const GREEN = '#10b981';
-const INK = '#1e293b';
-const MUTED = '#5b6b8c';
-const HAIRLINE = '#dbe2ef';
-const ZEBRA = '#f4f7fc';
+// The product's palette now lives in pdfTheme.js, shared with the receipt
+// and statement documents — one source of truth for all three rather than a
+// copy per generator.
+// HAIRLINE is intentionally absent: the totals rule it used to draw is now
+// the green double rule below.
+const { navy: NAVY, green: GREEN, ink: INK, muted: MUTED, zebra: ZEBRA } = PALETTE;
 
 export function streamPdfReport({ tenant, title, filterSummary, columns, rows, totals }, stream) {
   const doc = new PDFDocument({ size: 'A4', margin: 40, layout: 'landscape' });
@@ -58,8 +57,15 @@ export function streamPdfReport({ tenant, title, filterSummary, columns, rows, t
     doc.rect(0, 0, doc.page.width, 74).fill(NAVY);
     doc.rect(0, 74, doc.page.width, 3).fill(GREEN);
 
+    // Uppercase with 0.05em tracking, matching the receipt and statement
+    // mastheads exactly (pdfTheme.js#drawMasthead).
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(15);
-    doc.text(tenant?.name ?? '', left, 20, { width: contentWidth * 0.62, ellipsis: true });
+    doc.text(String(tenant?.name ?? '').toUpperCase(), left, 20, {
+      width: contentWidth * 0.62,
+      ellipsis: true,
+      lineBreak: false,
+      characterSpacing: trackingFor(15),
+    });
     doc.font('Helvetica').fontSize(10).fillColor('#c7d2e8');
     doc.text(title, left, 42, { width: contentWidth * 0.62, ellipsis: true });
 
@@ -138,8 +144,14 @@ export function streamPdfReport({ tenant, title, filterSummary, columns, rows, t
   });
 
   if (totals) {
-    doc.moveTo(left, doc.y).lineTo(right, doc.y).lineWidth(1).strokeColor(HAIRLINE).stroke();
-    doc.moveDown(0.25);
+    // Green DOUBLE rule, the accounting convention for a closing sum —
+    // "nothing follows this". A single hairline reads as just another row
+    // separator. Same treatment as pdfTheme.js#drawGrandTotal.
+    doc.y += 3;
+    doc.moveTo(left, doc.y).lineTo(right, doc.y).lineWidth(1.2).strokeColor(GREEN).stroke();
+    doc.y += 2.5;
+    doc.moveTo(left, doc.y).lineTo(right, doc.y).lineWidth(0.6).strokeColor(GREEN).stroke();
+    doc.y += 5;
     // Totals in green — the one figure a reader is usually looking for.
     drawRow(
       columns.map((c) => totals[c.key] ?? ''),
