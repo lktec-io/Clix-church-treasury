@@ -1220,3 +1220,199 @@
   color: var(--text-heading);
   overflow-wrap: anywhere;
 }
+
+/* ==========================================================================
+   SMS POP-CENTER — centred dispatch dialog (SmsPopCenter.jsx)
+   The moment-of-send surface. The inline .sms-dispatch banner above remains
+   the persistent record on the page; this is the foreground event.
+   ========================================================================== */
+.sms-pop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120; /* above the topbar (100) and the toast/modal tier (110) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--modal-backdrop-bg);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.sms-pop-center {
+  width: 100%;
+  max-width: 420px;
+  /* svh, not vh: mobile browser chrome shows/hides, and vh would let the
+     dialog claim height that isn't actually visible. */
+  max-height: 88svh;
+  overflow-y: auto;
+  padding: 28px 24px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+/* Fixed-height stage so the swap from ticker to badge does not change the
+   dialog's height — the panel would otherwise jump at the exact moment the
+   tick lands, which is the beat that should feel most settled. */
+.sms-pop-center__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 130px;
+  margin-bottom: 4px;
+}
+
+.sms-pop-center__ring-wrap {
+  position: relative;
+  width: 130px;
+  height: 130px;
+}
+
+.sms-pop-center__ring {
+  width: 130px;
+  height: 130px;
+  /* Start the arc at 12 o'clock rather than 3. */
+  transform: rotate(-90deg);
+}
+
+.sms-pop-center__ring-track {
+  fill: none;
+  stroke: rgba(var(--color-primary-rgb), 0.12);
+  stroke-width: 8;
+}
+
+.sms-pop-center__ring-bar {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(var(--color-accent-rgb), 0.45));
+}
+
+.sms-pop-center__percent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+}
+
+.sms-pop-center__percent-sign {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.sms-pop-center__badge-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 130px;
+  height: 130px;
+}
+
+/* Soft halo behind the tick — reads as the ring having resolved into the
+   badge rather than the badge simply replacing it. */
+.sms-pop-center__badge-ring {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: rgba(var(--color-accent-rgb), 0.12);
+  box-shadow: inset 0 0 0 2px rgba(var(--color-accent-rgb), 0.28);
+}
+
+.sms-pop-center__badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-dark));
+  color: #ffffff;
+  font-size: 44px;
+  box-shadow: 0 16px 34px -12px rgba(var(--color-accent-rgb), 0.7);
+}
+
+.sms-pop-center__badge.is-failed {
+  background: linear-gradient(150deg, var(--color-danger), rgba(var(--color-danger-rgb), 0.75));
+  box-shadow: 0 16px 34px -12px rgba(var(--color-danger-rgb), 0.6);
+}
+
+.sms-pop-center__badge.is-neutral {
+  background: linear-gradient(150deg, var(--color-primary), rgba(var(--color-primary-rgb), 0.75));
+  box-shadow: 0 16px 34px -12px rgba(var(--color-primary-rgb), 0.5);
+}
+
+.sms-pop-center__title {
+  margin-top: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.sms-pop-center__reason {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.sms-pop-center__preview-wrap {
+  margin-top: 16px;
+  text-align: left;
+}
+
+.sms-pop-center__preview-label {
+  margin-bottom: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Monospace and pre-wrapped: the message's own line breaks are its
+   formatting, so they must survive verbatim. Selectable — a treasurer
+   double-checking a figure should be able to copy the text. */
+.sms-pop-center__preview {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-primary-rgb), 0.05);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.sms-pop-center__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+@media (max-width: 480px) {
+  .sms-pop-center {
+    padding: 22px 16px 18px;
+  }
+  .sms-pop-center__actions .btn {
+    flex: 1 1 auto;
+  }
+}

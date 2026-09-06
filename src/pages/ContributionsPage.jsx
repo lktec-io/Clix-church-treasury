@@ -13,6 +13,7 @@ import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import SmsDispatchIndicator from '../components/ui/SmsDispatchIndicator.jsx';
+import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
 import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -86,6 +87,11 @@ export default function ContributionsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [smsNotice, setSmsNotice] = useState(null); // { contributionId, status } | null
+  // The centred dispatch dialog. Separate state from smsNotice because the
+  // two have different lifetimes: the popup is the moment of sending and is
+  // dismissed, while the inline banner stays on the page afterwards as the
+  // record (and keeps the retry action reachable once the popup is closed).
+  const [smsPop, setSmsPop] = useState(null);
   const [resendingSms, setResendingSms] = useState(false);
   const [step, setStep] = useState(1);
   const [stepError, setStepError] = useState(null);
@@ -245,7 +251,7 @@ export default function ContributionsPage() {
       // auto-dismiss and hide the retry action) so a failed send is both
       // honest and recoverable without re-entering the whole contribution.
       if (result.sms) {
-        setSmsNotice({
+        const dispatch = {
           // Bumped on every dispatch so the indicator replays its sequence
           // for a resend instead of sitting on the previous result.
           dispatchId: Date.now(),
@@ -254,7 +260,9 @@ export default function ContributionsPage() {
           reasonCode: result.sms.reasonCode,
           reason: result.sms.errorMessage,
           preview: result.sms.preview,
-        });
+        };
+        setSmsNotice(dispatch);
+        setSmsPop(dispatch);
       }
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -268,14 +276,19 @@ export default function ContributionsPage() {
     setResendingSms(true);
     try {
       const { sms } = await contributionsApi.resendSms(smsNotice.contributionId);
-      setSmsNotice({
+      const dispatch = {
         dispatchId: Date.now(),
         contributionId: smsNotice.contributionId,
         status: sms.status,
         reasonCode: sms.reasonCode,
         reason: sms.errorMessage,
         preview: sms.preview,
-      });
+      };
+      setSmsNotice(dispatch);
+      // A manual resend replays the full dispatch sequence too — the
+      // treasurer triggered it deliberately and needs the same confirmation
+      // (and the same message preview) they get on the first send.
+      setSmsPop(dispatch);
       // No success toast on resend — the indicator's tick already says it,
       // and two simultaneous success signals for one action reads as a bug.
     } catch (err) {
@@ -313,6 +326,21 @@ export default function ContributionsPage() {
           sent. Staff-only page, so the concrete (non-secret) failure reason
           is safe to surface — it's the difference between "contact IT about
           the SMS provider" and "this contributor's phone number is wrong". */}
+      {/* Foreground dispatch dialog. key={dispatchId} remounts it on a
+          resend so the ticker replays from 1% rather than sitting on the
+          previous result. */}
+      <AnimatePresence>
+        {smsPop && (
+          <SmsPopCenter
+            key={smsPop.dispatchId}
+            dispatch={smsPop}
+            onClose={() => setSmsPop(null)}
+            onRetry={handleRetrySms}
+            retrying={resendingSms}
+          />
+        )}
+      </AnimatePresence>
+
       {smsNotice && (
         <SmsDispatchIndicator
           key={smsNotice.dispatchId}

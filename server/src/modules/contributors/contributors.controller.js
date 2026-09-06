@@ -116,26 +116,26 @@ export async function sendStatementSms(req, res, next) {
     }
     const statementData = await getMonthlyStatement(req.tenantId, contributor.id, year, month);
     const tenant = await tenantsRepository.findById(req.tenantId);
-    // Resolved once so the month label and the template body cannot end up
-    // in different languages ("Ripoti ya Utoaji ya September 2026").
-    const statementLocale = contributor.locale ?? tenant?.locale_default ?? 'sw';
     const currency = tenant?.base_currency ?? 'TZS';
+    // No locale is resolved here any more: SMS is Swahili-only
+    // (sms/smsTemplates.js), so the month label and the template body cannot
+    // disagree — the mismatched "Ripoti ya Utoaji ya September 2026" this
+    // used to guard against is now unrepresentable.
     const sms = await sendSms(req.tenantId, {
       contributorId: contributor.id,
       phone: contributor.phone,
       templateKey: 'monthly_statement',
-      locale: statementLocale,
       params: {
         churchName: tenant?.name,
         memberName: contributor.full_name,
-        month: formatSmsMonthYear(year, month, statementLocale),
+        month: formatSmsMonthYear(year, month),
         currency,
         // One line per fund the member actually gave to this month, built
         // from contribution_items.purpose where a breakdown exists and the
         // category name otherwise (statement.service.js#buildLineItems).
         // Replaces the old fixed tithe/offering/other triplet, which
         // flattened every designated fund into a single "Zinginezo" figure.
-        lines: formatSmsLineItems(statementData.lineItems, currency, formatMoney, statementLocale),
+        lines: formatSmsLineItems(statementData.lineItems, currency, formatMoney),
         total: formatMoney(statementData.total),
       },
       relatedType: 'contributor_statement',

@@ -97,7 +97,7 @@ describe('formatSmsLineItems', () => {
   });
 
   it('honours a non-TZS tenant currency', () => {
-    expect(formatSmsLineItems([{ label: 'Tithe', amount: '5.00' }], 'KES', fmt, 'en')).toBe('Tithe: KES 5.00');
+    expect(formatSmsLineItems([{ label: 'Tithe', amount: '5.00' }], 'KES', fmt)).toBe('Tithe: KES 5.00');
   });
 
   // The cost guard: a member giving to a dozen funds must not trigger a
@@ -110,9 +110,17 @@ describe('formatSmsLineItems', () => {
     expect(rows[8]).toBe('Mifuko mingine: TZS 300.00');
   });
 
-  it('labels the rolled-up line in English for an English statement', () => {
-    const many = Array.from({ length: 10 }, (_, i) => ({ label: `Fund ${i + 1}`, amount: '50.00' }));
-    expect(formatSmsLineItems(many, 'TZS', fmt, 'en')).toContain('Other funds: TZS 100.00');
+  // Tenant-authored fund names are emitted verbatim — never translated,
+  // re-cased or normalised. "Makambi 2027" and "Effort-maendeleo" must
+  // survive exactly as the church typed them into the breakdown.
+  it('prints tenant fund names exactly as stored', () => {
+    const labels = ['Makambi 2027', 'Effort-maendeleo', 'Sadaka ya Kambi', 'IDARA YA WATOTO'];
+    const body = formatSmsLineItems(
+      labels.map((label) => ({ label, amount: '100.00' })),
+      'TZS',
+      fmt
+    );
+    for (const label of labels) expect(body).toContain(`${label}: TZS 100.00`);
   });
 });
 
@@ -163,15 +171,18 @@ describe('formatSmsMonthYear', () => {
     expect(formatSmsMonthYear(2026, 12, 'sw')).toBe('Desemba 2026');
   });
 
-  it('uses English month names for en', () => {
-    expect(formatSmsMonthYear(2026, 9, 'en')).toBe('September 2026');
+  // "Ripoti ya Utoaji ya September 2026" was the most visible artefact of
+  // the old bilingual selection — a Swahili sentence with an English month
+  // in the middle of it. There is no English month set any more.
+  it('stays Swahili even when a locale of "en" is passed', () => {
+    expect(formatSmsMonthYear(2026, 9, 'en')).toBe('Septemba 2026');
   });
 
   // month is 1-12 from validateYearMonth, not a 0-indexed JS month — this
   // pins that boundary so an off-by-one can't silently ship.
   it('treats month as 1-indexed', () => {
-    expect(formatSmsMonthYear(2026, 1, 'en')).toBe('January 2026');
-    expect(formatSmsMonthYear(2026, 12, 'en')).toBe('December 2026');
+    expect(formatSmsMonthYear(2026, 1)).toBe('Januari 2026');
+    expect(formatSmsMonthYear(2026, 12)).toBe('Desemba 2026');
   });
 
   it('falls back to a numeric label rather than throwing on a bad month', () => {

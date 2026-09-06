@@ -38,8 +38,14 @@ export default function BulkImportPanel({ open, onClose, onImported }) {
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
+  // `error` is { message, details } — details being the server's `fields`
+  // map (which row / which column / what the database said). Showing only
+  // the summary message left a clerk with "Invalid payload" and nothing to
+  // act on, which is exactly what made a failed import feel like a crash.
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+
+  const failWith = (err) => setError({ message: err.message, details: err.fields ?? null });
 
   const reset = () => {
     setFile(null);
@@ -53,7 +59,7 @@ export default function BulkImportPanel({ open, onClose, onImported }) {
     setResult(null);
     if (!candidate) return;
     if (candidate.size > MAX_FILE_BYTES) {
-      setError(t('contributors.import.tooLarge'));
+      setError({ message: t('contributors.import.tooLarge'), details: null });
       return;
     }
     setFile(candidate);
@@ -70,7 +76,7 @@ export default function BulkImportPanel({ open, onClose, onImported }) {
     try {
       await contributorsApi.downloadImportTemplate();
     } catch (err) {
-      setError(unwrapApiError(err).message);
+      failWith(unwrapApiError(err));
     }
   };
 
@@ -88,7 +94,7 @@ export default function BulkImportPanel({ open, onClose, onImported }) {
       await onImported();
       if (data.imported > 0) toast.success(t('contributors.import.done', { count: data.imported }));
     } catch (err) {
-      setError(unwrapApiError(err).message);
+      failWith(unwrapApiError(err));
     } finally {
       setBusy(false);
     }
@@ -121,7 +127,24 @@ export default function BulkImportPanel({ open, onClose, onImported }) {
               </button>
             </div>
 
-            {error && <div className="alert alert--error">{error}</div>}
+            {/* The summary line plus whatever the server could attribute:
+                the offending column, the row, or the database's own
+                complaint. This is what turns "the import failed" into
+                something a clerk can actually fix in their spreadsheet. */}
+            {error && (
+              <div className="alert alert--error">
+                <div>{error.message}</div>
+                {error.details && (
+                  <ul className="import-error__list">
+                    {Object.entries(error.details).map(([field, detail]) => (
+                      <li key={field}>
+                        <strong>{field}</strong>: {String(detail)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {/* Drop zone. It is a <button> rather than a <div onClick>, so
                 keyboard and screen-reader users reach it the same way a

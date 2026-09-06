@@ -90,11 +90,18 @@ function isXlsx(buffer) {
 // of lines, not a dependency" stance — but this is the reading direction, so
 // it has to handle quoted fields containing commas, newlines and escaped
 // quotes, which the writing direction never had to.
+// Returns `{ rowNumber, values }`, where rowNumber is the LINE NUMBER AS THE
+// CLERK SEES IT IN EXCEL (1-based, counting the header). Blank lines are
+// still dropped from the result, but they keep their line number reserved —
+// dropping them silently used to renumber everything after them, so a report
+// saying "row 4 is a duplicate" pointed at the wrong line whenever the
+// spreadsheet had a blank separator row anywhere above it.
 export function parseCsv(text) {
   const rows = [];
   let row = [];
   let field = '';
   let inQuotes = false;
+  let lineNumber = 1;
 
   // Strip a UTF-8 BOM: Excel writes one when saving CSV, and it would
   // otherwise become part of the first header cell, so the "Full Name"
@@ -107,8 +114,10 @@ export function parseCsv(text) {
   };
   const endRow = () => {
     endField();
-    // Ignore blank trailing lines rather than importing empty members.
-    if (row.some((cell) => cell.trim().length > 0)) rows.push(row);
+    // Blank lines are not imported as empty members, but the line number is
+    // consumed either way so everything below keeps its true position.
+    if (row.some((cell) => cell.trim().length > 0)) rows.push({ rowNumber: lineNumber, values: row });
+    lineNumber += 1;
     row = [];
   };
 
@@ -149,15 +158,21 @@ async function parseXlsx(buffer) {
   sheet.eachRow((excelRow) => {
     const values = [];
     // ExcelJS row.values is 1-indexed with a leading hole at [0].
-    for (let i = 1; i < excelRow.values.length; i += 1) {
-      const cell = excelRow.values[i];
-      // A cell may be a rich-text object or a formula result rather than a
-      // primitive; take the displayed text in those cases.
+    const raw = Array.isArray(excelRow.values) ? excelRow.values : [];
+    for (let i = 1; i < raw.length; i += 1) {
+      const cell = raw[i];
+      // A cell may be a rich-text object, a formula result, a Date or a
+      // hyperlink rather than a primitive; take the displayed text.
       if (cell === null || cell === undefined) values.push('');
-      else if (typeof cell === 'object') values.push(String(cell.text ?? cell.result ?? ''));
+      else if (cell instanceof Date) values.push(cell.toISOString().slice(0, 10));
+      else if (typeof cell === 'object') values.push(String(cell.text ?? cell.result ?? cell.hyperlink ?? ''));
       else values.push(String(cell));
     }
-    if (values.some((v) => v.trim().length > 0)) rows.push(values);
+    // excelRow.number is the sheet's OWN row number, so a spreadsheet with
+    // blank rows in it still reports positions the clerk can find. eachRow
+    // skips empty rows entirely, which is exactly why a running index would
+    // be wrong here.
+    if (values.some((v) => v.trim().length > 0)) rows.push({ rowNumber: excelRow.number, values });
   });
   return rows;
 }
@@ -197,7 +212,7 @@ export async function parseContributorImport(contentBase64) {
 
   const [headerRow, ...dataRows] = grid;
   const columnIndex = {};
-  headerRow.forEach((cell, i) => {
+  headerRow.values.forEach((cell, i) => {
     const key = HEADER_ALIASES.get(normalizeHeader(cell));
     // First occurrence wins, so a duplicated column doesn't silently
     // shadow the one the clerk filled in.
@@ -216,15 +231,18 @@ export async function parseContributorImport(contentBase64) {
     });
   }
 
-  const at = (row, key) => (columnIndex[key] === undefined ? '' : String(row[columnIndex[key]] ?? '').trim());
+  const at = (values, key) =>
+    columnIndex[key] === undefined ? '' : String(values[columnIndex[key]] ?? '').trim();
 
-  return dataRows.map((row, i) => ({
-    // +2 = one for the header row, one because spreadsheets are 1-based.
-    rowNumber: i + 2,
-    fullName: at(row, 'fullName'),
-    phone: at(row, 'phone'),
-    email: at(row, 'email'),
-    gender: normalizeGender(at(row, 'gender')),
+  // rowNumber comes from the parser, which tracks the real position in the
+  // file — never from this map's index, which would silently renumber
+  // everything below a blank row.
+  return dataRows.map(({ rowNumber, values }) => ({
+    rowNumber,
+    fullName: at(values, 'fullName'),
+    phone: at(values, 'phone'),
+    email: at(values, 'email'),
+    gender: normalizeGender(at(values, 'gender')),
   }));
 }
 

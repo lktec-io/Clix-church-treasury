@@ -15,23 +15,28 @@ const b64 = (text) => Buffer.from(text, 'utf8').toString('base64');
 const HEADER = 'Full Name,Phone Number,Email,Gender';
 
 describe('parseCsv', () => {
+  const valuesOf = (text) => parseCsv(text).map((r) => r.values);
+
   it('keeps a comma inside a quoted field', () => {
-    expect(parseCsv('a,"b,c",d')).toEqual([['a', 'b,c', 'd']]);
+    expect(valuesOf('a,"b,c",d')).toEqual([['a', 'b,c', 'd']]);
   });
 
   it('unescapes a doubled quote', () => {
-    expect(parseCsv('"say ""hi""",x')).toEqual([['say "hi"', 'x']]);
-  });
-
-  it('handles CRLF and drops blank lines', () => {
-    expect(parseCsv('a,b\r\n\r\nc,d\r\n')).toEqual([
-      ['a', 'b'],
-      ['c', 'd'],
-    ]);
+    expect(valuesOf('"say ""hi""",x')).toEqual([['say "hi"', 'x']]);
   });
 
   it('keeps a newline inside a quoted field', () => {
-    expect(parseCsv('"line1\nline2",b')).toEqual([['line1\nline2', 'b']]);
+    expect(valuesOf('"line1\nline2",b')).toEqual([['line1\nline2', 'b']]);
+  });
+
+  // A blank line is not imported, but it still consumes its line number:
+  // renumbering everything below it would make every skipped-row report
+  // after a blank separator point at the wrong line in the clerk's file.
+  it('drops blank lines without renumbering the rows after them', () => {
+    expect(parseCsv('a,b\r\n\r\nc,d\r\n')).toEqual([
+      { rowNumber: 1, values: ['a', 'b'] },
+      { rowNumber: 3, values: ['c', 'd'] },
+    ]);
   });
 });
 
@@ -116,6 +121,18 @@ describe('parseContributorImport', () => {
 
   // A .xlsx renamed to .csv (or the reverse) is common; the format is
   // decided by the actual bytes, never the filename.
+  // The row number in a skip report has to be the line the clerk can open
+  // and look at, so a blank separator row must not shift it.
+  it('reports the true spreadsheet line number past a blank row', async () => {
+    const rows = await parseContributorImport(
+      b64(`${HEADER}\nNeema,0712345678,n@x.com,F\n\nAsha,0755111222,a@x.com,ke\n`)
+    );
+    expect(rows.map((r) => [r.rowNumber, r.fullName])).toEqual([
+      [2, 'Neema'],
+      [4, 'Asha'],
+    ]);
+  });
+
   it('round-trips the generated .xlsx template through the parser', async () => {
     const workbook = await buildImportTemplateWorkbook();
     const rows = await parseContributorImport(Buffer.from(workbook).toString('base64'));

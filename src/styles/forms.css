@@ -552,3 +552,23 @@
   margin-top: 2px;
   color: var(--color-warning, #f59e0b);
 }
+
+/* Server-supplied error detail under the import dropzone (which column,
+   which row, or the database's own message). Kept visually subordinate to
+   the alert's headline sentence. */
+.import-error__list {
+  margin: 8px 0 0;
+  padding: 0 0 0 2px;
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.import-error__list li {
+  overflow-wrap: anywhere;
+}
+
+.import-error__list strong {
+  font-weight: 700;
+  text-transform: capitalize;
+}

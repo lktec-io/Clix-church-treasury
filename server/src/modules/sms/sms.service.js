@@ -1,6 +1,6 @@
 import { env } from '../../config/env.js';
 import { smsLogRepository } from './smsLog.repository.js';
-import { renderTemplate } from './smsTemplates.js';
+import { renderTemplate, SMS_LOCALE } from './smsTemplates.js';
 import { normalizeTzPhone } from './phoneNumber.js';
 import { sendViaBeem } from './providers/beemProvider.js';
 import { sendViaNoop } from './providers/noopProvider.js';
@@ -32,13 +32,17 @@ function maskPhone(phone) {
 // requirement: "record enough information to diagnose").
 export async function sendSms(
   tenantId,
-  // locale defaults to Swahili, not English: every caller already resolves
-  // `contributor.locale ?? tenant.locale_default ?? 'sw'`, so this default
-  // only applies to a caller that passed nothing at all — and for a
-  // Tanzanian church the safe assumption there is Swahili.
-  { contributorId = null, phone, templateKey, params = {}, locale = 'sw', relatedType = null, relatedId = null }
+  // `locale` is still accepted from callers (they resolve
+  // contributor.locale ?? tenant.locale_default) but is no longer what
+  // decides the language: SMS bodies are Swahili-only now
+  // (smsTemplates.js). It is overridden to SMS_LOCALE below so the sms_log
+  // row records the language actually sent — logging 'en' next to a Swahili
+  // body would make the delivery audit trail wrong.
+  // eslint-disable-next-line no-unused-vars
+  { contributorId = null, phone, templateKey, params = {}, locale = SMS_LOCALE, relatedType = null, relatedId = null }
 ) {
-  const body = renderTemplate(templateKey, locale, params);
+  const body = renderTemplate(templateKey, SMS_LOCALE, params);
+  const sentLocale = SMS_LOCALE;
   const normalizedPhone = normalizeTzPhone(phone);
 
   let result;
@@ -69,7 +73,7 @@ export async function sendSms(
     contributor_id: contributorId,
     phone,
     template_key: templateKey,
-    locale,
+    locale: sentLocale,
     body,
     status: result.status,
     reason_code: result.reasonCode ?? null,

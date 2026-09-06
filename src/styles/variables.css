@@ -8,6 +8,39 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  /* Kills the grey/blue flash iOS Safari and Android Chrome paint over any
+     element being tapped. It is purely a native touch artefact — every
+     pressed state in this product is already drawn by our own :hover/:active
+     styles, so the browser's version is redundant chrome that makes taps
+     feel like a web page instead of an app. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The other half of the tap flash: browsers also focus an element on touch,
+   which draws the default focus ring.
+   NOT `* { outline: none !important }` — that would erase every keyboard
+   focus indicator in the product, including the :focus-visible rings
+   deliberately built into the sidebar, dock, dropzone, language switch and
+   every button. Removing those makes the app unusable without a mouse and
+   fails WCAG 2.4.7.
+   `:focus:not(:focus-visible)` is the precise version: it suppresses the
+   ring exactly when focus came from a tap or click, and keeps it when the
+   user is navigating by keyboard — which is the outcome actually wanted
+   here. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Stops the long-press "save image / copy link" callout and the accidental
+   text selection that a double-tap produces on controls. Applied to
+   controls only — never to page copy, which must stay selectable so a
+   treasurer can copy a reference number or an amount. */
+button,
+a,
+[role='button'],
+.bottom-nav__item,
+.app-sidebar__link {
+  -webkit-touch-callout: none;
 }
 
 :root {

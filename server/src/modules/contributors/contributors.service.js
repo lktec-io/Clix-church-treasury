@@ -1,4 +1,4 @@
-import { notFound, conflict, validationError } from '../../errors/AppError.js';
+import { AppError, notFound, conflict, validationError } from '../../errors/AppError.js';
 import { withTransaction } from '../../config/db.js';
 import { contributorsRepository } from './contributors.repository.js';
 import { normalizeTzPhone } from '../sms/phoneNumber.js';
@@ -45,6 +45,43 @@ export async function createContributor(tenantId, data) {
 // is always treated as new. That is the correct call for a church directory:
 // two members can genuinely share a name, and silently merging them would
 // lose one of them.
+// MySQL errors that are attributable to ONE row's data. These are recorded
+// as a skipped row and the import carries on — InnoDB rolls back the failed
+// statement only, so the surrounding transaction stays usable.
+const ROW_ERROR_REASONS = new Map([
+  ['ER_DUP_ENTRY', 'duplicate'],
+  ['ER_DATA_TOO_LONG', 'field_too_long'],
+  ['ER_TRUNCATED_WRONG_VALUE', 'invalid_value'],
+  ['ER_TRUNCATED_WRONG_VALUE_FOR_FIELD', 'invalid_value'],
+  ['WARN_DATA_TRUNCATED', 'invalid_value'],
+  ['ER_WARN_DATA_OUT_OF_RANGE', 'invalid_value'],
+  ['ER_NO_REFERENCED_ROW_2', 'invalid_value'],
+]);
+
+// Errors that mean the DATABASE ITSELF is not in the shape this code
+// expects — nothing about the clerk's spreadsheet can fix them, and
+// retrying row by row would just fail identically 2000 times.
+//
+// This is the exact failure that produced the live 500: the import writes
+// `contributors.gender` (migration 0035), and on a server where that
+// migration has not been applied MySQL raises ER_BAD_FIELD_ERROR. A raw
+// mysql2 error carries no `.status`, so errorHandler.js correctly declined
+// to guess and fell through to a generic 500 — "An unexpected error
+// occurred" in production, with the real cause visible only in the server
+// log. Translating it here gives the operator the actual instruction.
+// AppError messages are passed to the client verbatim even in production
+// (errorHandler.js), which is why the remedy can be stated in the message.
+const SCHEMA_ERROR_CODES = new Set(['ER_BAD_FIELD_ERROR', 'ER_NO_SUCH_TABLE', 'ER_WRONG_VALUE_COUNT_ON_ROW']);
+
+function asSchemaError(error) {
+  if (!SCHEMA_ERROR_CODES.has(error?.code)) return null;
+  return new AppError(
+    'SCHEMA_OUT_OF_DATE',
+    'The contributor table is missing a column this import needs. Pending database migrations have not been applied to this server — run "npm run migrate" (server/), then try the import again.',
+    { status: 503, fields: { database: error.sqlMessage ?? error.message } }
+  );
+}
+
 function dedupeKeys({ phone, email }) {
   const keys = [];
   const normalizedPhone = normalizeTzPhone(phone);
@@ -70,6 +107,28 @@ export async function bulkImportContributors(tenantId, contentBase64, actorUserI
     throw validationError('Invalid payload', { file: 'contains no data rows below the header' });
   }
 
+  try {
+    return await runImport(tenantId, rows, actorUserId);
+  } catch (error) {
+    // Nothing from this endpoint may reach the client as a bare 500. An
+    // AppError is already a deliberate, described outcome; a raw driver
+    // error is translated if we recognise it, and otherwise re-thrown with
+    // the underlying SQL message attached so the operator sees the actual
+    // cause instead of "An unexpected error occurred".
+    if (error instanceof AppError) throw error;
+    const schemaError = asSchemaError(error);
+    if (schemaError) throw schemaError;
+    if (error?.code?.startsWith?.('ER_')) {
+      throw new AppError('IMPORT_FAILED', 'The import could not be saved because the database rejected it.', {
+        status: 400,
+        fields: { database: error.sqlMessage ?? error.message },
+      });
+    }
+    throw error;
+  }
+}
+
+async function runImport(tenantId, rows, actorUserId) {
   return withTransaction(async (connection) => {
     // Existing directory, read inside the transaction so a concurrent import
     // of the same file cannot both pass their duplicate checks.
@@ -102,18 +161,37 @@ export async function bulkImportContributors(tenantId, contentBase64, actorUserI
       }
       for (const key of keys) seen.add(key);
 
-      const created = await contributorsRepository.create(
-        tenantId,
-        {
-          fullName: row.fullName,
-          phone: row.phone || null,
-          email: row.email || null,
-          gender: row.gender,
-          memberNumber: null,
-        },
-        connection
-      );
-      imported.push(created);
+      try {
+        const created = await contributorsRepository.create(
+          tenantId,
+          {
+            fullName: row.fullName,
+            phone: row.phone || null,
+            email: row.email || null,
+            gender: row.gender,
+            memberNumber: null,
+          },
+          connection
+        );
+        imported.push(created);
+      } catch (error) {
+        // A schema problem is not this row's fault and will repeat for every
+        // remaining row — abort the whole import with an actionable message
+        // rather than reporting 2000 identical "skipped" lines.
+        const schemaError = asSchemaError(error);
+        if (schemaError) throw schemaError;
+
+        // Anything MySQL can attribute to this row's own data becomes a
+        // reported skip, so one malformed line in a 500-row spreadsheet no
+        // longer costs the clerk the other 499.
+        const reason = ROW_ERROR_REASONS.get(error?.code);
+        if (!reason) throw error;
+        skipped.push({ rowNumber: row.rowNumber, name: row.fullName, reason });
+        // Roll back the identity keys claimed for a row that did not land,
+        // so a later legitimate row with the same phone/email is not then
+        // rejected as a duplicate of a contributor that was never created.
+        for (const key of keys) seen.delete(key);
+      }
     }
 
     await recordAuditLog(

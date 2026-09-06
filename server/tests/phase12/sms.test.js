@@ -27,14 +27,16 @@ describe('smsTemplates#renderTemplate', () => {
     expect(body).not.toContain('TZS TZS');
   });
 
-  // Every tenant is a Tanzanian church, so an unrecognised locale must land
-  // on Swahili. Falling back to English (the previous behaviour) meant a
-  // missing or typo'd locale silently sent English to a Swahili congregation.
-  it('falls back to Swahili, not English, for an unsupported locale', () => {
+  // SMS is Swahili-only. The locale argument is accepted for call-site
+  // compatibility and ignored, so NO value — including an explicit 'en', a
+  // stale contributors.locale row, or a typo — can produce English.
+  it('renders Swahili for every locale value, including an explicit "en"', () => {
     const sw = renderTemplate('contribution_confirmation', 'sw', { memberName: 'X' });
-    const fr = renderTemplate('contribution_confirmation', 'fr', { memberName: 'X' });
-    expect(fr).toBe(sw);
-    expect(fr).not.toBe(renderTemplate('contribution_confirmation', 'en', { memberName: 'X' }));
+    for (const locale of ['en', 'fr', '', null, undefined]) {
+      expect(renderTemplate('contribution_confirmation', locale, { memberName: 'X' })).toBe(sw);
+    }
+    expect(sw).toContain('Tunakushukuru');
+    expect(sw).toContain('Mungu akubariki sana.');
   });
 
   it('renders Swahili with no leftover placeholders', () => {
