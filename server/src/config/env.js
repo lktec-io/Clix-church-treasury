@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { normalizeSenderId, senderIdWarning, wasNormalized } from '../modules/sms/senderId.js';
 
 // `override: true` is deliberate, not the default. Plain `dotenv/config`
 // (or `dotenv.config()` with no options) never overwrites a variable that
@@ -91,10 +92,15 @@ export const env = {
 // no error anywhere pointing at why. Refusing to boot here turns a
 // support mystery into an immediate, specific startup error.
 function buildSmsConfig() {
-  const apiKey = process.env.BEEM_API_KEY ?? '';
-  const secretKey = process.env.BEEM_SECRET_KEY ?? '';
-  const senderId = process.env.BEEM_SENDER_ID ?? '';
-  const apiUrl = process.env.BEEM_API_URL ?? 'https://apisms.beem.africa/v1/send';
+  // Credentials are trimmed for exactly the same reason the sender ID is:
+  // a trailing space or a \r from a CRLF .env is invisible in an editor but
+  // changes the Basic-Auth string and produces a 401 that looks like a
+  // wrong key. Only surrounding whitespace is touched — never the value.
+  const apiKey = (process.env.BEEM_API_KEY ?? '').trim();
+  const secretKey = (process.env.BEEM_SECRET_KEY ?? '').trim();
+  const rawSenderId = process.env.BEEM_SENDER_ID ?? '';
+  const senderId = normalizeSenderId(rawSenderId);
+  const apiUrl = (process.env.BEEM_API_URL ?? 'https://apisms.beem.africa/v1/send').trim();
 
   if (Boolean(apiKey) !== Boolean(secretKey)) {
     throw new Error(
@@ -105,5 +111,30 @@ function buildSmsConfig() {
   }
 
   const provider = apiKey && secretKey ? 'beem' : 'noop';
+
+  // Sender-ID problems are reported at BOOT, not only on the first failed
+  // send. Previously the only signal was a warning attached to an
+  // already-failed message, so a deployment could sit in a 403 rejection
+  // loop with the explanation buried in per-send logs — and a church only
+  // finds out because members stopped receiving receipts.
+  if (provider === 'beem') {
+    if (wasNormalized(rawSenderId, senderId)) {
+      // The highest-value line here: the raw value LOOKS correct in the
+      // file, so without this an operator has no way to see the difference.
+      console.warn(
+        `[sms] BEEM_SENDER_ID was normalised before use: ${JSON.stringify(rawSenderId)} -> ` +
+          `${JSON.stringify(senderId)}. Beem matches the approved sender ID exactly, so the stray ` +
+          'whitespace/quotes would have been rejected. Update server/.env to the normalised value.'
+      );
+    }
+    const warning = senderIdWarning(senderId);
+    if (warning) {
+      console.warn(
+        `[sms] BEEM_SENDER_ID ${warning}. Beem answers 403 (not 401) when credentials are valid but the ` +
+          'sender ID is unapproved — check the approved sender ID in the Beem dashboard, including its capitalisation.'
+      );
+    }
+  }
+
   return { provider, beem: { apiKey, secretKey, senderId, apiUrl } };
 }

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiCalendar,
   FiArrowUpRight,
   FiArrowDownRight,
   FiTarget,
   FiClock,
+  FiInfo,
   FiPlus,
   FiUserPlus,
   FiFileText,
@@ -239,10 +240,20 @@ export default function DashboardPage() {
     setError(null);
     try {
       await action();
-      await refreshPending();
+      // Drop the row from local state FIRST so <AnimatePresence> can play
+      // its exit transition on the way out. Re-fetching straight away would
+      // replace the array wholesale and the row would vanish on a frame
+      // boundary with no animation at all. The decision is already
+      // committed server-side at this point, so removing it locally is
+      // reporting what happened, not an optimistic guess.
+      setPendingExpenses((rows) => rows.filter((row) => row.id !== expense.id));
       toast.success(t(successKey));
-      // Feeds the navbar's live activity counter.
-      recordActivity({ kind: 'expense', message: t(successKey) });
+      // Feeds the navbar's live counter. Names the payee: "Expense
+      // approved" alone is ambiguous when several requests are queued.
+      recordActivity({ kind: 'expense', message: `${t(successKey)} — ${expense.payee}` });
+      // Reconcile against the server afterwards, so a request approved by
+      // someone else in the meantime also leaves the list.
+      await refreshPending();
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -615,8 +626,18 @@ export default function DashboardPage() {
                 <EmptyState icon={FiClock} message={t('expenses.noPending')} />
               ) : (
                 <>
-                  <p className="field-hint" style={{ margin: '0 0 14px' }}>{t('expenses.pendingHint')}</p>
+                  {/* States the workflow separation explicitly at the top
+                      of the grid, because the two-stage design is the thing
+                      most likely to be misread: an administrator who
+                      believes "Idhinisha" releases the money will not go on
+                      to the Expenses page to actually pay it, and the
+                      disbursement silently never happens. */}
+                  <p className="approval-note">
+                    <FiInfo aria-hidden="true" />
+                    <span>{t('expenses.approveStageNote')}</span>
+                  </p>
                   <div className="approval-list">
+                    <AnimatePresence initial={false}>
                     {pendingExpenses.map((expense) => {
                       const busy = actioningExpenseId === expense.id;
                       // Segregation of duties: an approver cannot approve
@@ -625,7 +646,17 @@ export default function DashboardPage() {
                       // the button only avoids offering a guaranteed 403.
                       const isOwn = expense.requested_by_user_id === session?.user?.id;
                       return (
-                        <div className="approval-row" key={expense.id}>
+                        <motion.div
+                          className="approval-row"
+                          key={expense.id}
+                          layout
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          // Collapses its own height as it fades so the rows
+                          // beneath rise into the gap instead of jumping.
+                          exit={{ opacity: 0, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+                          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                        >
                           <div className="approval-row__detail">
                             <div className="approval-row__payee">{expense.payee}</div>
                             <div className="approval-row__meta">
@@ -640,6 +671,12 @@ export default function DashboardPage() {
                                 type="button"
                                 className="btn btn--success btn--sm"
                                 disabled={busy}
+                                // Native tooltip rather than a custom
+                                // popover: it is supplementary detail to
+                                // the sub-label already printed above the
+                                // list, and it reaches keyboard focus and
+                                // screen readers for free.
+                                title={t('expenses.approveOnlyTooltip')}
                                 onClick={() => handleApproveExpense(expense)}
                               >
                                 {busy ? t('common.loading') : t('expenses.approve')}
@@ -650,15 +687,17 @@ export default function DashboardPage() {
                                 type="button"
                                 className="btn btn--danger btn--sm"
                                 disabled={busy}
+                                title={t('expenses.rejectTooltip')}
                                 onClick={() => handleRejectExpense(expense)}
                               >
                                 {t('expenses.reject')}
                               </button>
                             </PermissionGate>
                           </div>
-                        </div>
+                        </motion.div>
                       );
                     })}
+                    </AnimatePresence>
                   </div>
                 </>
               )}

@@ -1493,3 +1493,27 @@
     flex: 1 1 0;
   }
 }
+
+/* Workflow sub-label above the approval grid. Framed rather than plain
+   muted text: it corrects a misreading that costs real money (believing
+   "Idhinisha" releases the funds), so it has to survive being skimmed. */
+.approval-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 28%, transparent);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.approval-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 15px;
+  color: var(--color-warning);
+}

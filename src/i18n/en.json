@@ -144,6 +144,7 @@
   "contributions.sms.reasonCode.invalid_phone": "This contributor's phone number is not in a valid Tanzanian format.",
   "contributions.sms.reasonCode.provider_error": "The SMS provider is currently experiencing an issue.",
   "contributions.sms.reasonCode.provider_rejected": "The SMS provider rejected the message.",
+  "contributions.sms.reasonCode.config_invalid": "SMS sending is not fully configured — the approved sender ID is missing. An administrator needs to set it in the server configuration.",
   "contributions.sms.reasonCode.not_configured": "SMS sending is not configured yet.",
   "contributions.sms.reasonCode.unexpected_error": "An unexpected error occurred while sending the SMS.",
   "contributors.title": "Contributors",
@@ -467,5 +468,8 @@
   "contributors.activity.pinReset": "PIN reset for {{name}}",
   "contributors.activity.imported": "{{count}} members imported",
   "contributions.activity.recorded": "Contribution recorded",
-  "memberStatements.activity.sent": "Statement sent by SMS"
+  "memberStatements.activity.sent": "Statement sent by SMS",
+  "expenses.approveStageNote": "Approval only (Step 1) — payment is made by the Treasurer on the Expenses page. No funds leave any account until an approved expense is marked paid.",
+  "expenses.approveOnlyTooltip": "Step 1 of 2: authorises the request. This does not release any money — the Treasurer completes payment on the Expenses page.",
+  "expenses.rejectTooltip": "Declines the request with a reason. Nothing is deducted, and the requester can see why."
 }

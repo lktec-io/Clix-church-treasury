@@ -1,4 +1,5 @@
 import { env } from '../../../config/env.js';
+import { normalizeSenderId, senderIdWarning } from '../senderId.js';
 
 // Beem Africa's single-SMS-send REST endpoint, per their publicly
 // documented API contract (Basic Auth of apiKey:secretKey, JSON body with
@@ -7,23 +8,10 @@ import { env } from '../../../config/env.js';
 // server/src/config/env.js).
 const REQUEST_TIMEOUT_MS = 10_000;
 
-// GSM 03.38 alphanumeric sender IDs are capped at 11 characters and are
-// conventionally letters/digits only — no spaces or punctuation. Beem's
-// dashboard registers/approves an exact sender-ID string; if the approved
-// value doesn't byte-for-byte match what's actually sent in `source_addr`,
-// providers commonly reject the whole request at an auth-adjacent layer
-// (403 "Forbidden" reads as exactly this: valid key/secret, but not
-// authorized to use this specific sender ID) rather than a plain 400. This
-// check exists to surface that mismatch explicitly instead of leaving an
-// operator to guess between "bad credentials" and "bad sender ID" when
-// both can produce a 40x from Beem.
-function senderIdWarning(senderId) {
-  if (!senderId) return null;
-  if (/\s/.test(senderId)) return `contains a space ("${senderId}") — most SMS gateways reject spaces in an alphanumeric sender ID`;
-  if (senderId.length > 11) return `is ${senderId.length} characters — GSM alphanumeric sender IDs are capped at 11`;
-  if (!/^[A-Za-z0-9]+$/.test(senderId)) return `contains a character other than letters/digits ("${senderId}")`;
-  return null;
-}
+// senderIdWarning/normalizeSenderId now live in ../senderId.js so config
+// (env.js) and this payload builder cannot drift on what a valid sender ID
+// is — they were one copy of the rule each, which is how the two ended up
+// able to disagree.
 
 // Classifies an HTTP status from Beem into a stable, non-secret reason
 // code — so a caller (SMS status UI, PM2 logs) can distinguish "your
@@ -63,9 +51,30 @@ function maskPhone(phone) {
 }
 
 export async function sendViaBeem({ phone, body }) {
-  const { apiKey, secretKey, senderId, apiUrl } = env.sms.beem;
+  const { apiKey, secretKey, apiUrl } = env.sms.beem;
+  // Re-normalised at payload time as well as at config time. env.js already
+  // cleans it, but this is the last line before the value goes on the wire
+  // and the cost is a string compare — a future caller that constructs a
+  // config by hand (a test, a script) cannot bypass the rule this way.
+  const senderId = normalizeSenderId(env.sms.beem.senderId);
   const auth = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
   const warning = senderIdWarning(senderId);
+
+  // An empty sender ID is refused HERE rather than posted. Beem rejects the
+  // request anyway, but as a generic 4xx that reads like a credential
+  // problem — and every such attempt burns a network round trip and writes
+  // a misleading sms_log row. Failing locally gives the operator the actual
+  // cause. Returned as a normal failure result (never thrown), so the
+  // member-portal callers — enablePortalAccess and resetPin — carry on and
+  // still commit their transaction: sendSms() is explicitly not allowed to
+  // affect the outcome of the operation that triggered it.
+  if (!senderId) {
+    const errorMessage =
+      'BEEM_SENDER_ID is not set, so there is no approved sender to send as. Set it in server/.env to the ' +
+      'sender ID approved in the Beem dashboard.';
+    console.log(`[beem] refusing to send: reason=config_invalid error="${errorMessage}"`);
+    return { status: 'failed', reasonCode: 'config_invalid', errorMessage };
+  }
 
   // Forensic trail for every single attempt — safe fields only (never the
   // key/secret/Authorization value itself, only their length + SHA-256
