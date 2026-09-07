@@ -1416,3 +1416,80 @@
     flex: 1 1 auto;
   }
 }
+
+/* ==========================================================================
+   EXPENSE APPROVAL GATEWAY — dashboard pending-request rows
+   A row list rather than a <table>: each entry is a decision with two
+   actions, not tabular data to scan across, and it has to reflow to a
+   stacked card on a phone without a horizontal scroller.
+   ========================================================================== */
+.approval-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.approval-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  /* Amber left edge — this row is waiting on the reader, and the colour
+     matches the "submitted" status badge used everywhere else. */
+  border-left: 3px solid var(--color-warning);
+}
+
+.approval-row__detail {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+
+.approval-row__payee {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.approval-row__meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.approval-row__amount {
+  flex: 0 0 auto;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-heading);
+  white-space: nowrap;
+}
+
+.approval-row__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+/* On a phone the amount leads its own line and the two decisions split the
+   full width, so neither is a cramped target next to the other. */
+@media (max-width: 560px) {
+  .approval-row {
+    align-items: stretch;
+  }
+  .approval-row__amount {
+    flex: 1 1 100%;
+  }
+  .approval-row__actions {
+    flex: 1 1 100%;
+  }
+  .approval-row__actions .btn {
+    flex: 1 1 0;
+  }
+}

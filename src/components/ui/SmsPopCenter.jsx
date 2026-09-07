@@ -221,6 +221,14 @@ export default function SmsPopCenter({ dispatch, onClose, onRetry, retrying = fa
             the member received rather than a client-side reconstruction that
             could drift from it. Monospace and pre-wrapped because the
             message's line breaks ARE its formatting. */}
+        {/* Portal-enable and PIN-reset messages embed the member's raw PIN,
+            so the server strips the preview before responding
+            (enrollment.service.js#withoutPinPreview). Saying so is better
+            than a silently missing block that looks like a bug. */}
+        {resolved && sent && dispatch.pinWithheld && (
+          <div className="sms-pop-center__reason">{t('contributions.sms.previewWithheld')}</div>
+        )}
+
         {resolved && sent && dispatch.preview && (
           <motion.div
             className="sms-pop-center__preview-wrap"

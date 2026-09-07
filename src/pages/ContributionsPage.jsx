@@ -14,6 +14,7 @@ import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import SmsDispatchIndicator from '../components/ui/SmsDispatchIndicator.jsx';
 import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
+import { useActivity } from '../context/ActivityContext.jsx';
 import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -72,6 +73,7 @@ export default function ContributionsPage() {
   const { hasPermission } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const { recordActivity } = useActivity();
   const [contributions, setContributions] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [funds, setFunds] = useState([]);
@@ -244,6 +246,9 @@ export default function ContributionsPage() {
       setIdempotencyKey(crypto.randomUUID()); // this logical attempt is done — the next Save is a new one
       await loadAll();
       toast.success(t('contributions.recorded'));
+      // Feeds the navbar's live counter. Fired only after the server
+      // confirmed the save — the feed must never claim work that failed.
+      recordActivity({ kind: 'contribution', message: t('contributions.activity.recorded') });
       // SMS delivery never blocks or reverses the save above (server/src/
       // modules/contributions/contributions.service.js) — the contribution
       // toast above already fired unconditionally. This is a *separate*,

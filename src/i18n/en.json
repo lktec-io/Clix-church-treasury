@@ -461,5 +461,11 @@
   "dashboard.trends.subtitle": "Income Trends & Forecast Insights",
   "dashboard.trends.legend.actual": "Collected",
   "dashboard.trends.legend.forecast": "Forecast",
-  "dashboard.trends.forecastNote": "The dashed segment is an estimate, not recorded income — a trailing average of the last {{months}} month(s) with activity."
+  "dashboard.trends.forecastNote": "The dashed segment is an estimate, not recorded income — a trailing average of the last {{months}} month(s) with activity.",
+  "contributions.sms.previewWithheld": "The message contained the member’s PIN, so its text is not shown here.",
+  "contributors.activity.portalEnabled": "Portal access enabled for {{name}}",
+  "contributors.activity.pinReset": "PIN reset for {{name}}",
+  "contributors.activity.imported": "{{count}} members imported",
+  "contributions.activity.recorded": "Contribution recorded",
+  "memberStatements.activity.sent": "Statement sent by SMS"
 }

@@ -20,17 +20,31 @@ import { formatMoney } from '../../utils/format.js';
 // rendered at 11 x (320/720) = 4.9 CSS pixels on a 360px phone — far below
 // legibility, and the exact symptom reported. With the viewBox matching the
 // render width, `fontSize={12}` means twelve real pixels at every viewport.
-const VB_H = 240;
+const VB_H = 250;
 const FALLBACK_W = 720; // used for the first paint, before the observer reports
 const MIN_W = 260;
-const PAD = { top: 18, right: 16, bottom: 34, left: 16 };
+// `left` reserves the gutter the Y-axis value labels are drawn in — without
+// it they would overhang the panel edge. `bottom` holds the month row.
+const PAD = { top: 20, right: 14, bottom: 36, left: 52 };
 const PLOT_H = VB_H - PAD.top - PAD.bottom;
 
 // Real pixel sizes now, not viewBox units that shrink on small screens.
-const AXIS_FONT_PX = 12;
+const AXIS_FONT_PX = 12.5;
 // Widest an axis label gets ("Sep 26") plus breathing room, used to work out
 // how many labels can share the axis without colliding.
-const AXIS_LABEL_W = 46;
+const AXIS_LABEL_W = 48;
+// Horizontal gridlines / value labels, including the zero baseline.
+const Y_TICKS = 3;
+
+// Compact magnitudes for the Y axis: a full "1,250,000.00" does not fit a
+// 52px gutter at any readable size, and the axis only has to convey scale —
+// the exact figure is in the tooltip.
+function compactAmount(value) {
+  const n = Number(value) || 0;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
+  return String(Math.round(n));
+}
 
 /**
  * Measures the element the ref is attached to and keeps its width in state —
@@ -167,7 +181,7 @@ export default function TrendChart({ series = [], forecast = null }) {
         ? `M ${coords[coords.length - 1].x} ${coords[coords.length - 1].y} L ${forecastCoord.x} ${forecastCoord.y}`
         : '';
 
-    return { coords, forecastCoord, linePath, areaPath, forecastPath, step };
+    return { coords, forecastCoord, linePath, areaPath, forecastPath, step, max, y };
   }, [series, forecast, plotW]);
 
   const months = MONTH_SHORT[locale] ?? MONTH_SHORT.en;
@@ -190,16 +204,40 @@ export default function TrendChart({ series = [], forecast = null }) {
           </linearGradient>
         </defs>
 
-        {/* Baseline only — no full grid. On a panel this size a gridline per
-            month competes with the data it is supposed to support. */}
-        <line
-          x1={PAD.left}
-          y1={PAD.top + PLOT_H}
-          x2={vbW - PAD.right}
-          y2={PAD.top + PLOT_H}
-          stroke="rgba(var(--color-primary-rgb), 0.14)"
-          strokeWidth="1"
-        />
+        {/* Y AXIS — three horizontal rules with their values in the left
+            gutter. The chart previously had none at all: the only vertical
+            reference was the baseline, so a reader could see the SHAPE of the
+            trend but had no way to read a magnitude off it without hovering
+            every point. Three ticks is the amount that conveys scale without
+            the grid competing with the data it supports. */}
+        {Array.from({ length: Y_TICKS }, (_, i) => {
+          const value = (model.max / (Y_TICKS - 1)) * i;
+          const y = model.y(value);
+          const isBaseline = i === 0;
+          return (
+            <g key={`ytick-${i}`}>
+              <line
+                x1={PAD.left}
+                y1={y}
+                x2={vbW - PAD.right}
+                y2={y}
+                stroke={`rgba(var(--color-primary-rgb), ${isBaseline ? 0.16 : 0.07})`}
+                strokeWidth="1"
+                shapeRendering="crispEdges"
+              />
+              <text
+                x={PAD.left - 8}
+                y={y + 4}
+                textAnchor="end"
+                fontSize={AXIS_FONT_PX}
+                fontWeight="600"
+                fill="var(--text-muted)"
+              >
+                {compactAmount(value)}
+              </text>
+            </g>
+          );
+        })}
 
         {/* Area sweeps up from the baseline as the line draws. */}
         <motion.path
@@ -312,7 +350,7 @@ export default function TrendChart({ series = [], forecast = null }) {
             <text
               key={`label-${point.period}`}
               x={point.x}
-              y={VB_H - 12}
+              y={VB_H - 13}
               textAnchor={isFirst ? 'start' : isLast ? 'end' : 'middle'}
               fontSize={AXIS_FONT_PX}
               fontWeight="600"

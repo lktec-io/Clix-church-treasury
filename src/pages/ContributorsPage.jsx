@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { FiSearch, FiUsers, FiUserPlus, FiKey, FiRotateCcw, FiUpload } from 'react-icons/fi';
 import { contributorsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
@@ -10,6 +11,8 @@ import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import BulkImportPanel from '../components/ui/BulkImportPanel.jsx';
+import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
+import { useActivity } from '../context/ActivityContext.jsx';
 
 function emptyForm() {
   return { fullName: '', phone: '', email: '', memberNumber: '' };
@@ -18,6 +21,7 @@ function emptyForm() {
 export default function ContributorsPage() {
   const { t } = useLocale();
   const toast = useToast();
+  const { recordActivity } = useActivity();
   const confirm = useConfirm();
   const [contributors, setContributors] = useState([]);
   const [form, setForm] = useState(emptyForm());
@@ -27,6 +31,8 @@ export default function ContributorsPage() {
   const [actioningId, setActioningId] = useState(null);
   const [search, setSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [smsPop, setSmsPop] = useState(null);
+  const dispatchSeq = useRef(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,12 +68,40 @@ export default function ContributorsPage() {
     }
   };
 
+  // Both member SMS actions raise the same centred dispatch dialog the
+  // contributions flow uses. `preview` arrives undefined for these two on
+  // purpose: their message body embeds the member's raw PIN, and
+  // enrollment.service.js#withoutPinPreview strips it before the response
+  // leaves the server so the PIN is never handed back over HTTP. The dialog
+  // renders the tick and outcome without a message preview in that case —
+  // see SmsPopCenter's `pinWithheld` note.
+  const showSmsPop = (sms) => {
+    if (!sms) return;
+    // A monotonic counter, not Date.now(): the id only has to remount
+    // SmsPopCenter so its ticker replays, and two dispatches inside the same
+    // millisecond would collide on a timestamp and silently skip the replay.
+    dispatchSeq.current += 1;
+    setSmsPop({
+      dispatchId: dispatchSeq.current,
+      status: sms.status,
+      reasonCode: sms.reasonCode,
+      reason: sms.errorMessage,
+      preview: sms.preview,
+      pinWithheld: !sms.preview && sms.status === 'sent',
+    });
+  };
+
   const handleEnablePortal = async (contributor) => {
     setActioningId(contributor.id);
     setError(null);
     try {
       const result = await contributorsApi.enablePortalAccess(contributor.id);
       await load();
+      showSmsPop(result.sms);
+      recordActivity({
+        kind: 'member',
+        message: t('contributors.activity.portalEnabled', { name: contributor.full_name }),
+      });
       toast.success(
         result.sms?.status === 'sent'
           ? t('contributors.portalEnabledSmsSent')
@@ -81,17 +115,28 @@ export default function ContributorsPage() {
   };
 
   const handleResetPin = async (contributor) => {
-    const result = await confirm({
+    // confirm() resolves to a BARE BOOLEAN unless `requireReason` is set —
+    // see ConfirmDialog.jsx. This branch used to read `result.confirmed`,
+    // which is `undefined` on a plain boolean, so the guard was always true
+    // and the reset silently returned without ever calling the API: the
+    // button did nothing at all. No reason is required here, so the boolean
+    // form is what must be tested.
+    const confirmed = await confirm({
       title: t('contributors.resetPin'),
       message: t('contributors.resetPinConfirm'),
       tone: 'danger',
       confirmLabel: t('contributors.resetPin'),
     });
-    if (!result.confirmed) return;
+    if (!confirmed) return;
     setActioningId(contributor.id);
     setError(null);
     try {
-      await contributorsApi.resetPin(contributor.id);
+      const result = await contributorsApi.resetPin(contributor.id);
+      showSmsPop(result?.sms);
+      recordActivity({
+        kind: 'member',
+        message: t('contributors.activity.pinReset', { name: contributor.full_name }),
+      });
       toast.success(t('contributors.pinResetToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -114,6 +159,15 @@ export default function ContributorsPage() {
   return (
     <div>
       <PageHeader title={t('contributors.title')} subtitle={t('contributors.subtitle')} />
+
+      {/* Same centred dispatch dialog the contributions flow raises — one
+          component, so the confirmation a treasurer sees for a member SMS
+          is identical to the one they see for a contribution SMS. */}
+      <AnimatePresence>
+        {smsPop && (
+          <SmsPopCenter key={smsPop.dispatchId} dispatch={smsPop} onClose={() => setSmsPop(null)} />
+        )}
+      </AnimatePresence>
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="contributors.manage">

@@ -117,6 +117,21 @@
   box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--color-danger) 80%, transparent);
 }
 
+/* The affirmative counterpart to .btn--danger, built on the accent green
+   the product already uses for money that has landed correctly. Introduced
+   for the expense approval gateway, where "approve" and "reject" sit side
+   by side and must be told apart instantly — .btn--primary is navy, which
+   against the red reads as neutral rather than as the positive choice. */
+.btn--success {
+  background: var(--color-accent);
+  color: #ffffff;
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+.btn--success:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 88%, black 12%);
+  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
 .btn--ghost {
   background: transparent;
   color: var(--text-muted);

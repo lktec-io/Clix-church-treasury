@@ -22,6 +22,9 @@ import { reportsApi, financialPeriodsApi, expensesApi } from '../api/endpoints.j
 import { unwrapApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
+import { useActivity } from '../context/ActivityContext.jsx';
+import { useToast } from '../components/Toast.jsx';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
@@ -98,6 +101,9 @@ const cardEntrance = {
 export default function DashboardPage() {
   const { session, hasPermission } = useAuth();
   const { t, locale } = useLocale();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const { recordActivity } = useActivity();
   const [openPeriod, setOpenPeriod] = useState(undefined); // undefined = loading, null = none exists
   const [range, setRange] = useState('month');
   const [customFrom, setCustomFrom] = useState(todayIso());
@@ -109,9 +115,14 @@ export default function DashboardPage() {
   const [budgetTotals, setBudgetTotals] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [trends, setTrends] = useState(null);
-  const [pendingCount, setPendingCount] = useState(null);
+  // The submitted-expense ROWS, not just their count. The dashboard already
+  // fetched this list and threw everything but `.length` away, which is why
+  // it could say "1 pending approval" and offer nothing to act on.
+  const [pendingExpenses, setPendingExpenses] = useState([]);
+  const [actioningExpenseId, setActioningExpenseId] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const pendingCount = pendingExpenses.length;
 
   const { dateFrom, dateTo } = useMemo(() => computeRange(range, customFrom, customTo), [range, customFrom, customTo]);
 
@@ -184,7 +195,7 @@ export default function DashboardPage() {
       }
       if (hasPermission('expense.approve')) {
         requests.push(
-          expensesApi.list({ status: 'submitted' }).then((rows) => setPendingCount(rows.length)).catch(() => setPendingCount(null))
+          expensesApi.list({ status: 'submitted' }).then(setPendingExpenses).catch(() => setPendingExpenses([]))
         );
       }
       if (current) {
@@ -207,6 +218,53 @@ export default function DashboardPage() {
     if (openPeriod === undefined) return;
     loadRangeScoped();
   }, [openPeriod, loadRangeScoped]);
+
+  // --- Expense approval gateway -------------------------------------------
+  // Every action here is additionally enforced server-side: the routes sit
+  // behind requirePermission('expense.approve' / 'expense.reject' /
+  // 'expense.pay'), and approveExpense() independently re-checks that the
+  // approver is not the requester. The gates below decide what is worth
+  // SHOWING; none of them is the control.
+  const refreshPending = useCallback(async () => {
+    try {
+      setPendingExpenses(await expensesApi.list({ status: 'submitted' }));
+    } catch {
+      // Non-fatal: the action itself already succeeded and reported. Leaving
+      // the stale list up is better than replacing the page with an error.
+    }
+  }, []);
+
+  const runExpenseAction = async (expense, action, successKey) => {
+    setActioningExpenseId(expense.id);
+    setError(null);
+    try {
+      await action();
+      await refreshPending();
+      toast.success(t(successKey));
+      // Feeds the navbar's live activity counter.
+      recordActivity({ kind: 'expense', message: t(successKey) });
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    } finally {
+      setActioningExpenseId(null);
+    }
+  };
+
+  const handleApproveExpense = (expense) =>
+    runExpenseAction(expense, () => expensesApi.approve(expense.id), 'expenses.approvedToast');
+
+  const handleRejectExpense = async (expense) => {
+    const result = await confirm({
+      title: t('expenses.reject'),
+      message: t('expenses.rejectConfirm'),
+      tone: 'danger',
+      confirmLabel: t('expenses.reject'),
+      requireReason: true,
+    });
+    if (!result.confirmed) return;
+    await runExpenseAction(expense, () => expensesApi.reject(expense.id, result.reason), 'expenses.rejectedToast');
+  };
+
 
   // Split into parts so the banner can stack them (big day numeral over
   // weekday/month) instead of printing one run-on string.
@@ -525,13 +583,85 @@ export default function DashboardPage() {
             )}
           </PermissionGate>
 
+          {/* THE APPROVAL GATEWAY.
+              This used to be a bare count — "1 pending approval" with nothing
+              to act on and no indication of where to go. It now lists the
+              actual requests with their details and the decision buttons.
+
+              Worth being precise about the money, because the buttons imply
+              it: approving does NOT move any funds. The ledger is touched at
+              exactly one transition, "Mark paid"
+              (expenses.service.js#payExpense), which requires status
+              'approved' and posts through the shared financial engine inside
+              one DB transaction. Approve is the authorisation gate that makes
+              payment possible; Pay is the disbursement. Keeping them separate
+              is the segregation of duties the whole workflow exists for, so
+              the approve button deliberately does not deduct. */}
           <PermissionGate permission="expense.approve">
-            <div className="stat-grid">
-              <div className="stat-tile">
-                <span className="stat-tile__icon"><FiClock aria-hidden="true" /></span>
-                <div className="stat-tile__label">{t('dashboard.pendingApprovals')}</div>
-                <div className="stat-tile__value">{pendingCount ?? '—'}</div>
+            <div className="card">
+              <div className="card__header">
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FiClock aria-hidden="true" /> {t('dashboard.pendingApprovals')}
+                  {pendingCount > 0 && (
+                    <span className="badge badge--warning" style={{ marginLeft: 2 }}>{pendingCount}</span>
+                  )}
+                </h2>
+                <Link to="/expenses" className="btn btn--secondary btn--sm">{t('dashboard.viewAll')}</Link>
               </div>
+
+              {loading ? (
+                <SkeletonTable rows={2} columns={3} />
+              ) : pendingCount === 0 ? (
+                <EmptyState icon={FiClock} message={t('expenses.noPending')} />
+              ) : (
+                <>
+                  <p className="field-hint" style={{ margin: '0 0 14px' }}>{t('expenses.pendingHint')}</p>
+                  <div className="approval-list">
+                    {pendingExpenses.map((expense) => {
+                      const busy = actioningExpenseId === expense.id;
+                      // Segregation of duties: an approver cannot approve
+                      // their own request. The server enforces this
+                      // independently (approveExpense re-checks it); hiding
+                      // the button only avoids offering a guaranteed 403.
+                      const isOwn = expense.requested_by_user_id === session?.user?.id;
+                      return (
+                        <div className="approval-row" key={expense.id}>
+                          <div className="approval-row__detail">
+                            <div className="approval-row__payee">{expense.payee}</div>
+                            <div className="approval-row__meta">
+                              {expense.expense_number}
+                              {expense.description ? ` · ${expense.description}` : ''}
+                            </div>
+                          </div>
+                          <div className="approval-row__amount tabular-nums">{formatMoney(expense.amount)}</div>
+                          <div className="approval-row__actions">
+                            {!isOwn && (
+                              <button
+                                type="button"
+                                className="btn btn--success btn--sm"
+                                disabled={busy}
+                                onClick={() => handleApproveExpense(expense)}
+                              >
+                                {busy ? t('common.loading') : t('expenses.approve')}
+                              </button>
+                            )}
+                            <PermissionGate permission="expense.reject">
+                              <button
+                                type="button"
+                                className="btn btn--danger btn--sm"
+                                disabled={busy}
+                                onClick={() => handleRejectExpense(expense)}
+                              >
+                                {t('expenses.reject')}
+                              </button>
+                            </PermissionGate>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </PermissionGate>
 

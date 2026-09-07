@@ -5,6 +5,7 @@ import { contributorsApi } from '../../api/endpoints.js';
 import { unwrapApiError } from '../../api/client.js';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 import { useToast } from '../Toast.jsx';
+import { useActivity } from '../../context/ActivityContext.jsx';
 
 // Bulk member import: download a template, fill it in Excel, drop it back.
 //
@@ -34,6 +35,7 @@ const panelVariants = {
 export default function BulkImportPanel({ open, onClose, onImported }) {
   const { t } = useLocale();
   const toast = useToast();
+  const { recordActivity } = useActivity();
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState(null);
@@ -92,7 +94,10 @@ export default function BulkImportPanel({ open, onClose, onImported }) {
       // The directory behind this panel is now stale regardless of how many
       // rows were skipped, so refresh on any successful response.
       await onImported();
-      if (data.imported > 0) toast.success(t('contributors.import.done', { count: data.imported }));
+      if (data.imported > 0) {
+        toast.success(t('contributors.import.done', { count: data.imported }));
+        recordActivity({ kind: 'member', message: t('contributors.activity.imported', { count: data.imported }) });
+      }
     } catch (err) {
       failWith(unwrapApiError(err));
     } finally {

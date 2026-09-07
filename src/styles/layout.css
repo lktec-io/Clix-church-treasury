@@ -633,20 +633,77 @@
   display: inline-flex;
 }
 
+/* Red, not the accent green. Green is this product's "money moved
+   correctly" colour — it is on every success tick, total and positive
+   variance — so a green count reads as reassurance rather than as something
+   asking to be looked at. An unread counter is an attention signal. */
 .topbar-btn__badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
-  background: var(--color-accent);
+  background: #ef4444;
   color: #ffffff;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  line-height: 17px;
+  line-height: 18px;
   text-align: center;
+  /* Separates the badge from the icon underneath it on both themes, and
+     gives the red a little lift off the glass topbar. */
+  box-shadow: 0 0 0 2px var(--navbar-bg, var(--surface)), 0 2px 6px rgba(239, 68, 68, 0.5);
+}
+
+.topbar-btn__bell {
+  display: inline-flex;
+  /* The shake rotates about the bell's crown, the way a real one swings. */
+  transform-origin: 50% 15%;
+}
+
+/* ---------- Notification panel list ---------- */
+.topbar-panel__list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.topbar-panel__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.topbar-panel__item + .topbar-panel__item {
+  border-top: 1px solid var(--border);
+}
+
+.topbar-panel__item-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 14px;
+  color: var(--color-accent);
+}
+
+.topbar-panel__item-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.topbar-panel__item-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .topbar-menu {

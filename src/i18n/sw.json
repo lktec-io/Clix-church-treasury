@@ -461,5 +461,11 @@
   "dashboard.trends.subtitle": "Income Trends & Forecast Insights",
   "dashboard.trends.legend.actual": "Yaliyokusanywa",
   "dashboard.trends.legend.forecast": "Makadirio",
-  "dashboard.trends.forecastNote": "Sehemu ya mistari iliyokatika ni makadirio, si mapato yaliyorekodiwa — wastani wa miezi {{months}} iliyopita yenye shughuli."
+  "dashboard.trends.forecastNote": "Sehemu ya mistari iliyokatika ni makadirio, si mapato yaliyorekodiwa — wastani wa miezi {{months}} iliyopita yenye shughuli.",
+  "contributions.sms.previewWithheld": "Ujumbe ulikuwa na nenosiri la mshiriki, hivyo maandishi yake hayaonyeshwi hapa.",
+  "contributors.activity.portalEnabled": "Ufikiaji wa mtandao umewashwa kwa {{name}}",
+  "contributors.activity.pinReset": "Nenosiri limewekwa upya kwa {{name}}",
+  "contributors.activity.imported": "Washiriki {{count}} wameingizwa",
+  "contributions.activity.recorded": "Mchango umesajiliwa",
+  "memberStatements.activity.sent": "Taarifa imetumwa kwa SMS"
 }

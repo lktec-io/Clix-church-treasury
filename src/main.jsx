@@ -17,6 +17,7 @@ import { LocaleProvider } from './i18n/LocaleContext.jsx'
 import { ThemeProvider } from './context/ThemeContext.jsx'
 import { ToastProvider } from './components/Toast.jsx'
 import { ConfirmProvider } from './components/ConfirmDialog.jsx'
+import { ActivityProvider } from './context/ActivityContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -44,7 +45,13 @@ createRoot(document.getElementById('root')).render(
                   separate clients in the first place). */}
               <AuthProvider>
                 <MemberAuthProvider>
-                  <App />
+                  {/* In-session activity feed behind the navbar bell.
+                      Inside the auth providers so a logout unmounts and
+                      clears it — one user's activity must not survive into
+                      the next session on a shared office machine. */}
+                  <ActivityProvider>
+                    <App />
+                  </ActivityProvider>
                 </MemberAuthProvider>
               </AuthProvider>
             </ConfirmProvider>

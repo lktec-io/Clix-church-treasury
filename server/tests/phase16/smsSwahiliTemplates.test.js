@@ -124,6 +124,30 @@ describe('formatSmsLineItems', () => {
   });
 });
 
+// The uppercasing itself lives in sms.service.js (the single funnel every
+// message passes through) rather than in the templates, so this pins the
+// contract the templates rely on: churchName is substituted verbatim, and
+// whatever the service hands over is what appears.
+describe('church-name branding', () => {
+  it('renders the church name exactly as supplied, so the service can brand it', () => {
+    const body = renderTemplate('contribution_confirmation', 'sw', {
+      churchName: 'KILOMBELO SDA CHURCH',
+      memberName: 'Neema',
+      currency: 'TZS',
+      amount: '50,000.00',
+      date: '2026-09-03',
+      reference: 'RCP-1',
+    });
+    expect(body.split('\n')[0]).toBe('KILOMBELO SDA CHURCH');
+  });
+
+  it('puts the church name on its own first line in every template', () => {
+    for (const key of ['member_registration', 'contribution_confirmation', 'monthly_statement']) {
+      expect(renderTemplate(key, 'sw', { churchName: 'KANISA LA MFANO' }).split('\n')[0]).toBe('KANISA LA MFANO');
+    }
+  });
+});
+
 describe('rendered bodies are clean text, never bullet-list debris', () => {
   const TEMPLATE_KEYS = ['member_registration', 'contribution_confirmation', 'monthly_statement'];
 

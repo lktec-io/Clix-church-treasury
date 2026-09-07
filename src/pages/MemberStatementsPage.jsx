@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FiSend, FiDownload, FiFileText, FiHeart, FiGift, FiLayers } from 'react-icons/fi';
 import { contributorsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
@@ -7,6 +7,8 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
+import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
+import { useActivity } from '../context/ActivityContext.jsx';
 import { formatMoney, formatCurrency } from '../utils/format.js';
 
 const now = new Date();
@@ -29,6 +31,7 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 export default function MemberStatementsPage() {
   const { t, locale } = useLocale();
   const toast = useToast();
+  const { recordActivity } = useActivity();
   const [contributors, setContributors] = useState([]);
   const [contributorId, setContributorId] = useState('');
   const [year, setYear] = useState(CURRENT_YEAR);
@@ -37,6 +40,7 @@ export default function MemberStatementsPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [smsPop, setSmsPop] = useState(null);
 
   const loadContributors = useCallback(async () => {
     try {
@@ -88,6 +92,19 @@ export default function MemberStatementsPage() {
         message = reasonText ? `${t('memberStatements.sms.failed')} ${t('contributions.sms.reason', { reason: reasonText })}` : message;
       }
       toast[tone](message);
+      // Same centred dispatch dialog as the contributions flow. The
+      // statement body carries no secret, so the exact Swahili text that
+      // was sent is shown in the preview block.
+      setSmsPop({
+        dispatchId: Date.now(),
+        status: result.sms.status,
+        reasonCode: result.sms.reasonCode,
+        reason: result.sms.errorMessage,
+        preview: result.sms.preview,
+      });
+      if (result.sms.status === 'sent') {
+        recordActivity({ kind: 'sms', message: t('memberStatements.activity.sent') });
+      }
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -98,6 +115,12 @@ export default function MemberStatementsPage() {
   return (
     <div>
       <PageHeader title={t('memberStatements.title')} subtitle={t('memberStatements.subtitle')} />
+
+      <AnimatePresence>
+        {smsPop && (
+          <SmsPopCenter key={smsPop.dispatchId} dispatch={smsPop} onClose={() => setSmsPop(null)} />
+        )}
+      </AnimatePresence>
       {error && <div className="alert alert--error">{error}</div>}
 
       <div className="card">

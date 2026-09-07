@@ -41,7 +41,23 @@ export async function sendSms(
   // eslint-disable-next-line no-unused-vars
   { contributorId = null, phone, templateKey, params = {}, locale = SMS_LOCALE, relatedType = null, relatedId = null }
 ) {
-  const body = renderTemplate(templateKey, SMS_LOCALE, params);
+  // Church name in block capitals on every message, applied HERE rather
+  // than at each call site so no template and no future caller can miss it:
+  // this is the single funnel every SMS in the product passes through.
+  // Uppercasing the stored tenant name at send time (instead of storing it
+  // capitalised) keeps the database value as the church actually wrote it,
+  // which is what the PDFs, the UI and the receipts still render.
+  //
+  // toLocaleUpperCase, not toUpperCase: Swahili is Latin-script so the two
+  // agree today, but a tenant name carrying a locale-sensitive letter
+  // (Turkish dotless i being the classic case) would otherwise transform
+  // wrongly. Costs nothing to be correct.
+  const brandedParams =
+    typeof params.churchName === 'string'
+      ? { ...params, churchName: params.churchName.toLocaleUpperCase(SMS_LOCALE) }
+      : params;
+
+  const body = renderTemplate(templateKey, SMS_LOCALE, brandedParams);
   const sentLocale = SMS_LOCALE;
   const normalizedPhone = normalizeTzPhone(phone);
 
