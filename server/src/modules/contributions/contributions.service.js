@@ -16,6 +16,7 @@ import { contributorsRepository } from '../contributors/contributors.repository.
 import { tenantsRepository } from '../tenants/tenants.repository.js';
 import { categoriesRepository } from '../categories/categories.repository.js';
 import { sendSms } from '../sms/sms.service.js';
+import { accrueRemittanceForContribution } from '../remittance/remittance.service.js';
 
 export { enrichWithContributorInfo } from '../contributors/contributorEnrichment.js';
 
@@ -137,6 +138,21 @@ export async function recordContribution(tenantId, data, actorUserId) {
       referenceType: 'contributions',
       description: data.notes,
       createdByUserId: actorUserId,
+    });
+
+    // HIGHER-BODY ACCRUAL. If this fund carries a remittance rule (Zaka →
+    // Conference at 100%, say), the share owed upward is accrued the moment
+    // the contribution is recorded — not at period close — so "what do we
+    // owe the Conference right now" is always answerable.
+    //
+    // Inside the same transaction as the posting above on purpose: a tithe
+    // that commits without its obligation would silently understate what
+    // the church owes, and an understated liability is worse than a
+    // refused entry. No rule on the fund means this is a no-op.
+    await accrueRemittanceForContribution(connection, tenantId, {
+      fundId: data.fundId,
+      amount: data.amount,
+      financialPeriodId: openPeriod.id,
     });
 
     const contribution = await contributionsRepository.insert(

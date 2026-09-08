@@ -9,6 +9,7 @@ import { assertPeriodOpenAndOwned, getOpenPeriod } from './financialPeriods.serv
 import { generateTransactionNumber } from './transactionNumber.js';
 import { isPositiveMoneyString } from './money.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
+import { postJournalEntry } from './journal.service.js';
 
 const POSTABLE_TYPES = ['income', 'expense', 'transfer', 'reversal', 'adjustment'];
 const MAX_TRANSACTION_NUMBER_ATTEMPTS = 5;
@@ -64,15 +65,17 @@ export async function postLedgerEntry(connection, tenantId, entry) {
     throw validationError('Invalid amount', { amount: 'must be a positive decimal string with at most 2 places' });
   }
 
-  await assertAccountUsable(tenantId, entry.accountId, connection);
+  // Held onto so the journal mapping can read the GL account explicitly
+  // configured on this account/category without looking them up again.
+  const account = await assertAccountUsable(tenantId, entry.accountId, connection);
   await assertFundUsable(tenantId, entry.fundId, connection);
-  await assertCategoryUsable(tenantId, entry.categoryId ?? null, connection);
+  const category = await assertCategoryUsable(tenantId, entry.categoryId ?? null, connection);
   await assertPeriodOpenAndOwned(tenantId, entry.financialPeriodId, connection);
 
   for (let attempt = 0; attempt < MAX_TRANSACTION_NUMBER_ATTEMPTS; attempt += 1) {
     const transactionNumber = generateTransactionNumber();
     try {
-      return await transactionsRepository.insert(
+      const transaction = await transactionsRepository.insert(
         tenantId,
         {
           transaction_number: transactionNumber,
@@ -93,6 +96,19 @@ export async function postLedgerEntry(connection, tenantId, entry) {
         },
         connection
       );
+
+      // DOUBLE-ENTRY MIRROR. Every posted transaction also lands in the
+      // general ledger as a balanced DR/CR pair (journal.service.js), on
+      // this same connection so the two either both commit or both roll
+      // back — the subsidiary ledger and the GL can never disagree about
+      // whether something happened.
+      //
+      // The `transactions` row above remains the operational record every
+      // existing balance and report reads; this adds the auditor-facing
+      // view rather than replacing it.
+      await postJournalEntry(connection, tenantId, transaction, { account, category });
+
+      return transaction;
     } catch (error) {
       // Duplicate transaction_number (astronomically unlikely, but the DB
       // constraint plus this retry is what makes it *impossible*, not just

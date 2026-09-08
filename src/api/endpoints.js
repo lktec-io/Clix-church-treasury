@@ -148,6 +148,15 @@ export const expensesApi = {
   pay: (id) => apiClient.post(`/expenses/${id}/pay`).then(unwrap),
 };
 
+export const remittanceApi = {
+  // The obligation overview: buckets plus accrued/paid/outstanding totals.
+  overview: (params) => apiClient.get('/remittance', { params }).then(unwrap),
+  listRules: () => apiClient.get('/remittance/rules').then(unwrap),
+  createRule: (body) => apiClient.post('/remittance/rules', body).then(unwrap),
+  // Posts a real expense transaction through the shared ledger path.
+  remit: (id, body) => apiClient.post(`/remittance/${id}/remit`, body).then(unwrap),
+};
+
 export const transfersApi = {
   list: () => apiClient.get('/transfers').then(unwrap),
   create: (body) => apiClient.post('/transfers', body).then(unwrap),
@@ -217,6 +226,9 @@ const REPORT_PATHS = {
   pledges: () => '/reports/pledges',
   financialSummary: () => '/reports/financial-summary',
   monthlyTrends: () => '/reports/monthly-trends',
+  // The general-ledger trial balance (Ulinganisho wa Hesabu). Reads the
+  // journal, not the cash subsidiary ledger — see migration 0037.
+  trialBalance: () => '/reports/trial-balance',
 };
 
 export const reportsApi = {

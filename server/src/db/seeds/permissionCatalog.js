@@ -38,6 +38,9 @@ export const PERMISSIONS = [
   ['users.manage', 'Invite/disable users, assign roles'],
   ['roles.manage', 'Manage custom roles and their permissions'],
   ['settings.manage', 'Manage church settings'],
+  ['remittance.view', 'View higher-body (Conference/Diocese) remittance obligations and history'],
+  ['remittance.manage', 'Configure which funds remit upward and at what percentage'],
+  ['remittance.pay', 'Execute a remittance payout to the higher body (posts a ledger entry) — deliberately separate from expense.pay, which settles ordinary suppliers'],
   ['audit.view', 'View the audit log'],
   // Platform-level, not tenant-level — deliberately excluded from every
   // tenant-facing role's grant list (including Super Administrator's "ALL")
@@ -108,6 +111,7 @@ export const SYSTEM_ROLES = {
     'reports.view', 'reports.export',
     'budget.view', 'budget.manage',
     'financial_period.view', 'financial_period.manage', 'financial_period.close',
+    'remittance.view', 'remittance.pay',
   ],
   'Assistant Treasurer': [
     'dashboard.view',
@@ -121,6 +125,7 @@ export const SYSTEM_ROLES = {
     'reports.view',
     'budget.view',
     'financial_period.view',
+    'remittance.view',
   ],
   'Approver': [
     'dashboard.view',
@@ -136,6 +141,7 @@ export const SYSTEM_ROLES = {
     'budget.view',
     'financial_period.view',
     'audit.view',
+    'remittance.view',
   ],
   'Viewer': [
     'dashboard.view',

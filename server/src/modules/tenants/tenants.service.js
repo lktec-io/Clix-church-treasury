@@ -2,6 +2,7 @@ import { withTransaction } from '../../config/db.js';
 import { conflict, notFound } from '../../errors/AppError.js';
 import { tenantsRepository } from './tenants.repository.js';
 import { churchSettingsRepository } from './churchSettings.repository.js';
+import { chartOfAccountsRepository } from '../financial/chartOfAccounts.repository.js';
 
 export function slugify(name) {
   return name
@@ -25,6 +26,11 @@ export async function createTenantWithConnection(connection, { name, slug, baseC
     connection
   );
   await churchSettingsRepository.create(tenant.id, {}, connection);
+  // Every church starts with the standard chart of accounts, so its very
+  // first contribution posts a balanced journal entry rather than lazily
+  // creating the accounts mid-transaction. journal.service.js still seeds
+  // on demand as a backstop for tenants that predate the general ledger.
+  await chartOfAccountsRepository.seedTemplate(tenant.id, connection);
   return tenant;
 }
 

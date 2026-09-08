@@ -35,6 +35,17 @@ export const BUDGET_COLUMNS = [
   { key: 'variance', header: 'Variance' },
 ];
 
+// Trial balance. Debit/Credit are matched by the money-column regex in
+// exporters.js (isMoneyColumn), so both right-align on the decimal — which
+// is the whole readability point of the report.
+export const TRIAL_BALANCE_COLUMNS = [
+  { key: 'code', header: 'Code', width: 1 },
+  { key: 'name', header: 'Account', width: 3 },
+  { key: 'accountType', header: 'Type', width: 1.4 },
+  { key: 'debit', header: 'Debit', width: 1.6, align: 'right' },
+  { key: 'credit', header: 'Credit', width: 1.6, align: 'right' },
+];
+
 export function contributionRowForExport(row) {
   return { ...row, contributor_name: row.contributor?.full_name ?? '' };
 }

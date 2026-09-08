@@ -18,6 +18,8 @@ import {
   FiX,
   FiLogOut,
   FiUserCheck,
+  FiUpload,
+  FiBookOpen,
   FiChevronsLeft,
   FiChevronsRight,
 } from 'react-icons/fi';
@@ -66,6 +68,10 @@ const NAV_GROUPS = [
       { to: '/categories', icon: FiTag, labelKey: 'nav.categories', permission: 'dashboard.view' },
       { to: '/budgets', icon: FiClipboard, labelKey: 'nav.budgets', permission: 'budget.view' },
       { to: '/financial-periods', icon: FiCalendar, labelKey: 'nav.financialPeriods', permission: 'financial_period.view' },
+      // Gated on remittance.view: a church with no higher body configured
+      // still sees the page (it explains itself when empty), but a role
+      // without the permission never gets a link to a 403.
+      { to: '/treasury/remittance', icon: FiUpload, labelKey: 'nav.remittance', permission: 'remittance.view' },
     ],
   },
   {
@@ -73,6 +79,10 @@ const NAV_GROUPS = [
     items: [
       { to: '/pledges', icon: FiTarget, labelKey: 'nav.pledges', permission: 'pledges.view' },
       { to: '/reports', icon: FiBarChart2, labelKey: 'nav.reports', permission: 'reports.view' },
+      // The general-ledger trial balance. Its own destination rather than an
+      // entry in the Reports runner: the integrity strip is the report's
+      // conclusion and the generic table renderer has nowhere to put it.
+      { to: '/reports/trial-balance', icon: FiBookOpen, labelKey: 'nav.trialBalance', permission: 'reports.view' },
       { to: '/member-statements', icon: FiSend, labelKey: 'nav.memberStatements', permission: 'contributors.view' },
     ],
   },

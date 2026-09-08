@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { FiBookOpen, FiArrowRight } from 'react-icons/fi';
 import { reportsApi, accountsApi, fundsApi, categoriesApi, financialPeriodsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -198,6 +200,20 @@ export default function ReportsPage() {
     <div>
       <PageHeader title={t('reports.title')} />
       {error && <div className="alert alert--error">{error}</div>}
+
+      {/* The trial balance is not in the report picker below: it reads the
+          general ledger rather than the transaction filters this form
+          builds, and its balanced/unbalanced verdict has nowhere to live in
+          the generic results table. It gets its own destination, surfaced
+          here so it is still found from the Reports page. */}
+      <Link to="/reports/trial-balance" className="report-link-card">
+        <span className="report-link-card__icon"><FiBookOpen aria-hidden="true" /></span>
+        <span className="report-link-card__copy">
+          <span className="report-link-card__title">{t('reports.trialBalance')}</span>
+          <span className="report-link-card__desc">{t('reports.trialBalance.subtitle')}</span>
+        </span>
+        <FiArrowRight className="report-link-card__arrow" aria-hidden="true" />
+      </Link>
 
       <div className="card">
         <form onSubmit={handleRun}>

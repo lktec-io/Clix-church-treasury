@@ -87,6 +87,22 @@ table.data-table {
   color: var(--text-heading);
 }
 
+/* Alignment-only sibling of .is-amount, for figures that must line up on the
+   decimal WITHOUT being emphasised — a trial-balance column and its <th>,
+   where bolding every cell would flatten the hierarchy the section bands and
+   totals row are carrying.
+   Applies to th as well as td: a right-aligned column whose header stays
+   left-aligned reads as a misalignment rather than a style choice. */
+.data-table th.is-numeric,
+.data-table td.is-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  /* Keeps a figure and its currency on one line so the decimal column can
+     never be broken by a wrap. */
+  white-space: nowrap;
+}
+
 /* Phones: claw back the horizontal padding so fewer rows need a scroll to
    read at all. Vertical rhythm is kept — that's the part doing the work. */
 @media (max-width: 600px) {

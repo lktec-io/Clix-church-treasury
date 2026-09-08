@@ -5,6 +5,7 @@ import {
   CONTRIBUTION_COLUMNS,
   PLEDGE_COLUMNS,
   BUDGET_COLUMNS,
+  TRIAL_BALANCE_COLUMNS,
   contributionRowForExport,
   pledgeRowForExport,
 } from './reportColumns.js';
@@ -224,6 +225,26 @@ export async function monthlyTrends(req, res, next) {
     const months = Number.isFinite(requested) ? Math.min(Math.max(Math.trunc(requested), 3), 24) : 12;
     const data = await reportsService.getMonthlyTrends(req.tenantId, { months });
     res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function trialBalance(req, res, next) {
+  try {
+    const financialPeriodId = req.query.financialPeriodId ? Number(req.query.financialPeriodId) : undefined;
+    const { rows, totals, isBalanced, difference } = await reportsService.getTrialBalanceReport(req.tenantId, {
+      financialPeriodId,
+    });
+    await respond(req, res, {
+      title: 'Trial Balance (Ulinganisho wa Hesabu)',
+      columns: TRIAL_BALANCE_COLUMNS,
+      rows,
+      totals,
+      // Carried in the JSON body so the UI can show the balanced/unbalanced
+      // state prominently — it is the report's actual conclusion.
+      meta: { isBalanced, difference },
+    });
   } catch (err) {
     next(err);
   }

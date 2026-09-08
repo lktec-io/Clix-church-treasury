@@ -21,6 +21,8 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import ContributionsPage from './pages/ContributionsPage.jsx';
 import ContributorsPage from './pages/ContributorsPage.jsx';
 import ExpensesPage from './pages/ExpensesPage.jsx';
+import RemittancePage from './pages/RemittancePage.jsx';
+import TrialBalancePage from './pages/TrialBalancePage.jsx';
 import AccountsPage from './pages/AccountsPage.jsx';
 import FundsPage from './pages/FundsPage.jsx';
 import CategoriesPage from './pages/CategoriesPage.jsx';
@@ -90,6 +92,8 @@ function App() {
           <Route path="/contributions" element={<ContributionsPage />} />
           <Route path="/contributors" element={<ContributorsPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/treasury/remittance" element={<RemittancePage />} />
+          <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/funds" element={<FundsPage />} />
           <Route path="/categories" element={<CategoriesPage />} />

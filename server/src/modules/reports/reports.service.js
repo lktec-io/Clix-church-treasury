@@ -7,7 +7,8 @@ import { enrichWithContributorInfo } from '../contributors/contributorEnrichment
 import { listBudgetsWithActual } from '../budgets/budgets.service.js';
 import { listPledges } from '../pledges/pledges.service.js';
 import { getFinancialSummary } from '../financial/financialSummary.service.js';
-import { subtractMoney, sumMoney } from '../financial/money.js';
+import { addMoney, compareMoney, normalizeMoney, subtractMoney, sumMoney } from '../financial/money.js';
+import { chartOfAccountsRepository } from '../financial/chartOfAccounts.repository.js';
 
 // Every report here composes an existing repository/service method — none
 // of them run their own aggregation SQL. This is what
@@ -172,4 +173,50 @@ export async function getPledgeReport(tenantId, filters, { canViewContributors }
 
 export async function getFinancialSummaryReport(tenantId, financialPeriodId) {
   return getFinancialSummary(tenantId, financialPeriodId);
+}
+
+// TRIAL BALANCE (Ulinganisho wa Hesabu)
+//
+// The report double-entry exists to produce: every GL account with its
+// debit and credit totals, and the assertion that the two columns are
+// equal. Reads the journal (chart_of_accounts + journal_lines), never the
+// `transactions` subsidiary ledger — a trial balance drawn from single-entry
+// cash rows would be a restatement, not a proof.
+//
+// `isBalanced` is the whole point of the report. If it is ever false the
+// books are broken and the number is more useful than a thrown error: an
+// auditor needs to SEE the discrepancy and its size, not get a 500.
+export async function getTrialBalanceReport(tenantId, { financialPeriodId } = {}) {
+  const accounts = await chartOfAccountsRepository.trialBalance(tenantId, { financialPeriodId });
+
+  const rows = accounts.map((account) => {
+    const debit = normalizeMoney(String(account.total_debit ?? '0'));
+    const credit = normalizeMoney(String(account.total_credit ?? '0'));
+    // An account's balance is shown on the side it normally sits, so a
+    // reader is not asked to mentally negate half the sheet.
+    const net =
+      account.normal_balance === 'debit' ? subtractMoney(debit, credit) : subtractMoney(credit, debit);
+    return {
+      code: account.code,
+      name: account.name,
+      nameSw: account.name_sw,
+      accountType: account.account_type,
+      normalBalance: account.normal_balance,
+      debit,
+      credit,
+      balance: net,
+    };
+  });
+
+  const totals = rows.reduce(
+    (acc, row) => ({ debit: addMoney(acc.debit, row.debit), credit: addMoney(acc.credit, row.credit) }),
+    { debit: '0.00', credit: '0.00' }
+  );
+
+  return {
+    rows,
+    totals: { code: '', name: 'TOTAL', debit: totals.debit, credit: totals.credit },
+    isBalanced: compareMoney(totals.debit, totals.credit) === 0,
+    difference: subtractMoney(totals.debit, totals.credit),
+  };
 }

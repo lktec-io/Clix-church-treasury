@@ -1517,3 +1517,310 @@
   font-size: 15px;
   color: var(--color-warning);
 }
+
+/* ==========================================================================
+   REMITTANCE CONFIRMATION DRAWER
+   Reuses .sms-pop-overlay for the blurred backdrop — same blur, same z-tier,
+   one definition. This is the sign-off surface before real money leaves the
+   church, so it states the full breakdown rather than just asking "sure?".
+   ========================================================================== */
+.remit-drawer {
+  width: 100%;
+  max-width: 520px;
+  max-height: 88svh;
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.55);
+}
+
+.remit-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.remit-drawer__head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.remit-drawer__rows {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-primary-rgb), 0.04);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
+}
+
+.remit-drawer__rows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.remit-drawer__rows dt {
+  color: var(--text-muted);
+}
+
+.remit-drawer__rows dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-heading);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* The outstanding figure is the one being settled, closed off with the same
+   green double rule the PDFs use for a grand total. */
+.remit-drawer__total {
+  margin-top: 8px;
+  padding-top: 10px !important;
+  border-top: 2px solid var(--color-accent);
+}
+
+.remit-drawer__total dt {
+  font-weight: 700;
+  color: var(--text-heading) !important;
+}
+
+.remit-drawer__total dd {
+  font-size: 17px;
+  color: var(--color-accent) !important;
+}
+
+/* ==========================================================================
+   SEGMENTED TABS — Hub / Rules switch on the Remittance page
+   ========================================================================== */
+.seg-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  background: rgba(var(--color-primary-rgb), 0.06);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.09);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.seg-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
+}
+
+.seg-tabs__tab:hover {
+  color: var(--text-heading);
+}
+
+.seg-tabs__tab.is-active {
+  background: var(--surface);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.seg-tabs__tab:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+}
+
+/* ==========================================================================
+   REPORT LINK CARD — a report that has its own page rather than living in
+   the generic runner (currently the trial balance).
+   ========================================================================== */
+.report-link-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid rgba(var(--color-accent-rgb), 0.28);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium),
+    transform var(--motion-fast) var(--ease-premium);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .report-link-card:hover {
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+}
+
+.report-link-card:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+}
+
+.report-link-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-accent-rgb), 0.14);
+  color: var(--color-accent);
+  font-size: 18px;
+}
+
+.report-link-card__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.report-link-card__title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.report-link-card__desc {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.report-link-card__arrow {
+  flex-shrink: 0;
+  color: var(--color-accent);
+  font-size: 18px;
+}
+
+/* ==========================================================================
+   TRIAL BALANCE TABLE + INTEGRITY STRIP
+   ========================================================================== */
+.trial-balance__code {
+  width: 1%;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+/* Section band (Assets, Liabilities, …) inside the table, so the grouping
+   survives the horizontal scroll a narrow screen forces. */
+.trial-balance__section td {
+  padding-top: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.045);
+}
+
+.trial-balance__name {
+  display: block;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+/* The other language, one step down — a mixed English/Swahili church board
+   reads a single sheet rather than switching the UI language mid-meeting. */
+.trial-balance__name-alt {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.trial-balance__totals td {
+  padding-top: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-heading);
+  /* Double rule in accent green — the accounting convention for a closing
+     sum, matching the PDF exports (pdfTheme.js#drawGrandTotal). */
+  border-top: 3px double var(--color-accent);
+}
+
+/* The report's conclusion. Loud on purpose: an auditor opens this page to
+   answer one question. */
+.integrity-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.integrity-strip.is-balanced {
+  background: rgba(var(--color-accent-rgb), 0.1);
+  border-color: rgba(var(--color-accent-rgb), 0.45);
+}
+
+.integrity-strip.is-unbalanced {
+  background: rgba(var(--color-danger-rgb), 0.1);
+  border-color: rgba(var(--color-danger-rgb), 0.45);
+}
+
+.integrity-strip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  font-size: 22px;
+  color: #ffffff;
+}
+
+.integrity-strip.is-balanced .integrity-strip__icon {
+  background: var(--color-accent);
+  box-shadow: 0 8px 20px -8px rgba(var(--color-accent-rgb), 0.7);
+}
+
+.integrity-strip.is-unbalanced .integrity-strip__icon {
+  background: var(--color-danger);
+  box-shadow: 0 8px 20px -8px rgba(var(--color-danger-rgb), 0.7);
+}
+
+.integrity-strip__copy {
+  min-width: 0;
+}
+
+.integrity-strip__headline {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.integrity-strip__detail {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}

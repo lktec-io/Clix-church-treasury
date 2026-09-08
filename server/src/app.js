@@ -21,6 +21,7 @@ import { categoriesRoutes } from './modules/categories/categories.routes.js';
 import { contributorsRoutes } from './modules/contributors/contributors.routes.js';
 import { contributionsRoutes } from './modules/contributions/contributions.routes.js';
 import { expensesRoutes } from './modules/expenses/expenses.routes.js';
+import { remittanceRoutes } from './modules/remittance/remittance.routes.js';
 import { transfersRoutes } from './modules/transfers/transfers.routes.js';
 import { pledgesRoutes } from './modules/pledges/pledges.routes.js';
 import { receiptsRoutes } from './modules/receipts/receipts.routes.js';
@@ -71,6 +72,7 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
   app.use('/api/v1/contributors', apiRateLimiter, auth, tenantContext, contributorsRoutes());
   app.use('/api/v1/contributions', apiRateLimiter, auth, tenantContext, contributionsRoutes());
   app.use('/api/v1/expenses', apiRateLimiter, auth, tenantContext, expensesRoutes());
+  app.use('/api/v1/remittance', apiRateLimiter, auth, tenantContext, remittanceRoutes());
   app.use('/api/v1/transfers', apiRateLimiter, auth, tenantContext, transfersRoutes());
   app.use('/api/v1/pledges', apiRateLimiter, auth, tenantContext, pledgesRoutes());
   app.use('/api/v1/receipts', apiRateLimiter, auth, tenantContext, receiptsRoutes());
