@@ -73,12 +73,15 @@ a,
   --sidebar-width-collapsed: 76px;
 
   /* Nunito, self-hosted via @fontsource/nunito (main.jsx) — SIL Open Font
-     License, freely bundleable. Weights 400/500/600/700 only. */
+     License, freely bundleable. Weights 400/500/600/700/800. */
   --font-primary: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  /* Loaded in main.jsx. Used by headings, metric figures and the greeting
+     — the "heavy corporate" tier of the purple design language. */
+  --font-weight-heavy: 800;
 
   color-scheme: light dark;
   font-synthesis: none;

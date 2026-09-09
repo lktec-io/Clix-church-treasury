@@ -16,21 +16,16 @@
   overflow-x: hidden;
 }
 
-/* The ambient mesh lives here, not on the sidebar, and this is deliberate:
-   backdrop-filter blurs what is BEHIND an element. A translucent sidebar
-   over a flat single-colour canvas has nothing to blur and reads as merely
-   washed-out. These two off-screen colour pools give the glass real content
-   to refract, which is what makes the effect legible on desktop where the
-   sidebar sits in flow rather than over the page. */
+/* A single uniform canvas. The two radial colour pools that used to sit
+   here existed solely to give the sidebar's backdrop-filter something to
+   refract — with the glass gone they are just tinted haze over what the
+   brief asks to be a "clean, uniform ultra-light" ground, so they are
+   removed rather than recoloured. */
 .app-shell {
   display: flex;
   min-height: 100svh;
   width: 100%;
-  background:
-    radial-gradient(900px 620px at 100% -5%, rgba(var(--color-primary-rgb), 0.1), transparent 58%),
-    radial-gradient(760px 520px at 96% 102%, rgba(var(--color-accent-rgb), 0.08), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
   /* Clears the fixed navbar for BOTH columns at once. Putting this on
      .app-main instead would leave the sidebar starting at y=0, underneath
      the nav. */
@@ -50,12 +45,11 @@
   flex-shrink: 0;
   order: 2;
   overflow: hidden;
-  /* Glass, with a solid fallback first: browsers without backdrop-filter
-     support keep the opaque navy panel and lose nothing but the refraction.
-     The @supports block below is what opts into translucency, so contrast
-     against the sidebar text is never gambled on an unsupported feature. */
+  /* FLAT light surface. This panel used to be a translucent navy glass
+     sheet; the reference puts navigation on plain white separated by a
+     single hairline, so the blur, the gradient and the elevation all come
+     off — the border alone does the separating now. */
   background: var(--color-sidebar-bg);
-  background-image: var(--gradient-sidebar);
   border-left: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
@@ -70,11 +64,12 @@
      switch were behind it and unclickable. The drawer starts below the
      topbar anyway (top: var(--navbar-height)), so 92 never fights the nav. */
   z-index: 92;
-  /* Rounded on the inner (left) edge only — the right edge is flush with
-     the viewport, so rounding it would just show a sliver of page behind. */
-  border-top-left-radius: 24px;
-  border-bottom-left-radius: 24px;
-  box-shadow: var(--shadow-xl);
+  /* Square edges: a flat panel flush against a flat canvas. The 24px
+     rounding and the deep drop shadow both belonged to the old floating
+     glass slab and read as heavy against the new light ground. The mobile
+     drawer re-adds a shadow below, where it genuinely floats over content. */
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
   /* border-color only, deliberately — `width` is already animated inline
      by Framer Motion (Layout.jsx's collapse/expand), so it's left out of
      this transition to avoid two animation systems fighting over the same
@@ -85,21 +80,14 @@
   transition: border-color var(--motion-slow) var(--ease-premium);
 }
 
-@supports ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
+/* The navy glass treatment that used to live here is gone: an opaque white
+   panel has nothing meaningful to refract, and backdrop-filter on a
+   full-height fixed element is a real compositing cost for no visual gain.
+   On mobile the drawer DOES float over page content, so it keeps a shadow
+   — but only there. */
+@media (max-width: 899px) {
   .app-sidebar {
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    /* Translucent navy over the shell's mesh. Kept at 0.88/0.82 rather than
-       something showier: this panel carries 14 nav labels at 14px, and the
-       AA contrast of #c7d2e8 on it is not negotiable for a system people
-       use to move money. */
-    background-image: linear-gradient(
-      180deg,
-      rgba(11, 31, 77, 0.88) 0%,
-      rgba(18, 50, 98, 0.82) 100%
-    );
-    border-left: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: -18px 0 48px -30px rgba(11, 31, 77, 0.5);
+    box-shadow: var(--shadow-xl);
   }
 }
 
@@ -186,7 +174,7 @@
   color: var(--sidebar-active-text);
   font-weight: 700;
   flex-shrink: 0;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 4px 10px rgba(var(--color-accent-rgb), 0.35);
+  box-shadow: 0 4px 10px -2px rgba(var(--color-primary-rgb), 0.4);
 }
 
 .app-sidebar__collapse-btn {
@@ -275,9 +263,10 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  gap: 12px;
+  padding: 10px 14px;
+  /* Fully rounded — the capsule shape is what the active bed inherits. */
+  border-radius: 999px;
   color: var(--color-text-on-sidebar);
   text-decoration: none;
   font-size: 14px;
@@ -286,8 +275,14 @@
   transition: background var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
 }
 
+/* Fixed-size, centred icon box (brief §2A: "uniformly sized, clean and
+   perfectly centered"). A bare <svg> in a flex row is sized by its own
+   glyph metrics, so react-icons of different intrinsic proportions used to
+   sit a pixel or two off each other down the column. */
 .app-sidebar__link svg {
-  font-size: 17px;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   flex-shrink: 0;
   transition: transform var(--motion-fast) var(--ease-premium);
 }
@@ -300,28 +295,22 @@
   transform: translateX(1px);
 }
 
-/* Active state = green pill + a green block on the OUTER edge. Since the
-   sidebar flipped to the right, that outer edge is the right-hand one —
-   the gradient runs 270deg and the marker anchors `right`, so the emphasis
-   points at the screen edge the panel is attached to rather than trailing
-   off into the content area. */
+/* ACTIVE = a rounded soft-purple capsule. The signature element of the
+   reference design: a solid lavender bed with indigo text, fully rounded,
+   sitting inside the item's own padding rather than bleeding to the panel
+   edge. Replaces the old green gradient wash plus edge marker — that
+   treatment was built to glow against a dark navy panel and reads as
+   grubby on white. */
 .app-sidebar__link.is-active {
-  background: linear-gradient(270deg, rgba(var(--color-accent-rgb), 0.26), rgba(var(--color-accent-rgb), 0.06));
+  background: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.app-sidebar__link.is-active::before {
-  content: '';
-  position: absolute;
-  right: -12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
-  border-radius: 3px 0 0 3px;
-  background: var(--color-accent);
-  box-shadow: 0 0 14px 1px rgba(var(--color-accent-rgb), 0.65);
+.app-sidebar__link.is-active svg {
+  /* The icon carries the accent too, so the capsule reads as one object
+     rather than tinted text next to a grey glyph. */
+  color: var(--sidebar-active-text);
 }
 
 /* Collapsed = icon rail only. JS toggles this class (Layout.jsx); the
@@ -408,9 +397,11 @@
   height: 32px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: rgba(var(--color-accent-rgb), 0.18);
-  border: 1px solid rgba(var(--color-accent-rgb), 0.4);
-  color: #ffffff;
+  /* Lavender chip with indigo initials — on a white panel the old
+     white-on-translucent-green avatar had almost no contrast. */
+  background: var(--color-lavender);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.22);
+  color: var(--color-primary-hover);
   font-size: 13px;
   font-weight: 700;
 }
@@ -429,16 +420,16 @@
 .lang-switch {
   display: inline-flex;
   padding: 2px;
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: var(--color-gray-light);
+  border: 1px solid var(--sidebar-border);
   align-self: flex-start;
 }
 
 .lang-switch__opt {
   padding: 4px 12px;
   border: none;
-  border-radius: calc(var(--radius-sm) - 2px);
+  border-radius: 999px;
   background: transparent;
   color: var(--color-text-on-sidebar);
   font: inherit;
@@ -450,13 +441,16 @@
 }
 
 .lang-switch__opt:hover {
-  color: #ffffff;
+  color: var(--sidebar-text-strong);
 }
 
+/* The selected language gets the same white-capsule-on-grey treatment as
+   the segmented tabs elsewhere, rather than a coloured fill — it is a
+   setting, not an action. */
 .lang-switch__opt.is-active {
-  background: rgba(var(--color-accent-rgb), 0.22);
-  color: #ffffff;
-  box-shadow: inset 0 0 0 1px rgba(var(--color-accent-rgb), 0.45);
+  background: var(--surface);
+  color: var(--color-primary-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .lang-switch__opt:focus-visible {
@@ -476,8 +470,8 @@
   width: 100%;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--color-text-on-sidebar);
   font: inherit;
   font-size: 13px;
@@ -490,14 +484,14 @@
 /* Logout tints toward danger on hover — the one destructive action in the
    sidebar should say so before it's clicked. */
 .sidebar-ghost-btn:hover {
-  background: rgba(var(--color-danger-rgb), 0.16);
-  border-color: rgba(var(--color-danger-rgb), 0.5);
-  color: #ffffff;
+  background: var(--color-danger-bg);
+  border-color: rgba(var(--color-danger-rgb), 0.4);
+  color: var(--color-danger);
 }
 
 .sidebar-ghost-btn:focus-visible {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
   box-shadow: var(--ring-accent-strong);
 }
 
@@ -531,13 +525,13 @@
   background: var(--color-navbar-bg);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border);
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   z-index: 100;
-  color: #ffffff;
+  color: var(--text-heading);
   box-shadow: 0 8px 28px -18px rgba(0, 0, 0, 0.55);
   transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
 }
@@ -559,7 +553,7 @@
   font-weight: 700;
   font-size: 15.5px;
   letter-spacing: -0.01em;
-  color: #ffffff;
+  color: var(--text-heading);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -573,8 +567,8 @@
   height: 30px;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--color-lavender);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
   font-size: 14px;
   font-weight: 700;
 }
@@ -598,9 +592,9 @@
   flex-shrink: 0;
   padding: 0;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
   font-size: 17px;
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
@@ -608,9 +602,9 @@
 }
 
 .topbar-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--color-lavender-soft);
   border-color: rgba(var(--color-accent-rgb), 0.5);
-  color: #ffffff;
+  color: var(--color-primary-hover);
 }
 
 .topbar-btn:focus-visible {
@@ -762,18 +756,18 @@
   height: 40px;
   padding: 0;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border);
+  background: var(--surface);
   font-size: 19px;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--text-muted);
   transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
     color var(--motion-fast) var(--ease-premium);
 }
 .app-topbar__menu-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--color-lavender-soft);
   border-color: rgba(var(--color-accent-rgb), 0.5);
-  color: #ffffff;
+  color: var(--color-primary-hover);
 }
 .app-topbar__menu-btn:focus-visible {
   outline: none;
@@ -828,11 +822,14 @@
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   align-items: stretch;
-  background: rgba(11, 31, 77, 0.85);
+  /* White dock to match the light shell. It kept a translucent navy fill
+     with a green top edge — the last dark surface in the app once the
+     sidebar went light, and it read as a foreign bar pinned to the page. */
+  background: var(--color-navbar-bg);
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border-top: 1px solid rgba(16, 185, 129, 0.15);
-  box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.6);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 10px -6px rgba(15, 23, 42, 0.12);
   /* Clears the iOS home indicator / Android gesture bar, and collapses to
      0 on devices that have neither. */
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -855,19 +852,20 @@
   min-height: 56px;
   padding: 8px 4px;
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--text-muted);
   font-size: 10.5px;
   font-weight: 600;
   transition: color var(--motion-fast) var(--ease-premium);
 }
 
 .bottom-nav__item.is-active {
-  color: #ffffff;
+  color: var(--color-primary-hover);
+  font-weight: 700;
 }
 
 .bottom-nav__item:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px rgba(var(--color-accent-rgb), 0.6);
+  box-shadow: inset 0 0 0 2px rgba(var(--color-primary-rgb), 0.55);
   border-radius: var(--radius-sm);
 }
 
@@ -875,9 +873,11 @@
 .bottom-nav__pill {
   position: absolute;
   inset: 5px 8px;
-  border-radius: var(--radius-sm);
-  background: rgba(var(--color-accent-rgb), 0.18);
-  box-shadow: inset 0 0 0 1px rgba(var(--color-accent-rgb), 0.42);
+  /* Fully rounded, matching the sidebar's active capsule — the dock is the
+     same navigation state on a smaller screen and should read as the same
+     component. */
+  border-radius: 999px;
+  background: var(--sidebar-active-bg);
 }
 
 .bottom-nav__icon {
@@ -888,7 +888,7 @@
 }
 
 .bottom-nav__item.is-active .bottom-nav__icon {
-  color: var(--color-accent);
+  color: var(--color-primary-hover);
   transform: translateY(-1px);
 }
 

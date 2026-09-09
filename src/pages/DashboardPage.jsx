@@ -61,6 +61,24 @@ function fundIconFor(name = '') {
   return FUND_ICON_RULES.find((rule) => rule.match.test(name))?.icon ?? FiPieChart;
 }
 
+// Category colour for a fund, matched on the same names as the icon rules
+// above so the two never disagree. Returns a bare SUFFIX ('income',
+// 'info', …) rather than a full class, because the same category has to
+// tint two different components — the icon enclosure and the progress
+// meter — whose modifier prefixes differ. The actual hues live in cards.css
+// with the rest of the palette.
+// Purely presentational: no financial figure keys off this.
+function fundTintFor(name = '') {
+  if (/zaka|tithe|fungu la kumi/i.test(name)) return 'income';
+  if (/sadaka|offering|collection/i.test(name)) return 'info';
+  if (/ujenzi|build|construction|project|mradi|miradi/i.test(name)) return 'savings';
+  return '';
+}
+
+// Composes a modifier class from a prefix and a tint suffix, collapsing to
+// the base class when the fund has no recognised category.
+const tintClass = (base, tint) => (tint ? `${base} ${base}--${tint}` : base);
+
 // Staggered scroll-reveal used by the fund grid. `once` so tiles settle
 // permanently instead of re-animating every time they re-enter view.
 const revealContainer = {
@@ -526,17 +544,38 @@ export default function DashboardPage() {
                 >
                   {summary.fundSummaries.map((fund) => {
                     const Icon = fundIconFor(fund.name);
+                    const tint = fundTintFor(fund.name);
                     const share = fundAllocationTotal > 0
                       ? Math.round((Number(fund.balance) / fundAllocationTotal) * 100)
                       : null;
                     return (
                       <motion.div className="fund-tile" key={fund.fundId} variants={revealItem}>
                         <div className="fund-tile__head">
-                          <span className="fund-tile__icon"><Icon aria-hidden="true" /></span>
+                          {/* Category tint, chosen by the same name-matching
+                              that already picks the icon — so a fund's colour
+                              and its glyph always agree. Display only; nothing
+                              financial keys off it. */}
+                          <span className={tintClass('fund-tile__icon', tint)}>
+                            <Icon aria-hidden="true" />
+                          </span>
                           {share !== null && <span className="fund-tile__share">{share}%</span>}
                         </div>
                         <div className="fund-tile__name">{fund.name}</div>
                         <div className="fund-tile__value tabular-nums">{formatMoney(fund.balance)}</div>
+                        {/* Share-of-total as a bar as well as a figure — the
+                            reference pairs every metric with a proportion
+                            tracker, and a bar is read at a glance where a
+                            percentage has to be compared tile by tile. */}
+                        {share !== null && (
+                          <div
+                            className={tintClass('progress-meter', tint)}
+                            style={{ marginTop: 10 }}
+                            role="img"
+                            aria-label={`${share}%`}
+                          >
+                            <span className="progress-meter__fill" style={{ width: `${Math.min(share, 100)}%` }} />
+                          </div>
+                        )}
                       </motion.div>
                     );
                   })}

@@ -19,17 +19,19 @@ table.data-table {
 .data-table th,
 .data-table td {
   text-align: left;
-  /* Generous vertical rhythm — financial rows are scanned, not read, and
-     the extra 4px per side is what separates "spreadsheet" from "ledger". */
-  padding: 16px 18px;
+  /* Spacious rhythm — financial rows are scanned, not read. Widened again
+     for the flat treatment: with the boundary rules softened almost to
+     nothing, whitespace is what separates the rows. */
+  padding: 18px 20px;
   white-space: nowrap;
   transition: border-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
 }
 
 .data-table td {
-  /* Hairline in navy at 6% instead of the generic grey --border: the rule
-     separates rows without drawing a hard grid over the data. */
-  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.06);
+  /* Barely-there rule. The brief calls for "no dark boundary rows", so this
+     is now a whisper that keeps long rows trackable across a wide table
+     without drawing a grid over the data. */
+  border-bottom: 1px solid var(--border);
   color: var(--text);
 }
 
@@ -45,25 +47,20 @@ table.data-table {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding-top: 13px;
-  padding-bottom: 13px;
-  background: rgba(var(--color-primary-rgb), 0.035);
-  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.09);
+  padding-top: 12px;
+  padding-bottom: 12px;
+  /* No fill and no rounded cap: the header is now defined purely by its
+     uppercase slate tracking and a single rule, which is what makes the
+     table read as flat rather than as a boxed widget. */
+  background: transparent;
+  border-bottom: 1px solid var(--border);
 }
 
-.data-table thead th:first-child {
-  border-top-left-radius: var(--radius-sm);
-  border-bottom-left-radius: var(--radius-sm);
-}
-.data-table thead th:last-child {
-  border-top-right-radius: var(--radius-sm);
-  border-bottom-right-radius: var(--radius-sm);
-}
-
-/* Zebra striping at 2.5% navy — present enough to guide the eye across a
-   wide row, faint enough that it never competes with a status badge. */
+/* Zebra FADE, not a stripe — a 1.8% slate wash. Enough to guide the eye
+   across a wide row, far too faint to compete with a status badge or to
+   look like alternating bands. */
 .data-table tbody tr:nth-child(even) {
-  background: rgba(var(--color-primary-rgb), 0.025);
+  background: rgba(15, 23, 42, 0.018);
 }
 
 .data-table tbody tr {
@@ -73,8 +70,8 @@ table.data-table {
 
 @media (hover: hover) and (pointer: fine) {
   .data-table tbody tr:hover {
-    background: rgba(var(--color-accent-rgb), 0.055);
-    box-shadow: inset 3px 0 0 0 var(--color-accent);
+    background: var(--color-lavender-soft);
+    box-shadow: inset 3px 0 0 0 var(--color-primary);
   }
 }
 

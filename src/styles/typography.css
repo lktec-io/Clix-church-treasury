@@ -29,12 +29,16 @@ body {
   transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
 }
 
+/* Headings sit at 800 rather than 700 and tighten their tracking — the
+   brief's "bold, heavy corporate presentation" for titles. The colour is
+   --text-heading, which is now dark SLATE (#1e293b) rather than raw black,
+   also per the brief. Nunito is retained throughout. */
 h1,
 h2,
 h3 {
   font-family: var(--font-primary);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: -0.01em;
+  font-weight: var(--font-weight-heavy);
+  letter-spacing: -0.02em;
   color: var(--text-heading);
   margin: 0 0 4px;
 }

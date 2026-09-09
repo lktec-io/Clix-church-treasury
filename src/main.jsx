@@ -9,6 +9,12 @@ import '@fontsource/nunito/400.css'
 import '@fontsource/nunito/500.css'
 import '@fontsource/nunito/600.css'
 import '@fontsource/nunito/700.css'
+// 800 added for the heavy corporate headings and metric figures of the
+// purple refresh. It is a REAL loaded face, not a synthesised one:
+// variables.css sets `font-synthesis: none`, so a font-weight the browser
+// has no face for silently renders at the nearest available weight — an
+// 800 heading would have quietly drawn at 700 without this.
+import '@fontsource/nunito/800.css'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'

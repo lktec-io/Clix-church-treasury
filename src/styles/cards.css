@@ -7,11 +7,13 @@
 
 .card {
   background: var(--surface);
-  /* Navy hairline at 7%, not the generic grey --border: the edge is felt
-     rather than seen, and the diffuse shadow does the separating. */
-  border: 1px solid rgba(var(--color-primary-rgb), 0.07);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+  /* A single crisp hairline does ALL the separating now. The old approach
+     was a barely-there tinted edge plus a diffuse shadow doing the real
+     work; the reference is flat, so the shadow comes off and the border
+     becomes visible enough to define the panel on its own. */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
   min-width: 0;
   /* background-color/border-color transition alongside box-shadow so a
      card settles smoothly rather than hard-snapping when its surface
@@ -29,11 +31,10 @@
 /* (hover: hover) so a tap on a touchscreen never leaves a card "stuck"
    looking hovered until the next tap elsewhere — real mice/trackpads get
    the effect, touch devices don't fake it. */
-@media (hover: hover) and (pointer: fine) {
-  .card:hover {
-    box-shadow: var(--shadow-md);
-  }
-}
+/* No hover elevation: a flat panel that lifts on hover is the exact
+   "heavy shadow" language the brief drops. Interactive cards (.fund-tile,
+   .report-link-card) still respond — they are links, and their feedback is
+   a border tint rather than a drop shadow. */
 
 .card + .card {
   margin-top: 16px;
@@ -68,9 +69,11 @@
 .stat-tile {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-lg);
+  /* Roomier than before: the reference's metric blocks are generous, and
+     the circular icon enclosure needs air above the figure. */
+  padding: 18px;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -78,17 +81,73 @@
   transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
 }
 
-.stat-tile__icon {
+/* CIRCULAR tinted enclosure, not the old rounded square (brief §2B: "a
+   small, dedicated circular icon enclosure tinted dynamically according to
+   the fund category"). The default tint is brand purple; the --income /
+   --savings / --expense modifiers below re-tint both the bed and the glyph
+   from a single custom property, so a caller sets one class and the pair
+   stays in step. */
+.stat-tile__icon,
+.metric-icon {
+  --metric-tint: var(--color-primary);
+  --metric-tint-rgb: var(--color-primary-rgb);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  font-size: 15px;
-  margin-bottom: 6px;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(var(--metric-tint-rgb), 0.12);
+  color: var(--metric-tint);
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+
+/* Category tints. Purple = expenses/general (the default), green =
+   income, orange = savings/projects, blue = transfers — the four-colour set
+   the reference uses across its status blocks and allocation bars.
+   
+   Each modifier is declared once for all three components that accept a
+   tint (.metric-icon, .stat-tile__icon, .fund-tile__icon) so a hue has ONE
+   definition; the components differ only in which custom property they
+   read. --meter-tint is set alongside --metric-tint because .fund-tile__icon
+   and .progress-meter are tinted from the same suffix by the same caller. */
+.metric-icon--income,
+.stat-tile__icon--income,
+.fund-tile__icon--income,
+.progress-meter--income {
+  --metric-tint: var(--color-accent);
+  --metric-tint-rgb: var(--color-accent-rgb);
+  --meter-tint: var(--color-accent);
+  --meter-tint-rgb: var(--color-accent-rgb);
+}
+.metric-icon--savings,
+.stat-tile__icon--savings,
+.fund-tile__icon--savings,
+.progress-meter--savings {
+  --metric-tint: var(--color-warning);
+  --metric-tint-rgb: 245, 158, 11;
+  --meter-tint: var(--color-warning);
+  --meter-tint-rgb: 245, 158, 11;
+}
+.metric-icon--info,
+.stat-tile__icon--info,
+.fund-tile__icon--info,
+.progress-meter--info {
+  --metric-tint: var(--color-blue);
+  --metric-tint-rgb: 59, 130, 246;
+  --meter-tint: var(--color-blue);
+  --meter-tint-rgb: 59, 130, 246;
+}
+.metric-icon--danger,
+.stat-tile__icon--danger,
+.fund-tile__icon--danger,
+.progress-meter--danger {
+  --metric-tint: var(--color-danger);
+  --metric-tint-rgb: var(--color-danger-rgb);
+  --meter-tint: var(--color-danger);
+  --meter-tint-rgb: var(--color-danger-rgb);
 }
 
 .stat-tile__label {
@@ -100,9 +159,13 @@
 }
 
 .stat-tile__value {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  /* Heavier and larger — the brief asks for numeric amounts in a "bold,
+     heavy corporate presentation". Tabular figures so a column of amounts
+     aligns on the decimal without each tile being told to. */
+  font-size: 24px;
+  font-weight: var(--font-weight-heavy);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   color: var(--text-heading);
   margin-top: 2px;
   overflow-wrap: anywhere;
@@ -528,12 +591,16 @@
   z-index: 1;
 }
 
+/* The greeting ("Hujambo, …") is the heaviest type on the page — brief §1
+   asks for title greetings in a bold, heavy corporate presentation. It
+   stays white because it sits on the purple gradient banner, not on the
+   light canvas. */
 .welcome-banner__title {
   margin: 0;
   font-size: 26px;
   line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: var(--font-weight-heavy);
+  letter-spacing: -0.025em;
   color: #ffffff;
   overflow-wrap: anywhere;
 }
@@ -877,7 +944,7 @@
   min-width: 150px;
   padding: 10px 12px;
   border-radius: var(--radius);
-  background: rgba(11, 31, 77, 0.9);
+  background: rgba(30, 41, 59, 0.94);
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
   border: 1px solid rgba(var(--color-accent-rgb), 0.28);
@@ -1155,18 +1222,18 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  padding: 16px;
+  padding: 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--motion-base) var(--ease-premium), transform var(--motion-fast) var(--ease-premium);
+  box-shadow: none;
+  transition: border-color var(--motion-fast) var(--ease-premium);
 }
 
+/* Feedback is a border tint, not a lift — see the note on .card. */
 @media (hover: hover) and (pointer: fine) {
   .fund-tile:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    border-color: rgba(var(--color-primary-rgb), 0.35);
   }
 }
 
@@ -1178,17 +1245,22 @@
   margin-bottom: 4px;
 }
 
+/* Circular tinted enclosure, same system as .metric-icon — a fund tile
+   accepts the --income/--savings/--info modifiers so each fund carries its
+   own category colour (brief §2B). */
 .fund-tile__icon {
+  --metric-tint: var(--color-primary);
+  --metric-tint-rgb: var(--color-primary-rgb);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  font-size: 16px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(var(--metric-tint-rgb), 0.12);
+  color: var(--metric-tint);
+  font-size: 17px;
 }
 
 /* Share-of-total badge — the premium green accent, used here because it
@@ -1197,8 +1269,11 @@
   flex-shrink: 0;
   padding: 3px 9px;
   border-radius: 999px;
-  background: var(--color-success-bg);
-  color: var(--color-success);
+  /* Neutral lavender rather than success green: this encodes a proportion
+     of the total, which is neither good nor bad news. Green here read as
+     "this fund is healthy", which is not what the number says. */
+  background: var(--color-lavender-soft);
+  color: var(--color-primary-hover);
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1823,4 +1898,36 @@
   line-height: 1.5;
   color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+
+
+/* ==========================================================================
+   PROGRESS METER — fluid allocation/budget bars (brief §3)
+   Rounded caps, a soft track, and a fill tinted per category so a column of
+   department rows reads as the reference's multi-coloured sliders.
+   ========================================================================== */
+.progress-meter {
+  --meter-tint: var(--color-primary);
+  --meter-tint-rgb: var(--color-primary-rgb);
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-gray-light);
+  overflow: hidden;
+}
+
+.progress-meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--meter-tint);
+  /* Width is set inline from real data; the transition is what makes a
+     value change glide rather than jump when a figure refreshes. */
+  transition: width var(--motion-slow) var(--ease-premium);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-meter__fill {
+    transition: none;
+  }
 }
