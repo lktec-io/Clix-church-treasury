@@ -1,0 +1,544 @@
+/* ==========================================================================
+   ACCOUNTING — data tables, the activity timeline, the expense approval
+   gateway, the remittance drawer and the trial balance: every ledger-shaped
+   surface in one module.
+   ========================================================================== */
+
+/* ==========================================================================
+   TABLES — the ONE place a wide table is allowed to scroll: horizontally,
+   inside itself, never the page.
+   ========================================================================== */
+
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  /* Spacious rhythm — financial rows are scanned, not read. Widened again
+     for the flat treatment: with the boundary rules softened almost to
+     nothing, whitespace is what separates the rows. */
+  padding: 18px 20px;
+  white-space: nowrap;
+  transition: border-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
+}
+
+.data-table td {
+  /* Barely-there rule. The brief calls for "no dark boundary rows", so this
+     is now a whisper that keeps long rows trackable across a wide table
+     without drawing a grid over the data. */
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* No rule under the final row — the card edge already closes the table. */
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table thead th {
+  position: relative;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  /* No fill and no rounded cap: the header is now defined purely by its
+     uppercase slate tracking and a single rule, which is what makes the
+     table read as flat rather than as a boxed widget. */
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Zebra FADE, not a stripe — a 1.8% slate wash. Enough to guide the eye
+   across a wide row, far too faint to compete with a status badge or to
+   look like alternating bands. */
+.data-table tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.018);
+}
+
+.data-table tbody tr {
+  transition: background-color var(--motion-fast) var(--ease-premium),
+    box-shadow var(--motion-fast) var(--ease-premium);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .data-table tbody tr:hover {
+    background: var(--color-lavender-soft);
+    box-shadow: inset 3px 0 0 0 var(--color-primary);
+  }
+}
+
+.data-table .is-amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.01em;
+  text-align: right;
+  color: var(--text-heading);
+}
+
+/* Alignment-only sibling of .is-amount, for figures that must line up on the
+   decimal WITHOUT being emphasised — a trial-balance column and its <th>,
+   where bolding every cell would flatten the hierarchy the section bands and
+   totals row are carrying.
+   Applies to th as well as td: a right-aligned column whose header stays
+   left-aligned reads as a misalignment rather than a style choice. */
+.data-table th.is-numeric,
+.data-table td.is-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  /* Keeps a figure and its currency on one line so the decimal column can
+     never be broken by a wrap. */
+  white-space: nowrap;
+}
+
+/* Phones: claw back the horizontal padding so fewer rows need a scroll to
+   read at all. Vertical rhythm is kept — that's the part doing the work. */
+@media (max-width: 600px) {
+  .data-table th,
+  .data-table td {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* ---------- Timeline (member history) ---------- */
+.timeline-group {
+  margin-bottom: 18px;
+}
+
+.timeline-group__label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+}
+
+.timeline-item__icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-lg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: 16px;
+}
+
+.timeline-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-item__title {
+  font-weight: 600;
+  color: var(--text-heading);
+  font-size: 14px;
+}
+
+.timeline-item__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.timeline-item__amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+  flex-shrink: 0;
+}
+
+
+/* ==========================================================================
+   EXPENSE APPROVAL GATEWAY — dashboard pending-request rows
+   A row list rather than a <table>: each entry is a decision with two
+   actions, not tabular data to scan across, and it has to reflow to a
+   stacked card on a phone without a horizontal scroller.
+   ========================================================================== */
+.approval-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.approval-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  /* Amber left edge — this row is waiting on the reader, and the colour
+     matches the "submitted" status badge used everywhere else. */
+  border-left: 3px solid var(--color-warning);
+}
+
+.approval-row__detail {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+
+.approval-row__payee {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.approval-row__meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.approval-row__amount {
+  flex: 0 0 auto;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-heading);
+  white-space: nowrap;
+}
+
+.approval-row__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+/* On a phone the amount leads its own line and the two decisions split the
+   full width, so neither is a cramped target next to the other. */
+@media (max-width: 560px) {
+  .approval-row {
+    align-items: stretch;
+  }
+  .approval-row__amount {
+    flex: 1 1 100%;
+  }
+  .approval-row__actions {
+    flex: 1 1 100%;
+  }
+  .approval-row__actions .btn {
+    flex: 1 1 0;
+  }
+}
+
+/* Workflow sub-label above the approval grid. Framed rather than plain
+   muted text: it corrects a misreading that costs real money (believing
+   "Idhinisha" releases the funds), so it has to survive being skimmed. */
+.approval-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 28%, transparent);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.approval-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 15px;
+  color: var(--color-warning);
+}
+
+/* ==========================================================================
+   REMITTANCE CONFIRMATION DRAWER
+   Reuses .sms-pop-overlay for the blurred backdrop — same blur, same z-tier,
+   one definition. This is the sign-off surface before real money leaves the
+   church, so it states the full breakdown rather than just asking "sure?".
+   ========================================================================== */
+.remit-drawer {
+  width: 100%;
+  max-width: 520px;
+  max-height: 88svh;
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.55);
+}
+
+.remit-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.remit-drawer__head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.remit-drawer__rows {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-primary-rgb), 0.04);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
+}
+
+.remit-drawer__rows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.remit-drawer__rows dt {
+  color: var(--text-muted);
+}
+
+.remit-drawer__rows dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-heading);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* The outstanding figure is the one being settled, closed off with the same
+   green double rule the PDFs use for a grand total. */
+.remit-drawer__total {
+  margin-top: 8px;
+  padding-top: 10px !important;
+  border-top: 2px solid var(--color-accent);
+}
+
+.remit-drawer__total dt {
+  font-weight: 700;
+  color: var(--text-heading) !important;
+}
+
+.remit-drawer__total dd {
+  font-size: 17px;
+  color: var(--color-accent) !important;
+}
+
+
+/* ==========================================================================
+   TRIAL BALANCE TABLE + INTEGRITY STRIP
+   ========================================================================== */
+.trial-balance__code {
+  width: 1%;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+/* Section band (Assets, Liabilities, …) inside the table, so the grouping
+   survives the horizontal scroll a narrow screen forces. */
+.trial-balance__section td {
+  padding-top: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.045);
+}
+
+.trial-balance__name {
+  display: block;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+/* The other language, one step down — a mixed English/Swahili church board
+   reads a single sheet rather than switching the UI language mid-meeting. */
+.trial-balance__name-alt {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.trial-balance__totals td {
+  padding-top: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-heading);
+  /* Double rule in accent green — the accounting convention for a closing
+     sum, matching the PDF exports (pdfTheme.js#drawGrandTotal). */
+  border-top: 3px double var(--color-accent);
+}
+
+/* The report's conclusion. Loud on purpose: an auditor opens this page to
+   answer one question. */
+.integrity-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.integrity-strip.is-balanced {
+  background: rgba(var(--color-accent-rgb), 0.1);
+  border-color: rgba(var(--color-accent-rgb), 0.45);
+}
+
+.integrity-strip.is-unbalanced {
+  background: rgba(var(--color-danger-rgb), 0.1);
+  border-color: rgba(var(--color-danger-rgb), 0.45);
+}
+
+.integrity-strip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  font-size: 22px;
+  color: #ffffff;
+}
+
+.integrity-strip.is-balanced .integrity-strip__icon {
+  background: var(--color-accent);
+  box-shadow: 0 8px 20px -8px rgba(var(--color-accent-rgb), 0.7);
+}
+
+.integrity-strip.is-unbalanced .integrity-strip__icon {
+  background: var(--color-danger);
+  box-shadow: 0 8px 20px -8px rgba(var(--color-danger-rgb), 0.7);
+}
+
+.integrity-strip__copy {
+  min-width: 0;
+}
+
+.integrity-strip__headline {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.integrity-strip__detail {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+
+
+/* ---------- Mobile-money agent fee (Makato) capture ---------- */
+.makato-panel {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-lavender-soft);
+}
+
+.makato-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-heading);
+}
+
+.makato-panel__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 14px 0 8px;
+}
+
+.makato-panel__summary dt {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.makato-panel__summary dd {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-heading);
+}
+
+.makato-panel__summary dd.makato-panel__fee {
+  color: var(--color-danger);
+}
+
+.makato-panel__summary dd.makato-panel__net {
+  color: var(--color-success);
+}
+
+/* Semantic money colours in ledgers: emerald for money in, crimson for money
+   out. Compound selector so it outranks .data-table .is-amount's heading
+   colour regardless of source order. */
+.data-table td.is-amount.is-income {
+  color: var(--color-success);
+}
+
+.data-table td.is-amount.is-expense {
+  color: var(--color-danger);
+}
+
+/* Recorded date + hour:minute. Kept on one line — a timestamp broken across
+   two rows is easy to misread as two entries. */
+.data-table td.ledger-time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.pledge-installment {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

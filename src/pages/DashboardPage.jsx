@@ -12,6 +12,7 @@ import {
   FiUserPlus,
   FiFileText,
   FiBarChart2,
+  FiActivity,
   FiSend,
   FiDollarSign,
   FiGift,
@@ -32,7 +33,14 @@ import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonHero, SkeletonStatGrid, SkeletonTable } from '../components/ui/Skeleton.jsx';
 import FundDonut from '../components/ui/FundDonut.jsx';
 import TrendChart from '../components/ui/TrendChart.jsx';
-import { formatMoney, formatCurrency, formatDate } from '../utils/format.js';
+import {
+  ActivityTimeline,
+  CollectionsOverview,
+  DepartmentCollections,
+  MakatoOverviewCard,
+  TargetsTracker,
+} from '../components/dashboard/TreasuryInsights.jsx';
+import { formatMoney, formatCurrency, sumMoneyStrings } from '../utils/format.js';
 
 // Every figure here is read from the existing Financial Engine / Phase 9
 // report services — nothing on this page runs its own SQL or does its own
@@ -90,24 +98,29 @@ const revealItem = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
 };
 
+// Local calendar date as YYYY-MM-DD. NOT toISOString(): local midnight on the
+// 1st is still the previous day in UTC for any zone east of Greenwich, so in
+// Tanzania (UTC+3) "this month" used to start on the last day of the month
+// before, and "this year" on 31 December.
+function isoDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return isoDate(new Date());
 }
 
 function computeRange(kind, customFrom, customTo) {
   const now = new Date();
   if (kind === 'month') {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { dateFrom: from.toISOString().slice(0, 10), dateTo: todayIso() };
+    return { dateFrom: isoDate(new Date(now.getFullYear(), now.getMonth(), 1)), dateTo: todayIso() };
   }
   if (kind === 'quarter') {
     const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
-    const from = new Date(now.getFullYear(), quarterStartMonth, 1);
-    return { dateFrom: from.toISOString().slice(0, 10), dateTo: todayIso() };
+    return { dateFrom: isoDate(new Date(now.getFullYear(), quarterStartMonth, 1)), dateTo: todayIso() };
   }
   if (kind === 'year') {
-    const from = new Date(now.getFullYear(), 0, 1);
-    return { dateFrom: from.toISOString().slice(0, 10), dateTo: todayIso() };
+    return { dateFrom: isoDate(new Date(now.getFullYear(), 0, 1)), dateTo: todayIso() };
   }
   return { dateFrom: customFrom, dateTo: customTo };
 }
@@ -131,7 +144,9 @@ export default function DashboardPage() {
   const [incomeTotal, setIncomeTotal] = useState(null);
   const [expenseTotal, setExpenseTotal] = useState(null);
   const [pledgeTotals, setPledgeTotals] = useState(null);
-  const [budgetTotals, setBudgetTotals] = useState(null);
+  const [budgetRows, setBudgetRows] = useState([]);
+  // Zaka/Sadaka split, department collections and Makato for the range.
+  const [insights, setInsights] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [trends, setTrends] = useState(null);
   // The submitted-expense ROWS, not just their count. The dashboard already
@@ -156,8 +171,8 @@ export default function DashboardPage() {
       requests.push(
         reportsApi
           .run('budgetVsActual', { financialPeriodId: periodId })
-          .then((data) => setBudgetTotals(data.totals))
-          .catch(() => setBudgetTotals(null))
+          .then((data) => setBudgetRows(data.rows ?? []))
+          .catch(() => setBudgetRows([]))
       );
     }
     await Promise.all(requests);
@@ -168,6 +183,9 @@ export default function DashboardPage() {
     if (hasPermission('income.view')) {
       requests.push(
         reportsApi.run('income', { dateFrom, dateTo }).then((data) => setIncomeTotal(data.totals.amount)).catch(() => setIncomeTotal(null))
+      );
+      requests.push(
+        reportsApi.run('dashboardInsights', { dateFrom, dateTo }).then(setInsights).catch(() => setInsights(null))
       );
     }
     if (hasPermission('expense.view')) {
@@ -318,6 +336,16 @@ export default function DashboardPage() {
         const balance = Number(fund.balance);
         return Number.isFinite(balance) && balance > 0 ? sum + balance : sum;
       }, 0),
+    [summary]
+  );
+
+  // Display aggregation only (utils/format.js#sumMoneyStrings is integer-cents):
+  // income less expenses over the selected range.
+  const netForRange =
+    incomeTotal !== null && expenseTotal !== null ? sumMoneyStrings([incomeTotal, `-${expenseTotal}`]) : null;
+
+  const fundNameById = useMemo(
+    () => new Map((summary?.fundSummaries ?? []).map((fund) => [fund.fundId, fund.name])),
     [summary]
   );
 
@@ -508,6 +536,15 @@ export default function DashboardPage() {
                 <div className="stat-tile__value is-negative tabular-nums">{expenseTotal !== null ? formatMoney(expenseTotal) : '—'}</div>
               </div>
             </PermissionGate>
+            {netForRange !== null && (
+              <div className="stat-tile">
+                <span className="stat-tile__icon"><FiActivity aria-hidden="true" /></span>
+                <div className="stat-tile__label">{t('insights.netForRange')}</div>
+                <div className={`stat-tile__value tabular-nums ${netForRange.startsWith('-') ? 'is-negative' : 'is-positive'}`}>
+                  {formatMoney(netForRange)}
+                </div>
+              </div>
+            )}
             <PermissionGate permission="pledges.view">
               <div className="stat-tile">
                 <span className="stat-tile__icon"><FiTarget aria-hidden="true" /></span>
@@ -523,6 +560,16 @@ export default function DashboardPage() {
               </div>
             </PermissionGate>
           </motion.div>
+
+          {insights && (
+            <>
+              <CollectionsOverview collections={insights.collections} />
+              <div className="insight-columns">
+                <DepartmentCollections departments={insights.departments} />
+                <MakatoOverviewCard makato={insights.makato} />
+              </div>
+            </>
+          )}
 
           {/* Fund allocation — where the money actually sits right now,
               one tile per fund the church has defined. Reveals on scroll
@@ -744,66 +791,16 @@ export default function DashboardPage() {
           </PermissionGate>
 
           <PermissionGate permission="budget.view">
-            <div className="card">
-              <div className="card__header">
-                <h2>{t('dashboard.budgetVsActual')}</h2>
-                <Link to="/budgets" className="btn btn--secondary btn--sm">{t('dashboard.viewAll')}</Link>
-              </div>
-              {budgetTotals ? (
-                <div className="stat-grid">
-                  <div className="stat-tile">
-                    <div className="stat-tile__label">{t('budgets.budgetAmount')}</div>
-                    <div className="stat-tile__value tabular-nums">{formatMoney(budgetTotals.budget_amount)}</div>
-                  </div>
-                  <div className="stat-tile">
-                    <div className="stat-tile__label">{t('budgets.actual')}</div>
-                    <div className="stat-tile__value tabular-nums">{formatMoney(budgetTotals.actual_amount)}</div>
-                  </div>
-                  <div className="stat-tile">
-                    <div className="stat-tile__label">{t('budgets.variance')}</div>
-                    <div className={`stat-tile__value tabular-nums ${Number(budgetTotals.variance) < 0 ? 'is-negative' : 'is-positive'}`}>
-                      {formatMoney(budgetTotals.variance)}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <EmptyState icon={FiBarChart2} message={t('common.noResults')} />
-              )}
-            </div>
+            <TargetsTracker rows={budgetRows} fundNameById={fundNameById} />
           </PermissionGate>
 
           <PermissionGate permission="reports.view">
             <div className="card">
               <div className="card__header">
-                <h2>{t('dashboard.recentTransactions')}</h2>
+                <h2>{t('insights.timeline.title')}</h2>
                 <Link to="/reports" className="btn btn--secondary btn--sm">{t('dashboard.viewAll')}</Link>
               </div>
-              {recentTransactions.length === 0 ? (
-                <EmptyState icon={FiClock} message={t('common.noResults')} />
-              ) : (
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>{t('common.date')}</th>
-                        <th>{t('common.reference')}</th>
-                        <th style={{ textAlign: 'right' }}>{t('common.amount')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentTransactions.map((tx) => (
-                        <tr key={tx.id}>
-                          <td>{formatDate(tx.posted_at)}</td>
-                          <td>{tx.transaction_number}</td>
-                          <td className="is-amount" style={{ color: tx.direction === 'in' ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {tx.direction === 'in' ? '+' : '−'} {formatMoney(tx.amount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <ActivityTimeline transactions={recentTransactions} />
             </div>
           </PermissionGate>
         </>

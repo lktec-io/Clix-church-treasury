@@ -1,4 +1,5 @@
 import { validationError } from '../../errors/AppError.js';
+import { validateMemberIdentity } from './memberId.js';
 
 const GENDERS = ['male', 'female', 'unspecified'];
 
@@ -46,6 +47,13 @@ export function validateCreateContributor(body) {
       fields.gender = `must be one of: ${GENDERS.join(', ')}`;
     }
   }
+  // Identity document (NIDA / voter ID / driving licence / none). Enforced
+  // here as well as in the browser: the client-side check is instant
+  // feedback, this is the rule — a request that skips the form skips the
+  // client check too.
+  const identity = validateMemberIdentity({ idType: body.idType, idNumber: body.idNumber, idNote: body.idNote });
+  Object.assign(fields, identity.fields);
+
   if (Object.keys(fields).length > 0) {
     throw validationError('Invalid contributor payload', fields);
   }
@@ -55,5 +63,6 @@ export function validateCreateContributor(body) {
     email: body.email?.trim() || null,
     gender: body.gender || null,
     memberNumber: body.memberNumber?.trim() || null,
+    ...identity.value,
   };
 }

@@ -233,7 +233,7 @@ export async function monthlyTrends(req, res, next) {
 export async function trialBalance(req, res, next) {
   try {
     const financialPeriodId = req.query.financialPeriodId ? Number(req.query.financialPeriodId) : undefined;
-    const { rows, totals, isBalanced, difference } = await reportsService.getTrialBalanceReport(req.tenantId, {
+    const { rows, totals, isBalanced, difference, available } = await reportsService.getTrialBalanceReport(req.tenantId, {
       financialPeriodId,
     });
     await respond(req, res, {
@@ -243,8 +243,28 @@ export async function trialBalance(req, res, next) {
       totals,
       // Carried in the JSON body so the UI can show the balanced/unbalanced
       // state prominently — it is the report's actual conclusion.
-      meta: { isBalanced, difference },
+      meta: { isBalanced, difference, available },
+      // Stated on the PDF too, so a printed zero report cannot be mistaken
+      // for a verified balanced ledger.
+      filterSummary: available ? undefined : 'General ledger not yet available on this server - pending database migration.',
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Cockpit aggregates: collections split, department giving, mobile-money
+// fees. Gated on income.view — every figure here is derived from income.
+export async function dashboardInsights(req, res, next) {
+  try {
+    const dateFrom = req.query.dateFrom;
+    const dateTo = req.query.dateTo;
+    const DATE = /^\d{4}-\d{2}-\d{2}$/;
+    if (!DATE.test(dateFrom ?? '') || !DATE.test(dateTo ?? '')) {
+      throw validationError('Invalid payload', { dateFrom: 'dateFrom and dateTo are required as YYYY-MM-DD' });
+    }
+    const data = await reportsService.getDashboardInsights(req.tenantId, { dateFrom, dateTo });
+    res.json({ success: true, data });
   } catch (err) {
     next(err);
   }

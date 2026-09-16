@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiDollarSign, FiLayers, FiPlus, FiX, FiCheck, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
-import { contributionsApi, accountsApi, fundsApi, categoriesApi, contributorsApi, pledgesApi, receiptsApi } from '../api/endpoints.js';
+import { FiDollarSign, FiLayers, FiPlus, FiX, FiCheck, FiArrowLeft, FiArrowRight, FiSmartphone } from 'react-icons/fi';
+import {
+  contributionsApi,
+  accountsApi,
+  fundsApi,
+  categoriesApi,
+  contributorsApi,
+  departmentsApi,
+  pledgesApi,
+  receiptsApi,
+} from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -18,6 +27,9 @@ import { useActivity } from '../context/ActivityContext.jsx';
 import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
+// Mirrors server contributions.validator.js#MOBILE_PROVIDERS.
+const MOBILE_PROVIDERS = ['mpesa', 'tigo_pesa', 'airtel_money', 'halopesa', 'other'];
+const MONEY_RE = /^\d{1,12}(\.\d{1,2})?$/;
 const PAGE_SIZE = 50;
 
 // The recording form is a 4-step wizard rather than one long page: a
@@ -50,10 +62,34 @@ function emptyForm() {
     contributorId: '',
     pledgeId: '',
     paymentMethod: 'cash',
-    contributionDate: new Date().toISOString().slice(0, 10),
+    // Local calendar date, not toISOString(): between 00:00 and 03:00 in
+    // Tanzania the UTC date is still yesterday.
+    contributionDate: localToday(),
     reference: '',
     notes: '',
+    departmentId: '',
+    mobileProvider: '',
+    transferFee: '',
   };
+}
+
+function localToday() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+// A typed money string ("10,000.5") as integer cents, or null when it is not
+// a valid amount. Integer arithmetic so the net figure is never off by a
+// floating-point cent.
+function toCents(value) {
+  const clean = sanitizeAmountInput(value);
+  if (!MONEY_RE.test(clean)) return null;
+  const [whole, frac = ''] = clean.split('.');
+  return Number(whole) * 100 + Number(frac.padEnd(2, '0'));
+}
+
+function centsToMoney(cents) {
+  return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
 }
 
 // Integer-cents sum for the live "items must add up to the total" check —
@@ -80,6 +116,7 @@ export default function ContributionsPage() {
   const [categories, setCategories] = useState([]);
   const [contributors, setContributors] = useState([]);
   const [pledges, setPledges] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [form, setForm] = useState(emptyForm());
   const [items, setItems] = useState([]);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -119,6 +156,9 @@ export default function ContributionsPage() {
       setAccounts(accountData);
       setFunds(fundData);
       setCategories(categoryData);
+      // Optional enrichment: a failure here (or a database not yet migrated)
+      // must not stop anyone recording money.
+      setDepartments(await departmentsApi.list().catch(() => []));
       if (hasPermission('contributors.view')) {
         setContributors(await contributorsApi.list());
       }
@@ -161,6 +201,13 @@ export default function ContributionsPage() {
   const itemsMismatch =
     items.length > 0 && form.amount && itemsTotal !== Number(sanitizeAmountInput(form.amount)).toFixed(2);
 
+  const isMobileMoney = form.paymentMethod === 'mobile_money';
+  const amountCents = toCents(form.amount);
+  const feeCents = isMobileMoney && form.transferFee.trim() ? toCents(form.transferFee) : null;
+  // What actually reaches the church account after the agent's Makato.
+  const netCents = amountCents !== null && feeCents !== null && feeCents < amountCents ? amountCents - feeCents : null;
+  const departmentName = departments.find((d) => String(d.id) === String(form.departmentId))?.name;
+
   // Per-step gate. Returns null when the step is complete, otherwise the
   // translated reason — shown inline rather than letting the treasurer
   // reach the review step with a half-filled entry.
@@ -169,6 +216,10 @@ export default function ContributionsPage() {
       const amount = sanitizeAmountInput(form.amount);
       if (!amount || Number(amount) <= 0) return t('contributions.wizard.error.amount');
       if (!form.contributionDate) return t('contributions.wizard.error.date');
+      if (isMobileMoney && form.transferFee.trim()) {
+        if (feeCents === null) return t('contributions.makato.error.invalid');
+        if (amountCents !== null && feeCents >= amountCents) return t('contributions.makato.error.tooLarge');
+      }
       return null;
     }
     if (which === 2) {
@@ -226,9 +277,15 @@ export default function ContributionsPage() {
     setSmsNotice(null);
     setSubmitting(true);
     try {
+      const { departmentId, mobileProvider, transferFee, ...rest } = form;
       const result = await contributionsApi.create({
-        ...form,
+        ...rest,
         amount: sanitizeAmountInput(form.amount),
+        departmentId: departmentId ? Number(departmentId) : null,
+        // The server refuses provider/fee on any other payment method, so a
+        // value left over from switching methods is dropped here.
+        mobileProvider: isMobileMoney && mobileProvider ? mobileProvider : undefined,
+        transferFee: isMobileMoney && transferFee.trim() ? sanitizeAmountInput(transferFee) : undefined,
         accountId: Number(form.accountId),
         fundId: Number(form.fundId),
         categoryId: Number(form.categoryId),
@@ -427,6 +484,55 @@ export default function ContributionsPage() {
                           <input type="date" value={form.contributionDate} onChange={handleChange('contributionDate')} />
                         </div>
                       </div>
+                      {isMobileMoney && (
+                        <div className="makato-panel">
+                          <div className="makato-panel__title">
+                            <FiSmartphone aria-hidden="true" /> {t('contributions.makato.title')}
+                          </div>
+                          <div className="form-grid">
+                            <div className="field">
+                              <label htmlFor="contribution-provider">{t('contributions.makato.provider')}</label>
+                              <select id="contribution-provider" value={form.mobileProvider} onChange={handleChange('mobileProvider')}>
+                                <option value="">—</option>
+                                {MOBILE_PROVIDERS.map((provider) => (
+                                  <option key={provider} value={provider}>
+                                    {t(`mobileProvider.${provider}`)}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="field">
+                              <label htmlFor="contribution-fee">{t('contributions.makato.fee')}</label>
+                              <div className="currency-input">
+                                <span className="currency-input__prefix">TZS</span>
+                                <input
+                                  id="contribution-fee"
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="0.00"
+                                  value={form.transferFee}
+                                  onChange={handleChange('transferFee')}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <dl className="makato-panel__summary">
+                            <div>
+                              <dt>{t('contributions.makato.sent')}</dt>
+                              <dd className="tabular-nums">{amountCents !== null ? formatMoney(centsToMoney(amountCents)) : '—'}</dd>
+                            </div>
+                            <div>
+                              <dt>{t('contributions.makato.feeShort')}</dt>
+                              <dd className="tabular-nums makato-panel__fee">{feeCents !== null ? formatMoney(centsToMoney(feeCents)) : '—'}</dd>
+                            </div>
+                            <div>
+                              <dt>{t('contributions.makato.net')}</dt>
+                              <dd className="tabular-nums makato-panel__net">{netCents !== null ? formatMoney(centsToMoney(netCents)) : '—'}</dd>
+                            </div>
+                          </dl>
+                          <p className="field-hint">{t('contributions.makato.hint')}</p>
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -480,6 +586,19 @@ export default function ContributionsPage() {
                   </span>
                 )}
               </div>
+              {departments.length > 0 && (
+                <div className="field">
+                  <label htmlFor="contribution-department">{t('contributions.department')}</label>
+                  <select id="contribution-department" value={form.departmentId} onChange={handleChange('departmentId')}>
+                    <option value="">{t('contributions.department.none')}</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {contributors.length > 0 && (
                 <div className="field">
                   <label>{t('contributions.contributor')}</label>
@@ -616,8 +735,22 @@ export default function ContributionsPage() {
                         </div>
                         <div className="wizard-review__row">
                           <dt>{t('contributions.paymentMethod')}</dt>
-                          <dd>{t(`paymentMethod.${form.paymentMethod}`)}</dd>
+                          <dd>
+                            {t(`paymentMethod.${form.paymentMethod}`)}
+                            {isMobileMoney && form.mobileProvider && ` · ${t(`mobileProvider.${form.mobileProvider}`)}`}
+                          </dd>
                         </div>
+                        {feeCents !== null && (
+                          <div className="wizard-review__row">
+                            <dt>{t('contributions.makato.feeShort')}</dt>
+                            <dd className="tabular-nums">
+                              TZS {formatMoney(centsToMoney(feeCents))}
+                              {netCents !== null && (
+                                <span className="field-hint"> — {t('contributions.makato.net')}: TZS {formatMoney(centsToMoney(netCents))}</span>
+                              )}
+                            </dd>
+                          </div>
+                        )}
                         <div className="wizard-review__row">
                           <dt>{t('contributions.account')}</dt>
                           <dd>{accounts.find((a) => String(a.id) === String(form.accountId))?.name ?? '—'}</dd>
@@ -630,6 +763,12 @@ export default function ContributionsPage() {
                           <dt>{t('contributions.category')}</dt>
                           <dd>{categories.find((c) => String(c.id) === String(form.categoryId))?.name ?? '—'}</dd>
                         </div>
+                        {departmentName && (
+                          <div className="wizard-review__row">
+                            <dt>{t('contributions.department')}</dt>
+                            <dd>{departmentName}</dd>
+                          </div>
+                        )}
                         <div className="wizard-review__row">
                           <dt>{t('contributions.contributor')}</dt>
                           <dd>

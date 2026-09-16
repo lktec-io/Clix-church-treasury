@@ -13,9 +13,25 @@ import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import BulkImportPanel from '../components/ui/BulkImportPanel.jsx';
 import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
 import { useActivity } from '../context/ActivityContext.jsx';
+import MemberIdentityFields, { emptyIdentity, identityError, identityPayload } from '../components/ui/MemberIdentityFields.jsx';
+import { formatDate } from '../utils/format.js';
 
 function emptyForm() {
-  return { fullName: '', phone: '', email: '', memberNumber: '' };
+  return { fullName: '', phone: '', email: '', memberNumber: '', identity: emptyIdentity() };
+}
+
+const COMPLIANCE_BADGE = {
+  current: 'badge--success',
+  due: 'badge--warning',
+  lapsed: 'badge--danger',
+  none: 'badge--neutral',
+};
+
+// Never render a full identity number in a list that is shown on screens in
+// shared offices — the last four digits are enough to tell members apart.
+function maskedIdNumber(number) {
+  if (!number) return '';
+  return `•••• ${number.slice(-4)}`;
 }
 
 export default function ContributorsPage() {
@@ -32,6 +48,7 @@ export default function ContributorsPage() {
   const [search, setSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [smsPop, setSmsPop] = useState(null);
+  const [showIdentityErrors, setShowIdentityErrors] = useState(false);
   const dispatchSeq = useRef(0);
 
   const load = useCallback(async () => {
@@ -55,10 +72,18 @@ export default function ContributorsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    // Blocks the request outright: the same rules run on the server, so
+    // sending an invalid number would only come back as a less specific error.
+    if (identityError(form.identity, t)) {
+      setShowIdentityErrors(true);
+      return;
+    }
     setSubmitting(true);
     try {
-      await contributorsApi.create(form);
+      const { identity, ...member } = form;
+      await contributorsApi.create({ ...member, ...identityPayload(identity) });
       setForm(emptyForm());
+      setShowIdentityErrors(false);
       await load();
       toast.success(t('contributors.created'));
     } catch (err) {
@@ -211,6 +236,11 @@ export default function ContributorsPage() {
                 <input value={form.memberNumber} onChange={handleChange('memberNumber')} />
               </div>
             </div>
+            <MemberIdentityFields
+              value={form.identity}
+              onChange={(identity) => setForm((f) => ({ ...f, identity }))}
+              showErrors={showIdentityErrors}
+            />
             <div className="form-actions">
               <button type="submit" className="btn btn--primary" disabled={submitting}>
                 {submitting ? t('common.loading') : t('common.save')}
@@ -255,6 +285,8 @@ export default function ContributorsPage() {
                   <th>{t('contributors.phone')}</th>
                   <th>{t('contributors.email')}</th>
                   <th>{t('contributors.memberNumber')}</th>
+                  <th>{t('memberId.column')}</th>
+                  <th>{t('compliance.column')}</th>
                   <th>{t('contributors.portalAccess')}</th>
                   <PermissionGate permission="contributors.manage">
                     <th>{t('common.actions')}</th>
@@ -268,6 +300,32 @@ export default function ContributorsPage() {
                     <td>{c.phone ?? '—'}</td>
                     <td>{c.email ?? '—'}</td>
                     <td>{c.member_number ?? '—'}</td>
+                    <td>
+                      {c.id_type ? (
+                        <span className="id-cell">
+                          <span className="id-cell__type">{t(`memberId.type.${c.id_type}`)}</span>
+                          {c.id_number && <span className="id-cell__number">{maskedIdNumber(c.id_number)}</span>}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td>
+                      {c.tithe_compliance ? (
+                        <span
+                          className={`badge ${COMPLIANCE_BADGE[c.tithe_compliance.status] ?? 'badge--neutral'}`}
+                          title={
+                            c.tithe_compliance.last_tithe_date
+                              ? t('compliance.lastTithe', { date: formatDate(c.tithe_compliance.last_tithe_date) })
+                              : undefined
+                          }
+                        >
+                          {t(`compliance.status.${c.tithe_compliance.status}`)}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td>
                       <span className={`badge ${c.portal_enabled_at ? 'badge--success' : 'badge--neutral'}`}>
                         {c.portal_enabled_at ? t('contributors.portalEnabled') : t('contributors.portalNotEnabled')}
@@ -302,6 +360,9 @@ export default function ContributorsPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && filteredContributors.length > 0 && (
+          <p className="field-hint compliance-legend">{t('compliance.legend')}</p>
         )}
       </div>
     </div>

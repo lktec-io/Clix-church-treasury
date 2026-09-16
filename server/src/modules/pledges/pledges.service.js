@@ -3,20 +3,37 @@ import { pledgesRepository } from './pledges.repository.js';
 import { generatePledgeNumber } from './pledgeNumber.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
 import { subtractMoney } from '../financial/money.js';
+import { computePledgeSchedule } from './pledgeSchedule.js';
 
 const MAX_NUMBER_ATTEMPTS = 5;
 
 async function withFulfillment(tenantId, pledge, connection) {
-  const fulfilled = await pledgesRepository.getFulfilledAmount(tenantId, pledge.id, connection);
+  const { fulfilled, paymentCount } = await pledgesRepository.getFulfillmentStats(tenantId, pledge.id, connection);
   const remaining = subtractMoney(pledge.pledged_amount, fulfilled);
-  return { ...pledge, fulfilled_amount: fulfilled, remaining_amount: remaining };
+  // `frequency` is undefined on a server where migration 0038 is pending;
+  // treat that as the pre-migration meaning, a one-off pledge.
+  const frequency = pledge.frequency ?? 'once';
+  return {
+    ...pledge,
+    frequency,
+    fulfilled_amount: fulfilled,
+    remaining_amount: remaining,
+    payment_count: paymentCount,
+    schedule: computePledgeSchedule({
+      pledgedAmount: pledge.pledged_amount,
+      fulfilledAmount: fulfilled,
+      pledgeDate: pledge.pledge_date,
+      targetDate: pledge.target_date,
+      frequency,
+    }),
+  };
 }
 
 export async function createPledge(tenantId, data, actorUserId) {
   for (let attempt = 0; attempt < MAX_NUMBER_ATTEMPTS; attempt += 1) {
     const pledgeNumber = generatePledgeNumber();
     try {
-      const pledge = await pledgesRepository.insert(tenantId, {
+      const row = {
         pledge_number: pledgeNumber,
         contributor_id: data.contributorId,
         fund_id: data.fundId,
@@ -26,7 +43,12 @@ export async function createPledge(tenantId, data, actorUserId) {
         notes: data.notes,
         status: 'active',
         created_by_user_id: actorUserId,
-      });
+      };
+      // Only written when recurring: 'once' is the column default, so a
+      // one-off pledge keeps producing the same INSERT and works before
+      // migration 0038 is applied.
+      if (data.frequency && data.frequency !== 'once') row.frequency = data.frequency;
+      const pledge = await pledgesRepository.insert(tenantId, row);
       await recordAuditLog({
         tenantId,
         actorUserId,

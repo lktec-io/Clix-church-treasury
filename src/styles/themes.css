@@ -1,215 +1,183 @@
 /* ==========================================================================
    PALETTE — the single authoritative colour set for the whole product.
 
-   ROYAL PURPLE FINTECH. Deep indigo-violet (#6366f1 → #4f46e5) as the brand
-   and interaction colour, on an ultra-light neutral canvas, with flat pure
-   white panels separated by hairlines rather than shadows.
+   FINTECH ORANGE. A decisive orange (#FF6B00 → #E65F00) for every active
+   state, focus and primary action, set against deep charcoal (#1E1E24)
+   structure — the sidebar, the mobile drawer and high-contrast headers — on a
+   crisp #F8F9FA workspace with pure white panels divided by #EEEEEE hairlines.
 
-   This file is the ONLY place raw colour values live. Every other file in
-   src/styles consumes these by name and colors.css maps the semantic
-   aliases (--text, --bg, --surface, --border …) onto them — which is why
-   the navy→purple migration is overwhelmingly a change to this one file
-   rather than a sweep through every component stylesheet.
+   This file is the ONLY place raw colour values live. Every other stylesheet
+   consumes these by name and colors.css maps the semantic aliases (--text,
+   --bg, --surface, --border …) onto them, which is why a palette change is a
+   change to this one file.
 
-   ── ONE DELIBERATE DIVISION OF LABOUR, worth understanding before editing ──
-   --color-primary is the BRAND/INTERACTION colour (purple): sidebar active
-   state, primary buttons, focus rings, headings, iconography.
-   --color-accent stays GREEN, and is now strictly the SUCCESS/INCOME
-   semantic: delivered ticks, positive amounts, "books are balanced",
-   approve actions. Those greens are carrying meaning, not brand — turning
-   them purple would make a success tick and a nav highlight indistinguishable.
+   ── DIVISION OF LABOUR (keep it when editing) ─────────────────────────────
+   --color-primary   ORANGE — brand and interaction: active nav, primary
+                     buttons, focus rings, key figures.
+   --color-accent    EMERALD — success and money in: approved collections,
+                     successful entries, delivered ticks, "books balanced".
+   --color-danger    MUTED CRIMSON — money out, overdue and deficit.
+   Orange is deliberately NOT used for success. A primary action and a
+   confirmed result must never look alike.
    ========================================================================== */
 
 :root {
-  /* Brand — royal purple */
-  --color-primary: #6366f1;
-  --color-primary-hover: #4f46e5;
-  --color-primary-rgb: 99, 102, 241;
-  /* Pressed/deep end of the purple ramp. */
-  --color-primary-deep: #4338ca;
+  /* Brand — fintech orange */
+  --color-primary: #ff6b00;
+  --color-primary-hover: #e65f00;
+  --color-primary-rgb: 255, 107, 0;
+  --color-primary-deep: #c25100;
 
-  /* Success/income semantic — NOT the brand colour. See the header note. */
-  --color-accent: #10b981;
-  --color-accent-hover: #059669;
-  --color-accent-rgb: 16, 185, 129;
-  --color-blue: #3b82f6;
+  /* Success / approved collections — soft emerald */
+  --color-accent: #10a36a;
+  --color-accent-hover: #0c8a59;
+  --color-accent-rgb: 16, 163, 106;
+  --color-blue: #2563eb;
 
-  /* Neutrals — the ultra-light canvas and slate ink of the reference. */
-  --color-background: #f8fafc;
-  /* Hairline. A single microscopic 1px line does the separating now that
-     the heavy shadows are gone, so it has to be visible but not drawn. */
-  --color-border: #e8eaf0;
-  --color-gray-light: #f3f4f6;
-  --color-gray-dark: #334155;
+  /* Neutrals — crisp workspace, pure white panels, soft hairlines */
+  --color-background: #f8f9fa;
+  --color-border: #eeeeee;
+  --color-gray-light: #f1f3f5;
+  --color-gray-dark: #34343c;
 
   /* Status */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-danger-rgb: 239, 68, 68;
-  --color-info: #3b82f6;
-  --color-success-bg: #d1fae5;
-  --color-warning-bg: #fef3c7;
-  --color-danger-bg: #fee2e2;
-  --color-info-bg: #dbeafe;
+  --color-success: #10a36a;
+  --color-warning: #d97706;
+  /* Muted crimson: serious without shouting — expenses, overdue, deficits. */
+  --color-danger: #b4323c;
+  --color-danger-rgb: 180, 50, 60;
+  --color-info: #2563eb;
+  --color-success-bg: #e3f6ee;
+  --color-warning-bg: #fdf1e1;
+  --color-danger-bg: #f8e6e8;
+  --color-info-bg: #e5edfd;
 
-  /* Surfaces — SOLID pure white, not the old translucent glass. The
-     reference's panels are crisp and flat; translucency over a tinted
-     canvas is what produced the slightly dirty grey the brief rejected. */
+  /* Surfaces — solid, flat */
   --color-card-bg: #ffffff;
   --color-card-glass-bg: #ffffff;
-  --color-navbar-bg: rgba(255, 255, 255, 0.85);
-  --navbar-height: 60px;
+  --color-navbar-bg: rgba(255, 255, 255, 0.92);
+  --navbar-height: 64px;
   --glass-panel-bg: #ffffff;
-  /* Slate rather than navy, and lighter — a modal over a white app should
-     dim, not submerge. */
-  --modal-backdrop-bg: rgba(15, 23, 42, 0.45);
+  --modal-backdrop-bg: rgba(30, 30, 36, 0.55);
 
-  /* Sidebar — now a LIGHT surface. Previously a navy gradient panel with
-     light text; the reference puts navigation on white with slate labels
-     and a soft purple capsule marking the active item. */
-  --color-sidebar-bg: #ffffff;
+  /* Sidebar — deep charcoal structure panel with orange active state. */
+  --color-sidebar-bg: #1e1e24;
   --gradient-sidebar: none;
 
-  /* Text — dark slate, never raw black (brief §1). */
-  --color-text-primary: #1e293b;
-  --color-text-secondary: #64748b;
-  /* Sidebar labels sit on white now, so this is slate, not pale blue. */
-  --color-text-on-sidebar: #64748b;
+  /* Text — near-black charcoal ink rather than pure black. */
+  --color-text-primary: #1e1e24;
+  --color-text-secondary: #6b6b76;
+  --color-text-on-sidebar: #b4b4bf;
 
-  /* Sidebar chrome. The active state is a rounded lavender capsule with
-     indigo text — the single most recognisable element of the reference. */
-  --sidebar-hover-bg: #f3f4f6;
-  --sidebar-hover-text: #1e293b;
-  --sidebar-active-bg: #eef2ff;
-  --sidebar-active-text: #4f46e5;
-  --sidebar-text-strong: #1e293b;
-  --sidebar-border: #eef0f4;
+  /* Sidebar chrome. Controls inside the charcoal panel (language switch,
+     logout, avatar) read these rather than the page-surface tokens, so they
+     stay legible on the dark panel whatever the workspace looks like. */
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-hover-text: #ffffff;
+  --sidebar-active-bg: rgba(255, 107, 0, 0.16);
+  --sidebar-active-text: #ff8a33;
+  --sidebar-text-strong: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-control-bg: rgba(255, 255, 255, 0.05);
+  --sidebar-control-border: rgba(255, 255, 255, 0.12);
 
-  /* Soft indigo/lavender beds (brief §1 "Accent/Secondary Shades") — the
-     fills behind selected text, tinted icon enclosures and tracking rows. */
-  --color-lavender: #e0e7ff;
-  --color-lavender-soft: #eef2ff;
+  /* Soft orange beds — selected rows, tinted icon enclosures, tracks. */
+  --color-lavender: #ffe8d6;
+  --color-lavender-soft: #fff4eb;
 
   /* Depth */
-  --glass-blur: 20px;
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  --gradient-hero: linear-gradient(115deg, #4f46e5 0%, #6366f1 45%, #7c3aed 100%);
+  --glass-blur: 16px;
+  --gradient-primary: linear-gradient(135deg, #ff6b00 0%, #e65f00 100%);
+  /* Charcoal hero with an orange edge — high contrast for the headline
+     figure without a decorative wash behind it. */
+  --gradient-hero: linear-gradient(120deg, #1e1e24 0%, #2a2a32 70%, #3a2a20 100%);
 
-  /* Elevation, deliberately almost absent. The brief calls for hairline
-     separation and explicitly rejects "heavy or dirty gray shadows", so
-     these are now barely-there slate lifts rather than the old pooled navy
-     drops. Kept as tokens (rather than removed) so every existing
-     box-shadow consumer keeps working and simply renders flatter. */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 2px 6px -2px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 4px 12px -4px rgba(15, 23, 42, 0.07);
-  --shadow-xl: 0 12px 32px -12px rgba(15, 23, 42, 0.14);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.22);
+  /* Flat by design: hairlines separate surfaces, not shadows. These remain
+     as tokens so every existing consumer keeps working and renders flat. */
+  --shadow-sm: 0 1px 2px rgba(30, 30, 36, 0.04);
+  --shadow-md: 0 2px 6px -2px rgba(30, 30, 36, 0.06);
+  --shadow-lg: 0 4px 12px -4px rgba(30, 30, 36, 0.07);
+  --shadow-xl: 0 16px 40px -16px rgba(30, 30, 36, 0.28);
+  --shadow-glow: 0 0 20px rgba(255, 107, 0, 0.22);
 
-  /* Focus/CTA rings — PURPLE now. Redefined here rather than at ~30 call
-     sites: the tokens keep their --ring-accent-* names so every consumer is
-     unchanged, but they resolve to the brand colour, because a focus ring
-     is interaction feedback and not a success signal. */
-  --ring-accent: 0 0 0 3px rgba(var(--color-primary-rgb), 0.18);
-  --ring-accent-strong: 0 0 0 3px rgba(var(--color-primary-rgb), 0.28), 0 0 16px -2px rgba(var(--color-primary-rgb), 0.3);
+  /* Focus rings — orange. Names kept so every consumer is unchanged. */
+  --ring-accent: 0 0 0 3px rgba(var(--color-primary-rgb), 0.22);
+  --ring-accent-strong: 0 0 0 3px rgba(var(--color-primary-rgb), 0.32);
 
-  /* Category/series colours — purple-led, with the green/blue/orange
-     supporting hues the reference uses for its category icons and the
-     multi-coloured allocation bars. */
-  --chart-1: #6366f1;
-  --chart-2: #10b981;
-  --chart-3: #3b82f6;
-  --chart-4: #f59e0b;
-  --chart-5: #8b5cf6;
-  --chart-6: #06b6d4;
+  /* Series colours — orange-led. */
+  --chart-1: #ff6b00;
+  --chart-2: #10a36a;
+  --chart-3: #2563eb;
+  --chart-4: #b4323c;
+  --chart-5: #7c5cd6;
+  --chart-6: #0891b2;
 }
 
 /* ==========================================================================
    DARK PALETTE
 
-   Only the authoritative tokens above are redefined here — colors.css maps
-   every semantic alias onto them, so no component file needs a dark variant.
-
-   The same deliberate impurity as before: --color-primary and
-   --color-primary-rgb are DECOUPLED. --color-primary-rgb is consumed almost
-   entirely as a low-alpha tint (hovers, input borders, table stripes) laid
-   over a surface, and a dark tint over a dark surface is invisible. So
-   --color-primary stays a solid, slightly lifted violet for button fills
-   while --color-primary-rgb becomes a LIGHT periwinkle whose low-alpha
-   tints read correctly against the dark ground. Splitting them is what
-   lets the tint rules work unchanged in both modes.
+   Only authoritative tokens are redefined; colors.css maps every alias.
+   --color-primary and --color-primary-rgb stay DECOUPLED as before: the rgb
+   triple is consumed as a low-alpha tint over surfaces, so here it is a
+   lighter orange whose washes stay visible on a dark ground.
    ========================================================================== */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  /* Brand — lifted off the near-black ground so a purple fill is visible. */
-  --color-primary: #818cf8;
-  --color-primary-hover: #a5b4fc;
-  --color-primary-deep: #6366f1;
-  --color-primary-rgb: 165, 180, 252; /* tint source, not the fill — see above */
-  --color-accent: #10b981;
-  --color-accent-hover: #34d399;
+  --color-primary: #ff7a1a;
+  --color-primary-hover: #ff8f40;
+  --color-primary-deep: #e65f00;
+  --color-primary-rgb: 255, 145, 77;
+  --color-accent: #34c28a;
+  --color-accent-hover: #4fd39e;
+  --color-accent-rgb: 52, 194, 138;
   --color-blue: #60a5fa;
 
-  /* Neutrals — slate-violet rather than the old navy. */
-  --color-background: #0b1020;
-  --color-border: rgba(255, 255, 255, 0.09);
-  --color-gray-light: #161d33;
-  --color-gray-dark: #cbd5e1;
+  --color-background: #121216;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-gray-light: #1b1b21;
+  --color-gray-dark: #d4d4dc;
 
-  /* Status — same hues, darkened fills so badge text still clears AA. */
-  --color-success: #34d399;
+  --color-success: #34c28a;
   --color-warning: #fbbf24;
-  --color-danger: #f87171;
-  --color-danger-rgb: 248, 113, 113;
+  --color-danger: #e0707a;
+  --color-danger-rgb: 224, 112, 122;
   --color-info: #60a5fa;
-  --color-success-bg: rgba(16, 185, 129, 0.16);
-  --color-warning-bg: rgba(245, 158, 11, 0.16);
-  --color-danger-bg: rgba(239, 68, 68, 0.16);
-  --color-info-bg: rgba(59, 130, 246, 0.16);
+  --color-success-bg: rgba(52, 194, 138, 0.15);
+  --color-warning-bg: rgba(251, 191, 36, 0.14);
+  --color-danger-bg: rgba(224, 112, 122, 0.15);
+  --color-info-bg: rgba(96, 165, 250, 0.15);
 
-  /* Surfaces — flat panels here too, one step lifted off the canvas. */
-  --color-card-bg: #141a2e;
-  --color-card-glass-bg: #141a2e;
-  --color-navbar-bg: rgba(15, 20, 38, 0.85);
-  --glass-panel-bg: #141a2e;
-  --modal-backdrop-bg: rgba(2, 6, 18, 0.7);
+  --color-card-bg: #1a1a20;
+  --color-card-glass-bg: #1a1a20;
+  --color-navbar-bg: rgba(22, 22, 27, 0.92);
+  --glass-panel-bg: #1a1a20;
+  --modal-backdrop-bg: rgba(0, 0, 0, 0.66);
 
-  --color-sidebar-bg: #101627;
-  --gradient-sidebar: none;
+  --color-sidebar-bg: #0d0d10;
 
-  /* Text */
-  --color-text-primary: #e8ecf8;
-  --color-text-secondary: #94a3b8;
-  --color-text-on-sidebar: #94a3b8;
+  --color-text-primary: #ececf1;
+  --color-text-secondary: #9a9aa6;
+  --color-text-on-sidebar: #a2a2ad;
 
-  /* The capsule inverts to a translucent violet wash — a solid #eef2ff
-     bed would glare against the dark panel. */
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.05);
-  --sidebar-hover-text: #e8ecf8;
-  --sidebar-active-bg: rgba(129, 140, 248, 0.16);
-  --sidebar-active-text: #a5b4fc;
-  --sidebar-text-strong: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-active-bg: rgba(255, 122, 26, 0.18);
+  --sidebar-active-text: #ff9a52;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
 
-  --color-lavender: rgba(129, 140, 248, 0.2);
-  --color-lavender-soft: rgba(129, 140, 248, 0.12);
+  --color-lavender: rgba(255, 122, 26, 0.2);
+  --color-lavender-soft: rgba(255, 122, 26, 0.1);
 
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  --gradient-hero: linear-gradient(115deg, #312e81 0%, #4338ca 45%, #5b21b6 100%);
+  --gradient-hero: linear-gradient(120deg, #0d0d10 0%, #1d1d24 70%, #2c1f16 100%);
 
-  /* Slate-tinted shadows vanish against a near-black ground — dark mode
-     needs true black at higher alpha to read as elevation at all. */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 3px 10px -4px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 6px 18px -8px rgba(0, 0, 0, 0.65);
-  --shadow-xl: 0 20px 48px -24px rgba(0, 0, 0, 0.78);
+  --shadow-xl: 0 20px 48px -24px rgba(0, 0, 0, 0.8);
 
-  --chart-1: #818cf8;
-  --chart-2: #34d399;
+  --chart-1: #ff7a1a;
+  --chart-2: #34c28a;
   --chart-3: #60a5fa;
-  --chart-4: #fbbf24;
+  --chart-4: #e0707a;
   --chart-5: #a78bfa;
   --chart-6: #22d3ee;
 }

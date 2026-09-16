@@ -9,7 +9,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
-import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
+import { formatDateTime, formatMoney, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
 const PAGE_SIZE = 50;
@@ -301,7 +301,7 @@ export default function ExpensesPage() {
           </div>
           <p className="field-hint" style={{ margin: '0 0 14px' }}>{t('expenses.pendingHint')}</p>
           {loading ? (
-            <SkeletonTable rows={2} columns={4} />
+            <SkeletonTable rows={2} columns={5} />
           ) : pending.length === 0 ? (
             <div className="empty-state">{t('expenses.noPending')}</div>
           ) : (
@@ -309,6 +309,7 @@ export default function ExpensesPage() {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th>{t('expenses.recordedAt')}</th>
                     <th>{t('expenses.payee')}</th>
                     <th>{t('common.amount')}</th>
                     <th>{t('common.reference')}</th>
@@ -318,8 +319,9 @@ export default function ExpensesPage() {
                 <tbody>
                   {pending.map((expense) => (
                     <tr key={expense.id}>
+                      <td className="ledger-time">{formatDateTime(expense.created_at)}</td>
                       <td>{expense.payee}</td>
-                      <td className="tabular-nums">{formatMoney(expense.amount)}</td>
+                      <td className="is-amount">{formatMoney(expense.amount)}</td>
                       <td>{expense.expense_number}</td>
                       <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{approvalActions(expense)}</td>
                     </tr>
@@ -347,7 +349,7 @@ export default function ExpensesPage() {
           </select>
         </div>
         {loading ? (
-          <SkeletonTable rows={4} columns={4} />
+          <SkeletonTable rows={4} columns={6} />
         ) : expenses.length === 0 ? (
           <div className="empty-state">{t('common.noResults')}</div>
         ) : (
@@ -355,8 +357,10 @@ export default function ExpensesPage() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>{t('expenses.recordedAt')}</th>
                   <th>{t('expenses.payee')}</th>
-                  <th>{t('common.amount')}</th>
+                  <th>{t('common.reference')}</th>
+                  <th className="is-amount">{t('common.amount')}</th>
                   <th>{t('common.status')}</th>
                   <th>{t('common.actions')}</th>
                 </tr>
@@ -364,8 +368,10 @@ export default function ExpensesPage() {
               <tbody>
                 {expenses.map((expense) => (
                   <tr key={expense.id}>
+                    <td className="ledger-time">{formatDateTime(expense.created_at)}</td>
                     <td>{expense.payee}</td>
-                    <td>{formatMoney(expense.amount)}</td>
+                    <td>{expense.expense_number ?? '—'}</td>
+                    <td className="is-amount is-expense">{formatMoney(expense.amount)}</td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[expense.status]}`}>
                         {t(`expenses.status.${expense.status}`)}

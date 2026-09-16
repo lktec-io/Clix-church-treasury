@@ -15,8 +15,16 @@ const STATUS_BADGE = {
   cancelled: 'badge--neutral',
 };
 
+// Mirrors server pledgeSchedule.js#PLEDGE_FREQUENCIES.
+const FREQUENCIES = ['once', 'daily', 'weekly', 'monthly'];
+
+function localToday() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 function emptyForm() {
-  return { contributorId: '', fundId: '', pledgedAmount: '', pledgeDate: new Date().toISOString().slice(0, 10), targetDate: '' };
+  return { contributorId: '', fundId: '', pledgedAmount: '', pledgeDate: localToday(), targetDate: '', frequency: 'once' };
 }
 
 export default function PledgesPage() {
@@ -58,6 +66,7 @@ export default function PledgesPage() {
   }, [load]);
 
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const isRecurring = form.frequency !== 'once';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -111,8 +120,8 @@ export default function PledgesPage() {
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
               <div className="field">
-                <label>{t('pledges.contributor')}</label>
-                <select value={form.contributorId} onChange={handleChange('contributorId')} required>
+                <label htmlFor="pledge-contributor">{t('pledges.contributor')}</label>
+                <select id="pledge-contributor" value={form.contributorId} onChange={handleChange('contributorId')} required>
                   <option value="" disabled>—</option>
                   {contributors.map((c) => (
                     <option key={c.id} value={c.id}>{c.full_name}</option>
@@ -120,8 +129,8 @@ export default function PledgesPage() {
                 </select>
               </div>
               <div className="field">
-                <label>{t('pledges.fund')}</label>
-                <select value={form.fundId} onChange={handleChange('fundId')} required>
+                <label htmlFor="pledge-fund">{t('pledges.fund')}</label>
+                <select id="pledge-fund" value={form.fundId} onChange={handleChange('fundId')} required>
                   <option value="" disabled>—</option>
                   {funds.map((f) => (
                     <option key={f.id} value={f.id}>{f.name}</option>
@@ -129,16 +138,41 @@ export default function PledgesPage() {
                 </select>
               </div>
               <div className="field">
-                <label>{t('pledges.pledgedAmount')}</label>
-                <input type="text" inputMode="decimal" placeholder="0.00" value={form.pledgedAmount} onChange={handleChange('pledgedAmount')} required />
+                <label htmlFor="pledge-amount">{t('pledges.pledgedAmount')}</label>
+                <input
+                  id="pledge-amount"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={form.pledgedAmount}
+                  onChange={handleChange('pledgedAmount')}
+                  required
+                />
               </div>
               <div className="field">
-                <label>{t('pledges.pledgeDate')}</label>
-                <input type="date" value={form.pledgeDate} onChange={handleChange('pledgeDate')} required />
+                <label htmlFor="pledge-frequency">{t('pledges.frequency')}</label>
+                <select id="pledge-frequency" value={form.frequency} onChange={handleChange('frequency')}>
+                  {FREQUENCIES.map((f) => (
+                    <option key={f} value={f}>{t(`pledges.frequency.${f}`)}</option>
+                  ))}
+                </select>
               </div>
               <div className="field">
-                <label>{t('pledges.targetDate')}</label>
-                <input type="date" value={form.targetDate} onChange={handleChange('targetDate')} />
+                <label htmlFor="pledge-date">{t('pledges.pledgeDate')}</label>
+                <input id="pledge-date" type="date" value={form.pledgeDate} onChange={handleChange('pledgeDate')} required />
+              </div>
+              <div className="field">
+                <label htmlFor="pledge-target">{isRecurring ? t('pledges.endDate') : t('pledges.targetDate')}</label>
+                <input
+                  id="pledge-target"
+                  type="date"
+                  value={form.targetDate}
+                  min={form.pledgeDate || undefined}
+                  onChange={handleChange('targetDate')}
+                  // A recurring pledge needs an end to know how many installments it has.
+                  required={isRecurring}
+                />
+                {isRecurring && <span className="field-hint">{t('pledges.endDateHint')}</span>}
               </div>
             </div>
             <div className="form-actions">
@@ -152,7 +186,7 @@ export default function PledgesPage() {
 
       <div className="card">
         {loading ? (
-          <SkeletonTable rows={4} columns={6} />
+          <SkeletonTable rows={4} columns={8} />
         ) : pledges.length === 0 ? (
           <div className="empty-state">{t('common.noResults')}</div>
         ) : (
@@ -162,9 +196,12 @@ export default function PledgesPage() {
                 <tr>
                   <th>{t('pledges.contributor')}</th>
                   <th>{t('pledges.fund')}</th>
-                  <th>{t('pledges.pledgedAmount')}</th>
-                  <th>{t('pledges.fulfilled')}</th>
-                  <th>{t('pledges.remaining')}</th>
+                  <th className="is-amount">{t('pledges.pledgedAmount')}</th>
+                  <th>{t('pledges.installment')}</th>
+                  <th className="is-amount">{t('pledges.timesContributed')}</th>
+                  <th className="is-amount">{t('pledges.fulfilled')}</th>
+                  <th className="is-amount">{t('pledges.remaining')}</th>
+                  <th>{t('pledges.progress')}</th>
                   <th>{t('common.status')}</th>
                   <th>{t('common.actions')}</th>
                 </tr>
@@ -174,9 +211,35 @@ export default function PledgesPage() {
                   <tr key={p.id}>
                     <td>{p.contributor?.full_name ?? '—'}</td>
                     <td>{funds.find((f) => f.id === p.fund_id)?.name ?? '—'}</td>
-                    <td>{formatMoney(p.pledged_amount)}</td>
-                    <td>{formatMoney(p.fulfilled_amount)}</td>
-                    <td>{formatMoney(p.remaining_amount)}</td>
+                    <td className="is-amount">{formatMoney(p.pledged_amount)}</td>
+                    <td>
+                      {p.schedule ? (
+                        <span className="pledge-installment">
+                          <span className="tabular-nums">{formatMoney(p.schedule.installment)}</span>
+                          <span className="field-hint">
+                            {t(`pledges.per.${p.schedule.frequency}`)} · {t('pledges.periodsElapsed', { elapsed: p.schedule.periodsElapsed, total: p.schedule.periods })}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="field-hint">{t(`pledges.frequency.${p.frequency ?? 'once'}`)}</span>
+                      )}
+                    </td>
+                    <td className="is-amount">{p.payment_count ?? 0}</td>
+                    <td className="is-amount">{formatMoney(p.fulfilled_amount)}</td>
+                    <td className="is-amount">{formatMoney(p.remaining_amount)}</td>
+                    <td>
+                      {/* Only meaningful for a live recurring pledge: a one-off
+                          or finished pledge has no "behind" to be. */}
+                      {p.schedule && p.status === 'active' ? (
+                        Number(p.schedule.arrears) > 0 ? (
+                          <span className="badge badge--danger">{t('pledges.behind', { amount: formatMoney(p.schedule.arrears) })}</span>
+                        ) : (
+                          <span className="badge badge--success">{t('pledges.onTrack')}</span>
+                        )
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[p.status]}`}>{t(`pledges.status.${p.status}`)}</span>
                     </td>

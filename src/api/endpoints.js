@@ -89,6 +89,12 @@ export const fundsApi = {
   activate: (id) => apiClient.post(`/funds/${id}/activate`).then(unwrap),
 };
 
+// Church departments (Kwaya, Vijana, …) a contribution can be assigned to.
+export const departmentsApi = {
+  list: () => apiClient.get('/departments').then(unwrap),
+  create: (name) => apiClient.post('/departments', { name }).then(unwrap),
+};
+
 export const categoriesApi = {
   list: (type) => apiClient.get('/categories', { params: type ? { type } : {} }).then(unwrap),
   create: (body) => apiClient.post('/categories', body).then(unwrap),
@@ -229,6 +235,8 @@ const REPORT_PATHS = {
   // The general-ledger trial balance (Ulinganisho wa Hesabu). Reads the
   // journal, not the cash subsidiary ledger — see migration 0037.
   trialBalance: () => '/reports/trial-balance',
+  // Cockpit aggregates: collections split, department giving, mobile-money fees.
+  dashboardInsights: () => '/reports/dashboard-insights',
 };
 
 export const reportsApi = {

@@ -4,9 +4,26 @@ import { contributorsRepository } from './contributors.repository.js';
 import { normalizeTzPhone } from '../sms/phoneNumber.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
 import { parseContributorImport } from './bulkImport.js';
+import { titheComplianceStatus } from './titheCompliance.js';
+import { contributionsRepository } from '../contributions/contributions.repository.js';
+import { withSchemaFallback } from '../../db/schemaGuard.js';
 
 export async function listContributors(tenantId) {
-  return contributorsRepository.findAllByTenant(tenantId);
+  const [contributors, titheDates] = await Promise.all([
+    contributorsRepository.findAllByTenant(tenantId),
+    // The badge only enriches the directory; a failure to compute it must
+    // never stop the member list from loading.
+    withSchemaFallback('contributors.tithe_compliance', () => contributionsRepository.lastTitheDateByContributor(tenantId), []),
+  ]);
+  const lastTitheById = new Map(titheDates.map((row) => [row.contributor_id, row.last_tithe_date]));
+  const now = new Date();
+  return contributors.map((contributor) => {
+    const lastTitheDate = lastTitheById.get(contributor.id) ?? null;
+    return {
+      ...contributor,
+      tithe_compliance: { status: titheComplianceStatus(lastTitheDate, now), last_tithe_date: lastTitheDate },
+    };
+  });
 }
 
 export async function getContributor(tenantId, id) {
@@ -35,16 +52,6 @@ export async function createContributor(tenantId, data) {
   }
 }
 
-// Dedupe keys. Phone is compared in NORMALIZED form (normalizeTzPhone), so
-// "0712345678", "+255 712 345 678" and "255712345678" are recognised as the
-// same person — which is the whole point, since a spreadsheet exported from
-// one system and a directory typed into another will not agree on format.
-// Email is compared case-insensitively for the same reason.
-//
-// A row with neither a phone nor an email has no identity to match on, so it
-// is always treated as new. That is the correct call for a church directory:
-// two members can genuinely share a name, and silently merging them would
-// lose one of them.
 // MySQL errors that are attributable to ONE row's data. These are recorded
 // as a skipped row and the import carries on — InnoDB rolls back the failed
 // statement only, so the surrounding transaction stays usable.
@@ -82,6 +89,16 @@ function asSchemaError(error) {
   );
 }
 
+// Dedupe keys. Phone is compared in NORMALIZED form (normalizeTzPhone), so
+// "0712345678", "+255 712 345 678" and "255712345678" are recognised as the
+// same person — which is the whole point, since a spreadsheet exported from
+// one system and a directory typed into another will not agree on format.
+// Email is compared case-insensitively for the same reason.
+//
+// A row with neither a phone nor an email has no identity to match on, so it
+// is always treated as new. That is the correct call for a church directory:
+// two members can genuinely share a name, and silently merging them would
+// lose one of them.
 function dedupeKeys({ phone, email }) {
   const keys = [];
   const normalizedPhone = normalizeTzPhone(phone);

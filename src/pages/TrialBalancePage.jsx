@@ -130,6 +130,14 @@ export default function TrialBalancePage() {
 
         {loading ? (
           <SkeletonTable rows={6} columns={4} />
+        ) : report?.available === false ? (
+          // The general-ledger tables do not exist yet (migration pending).
+          // Said plainly — neither "no activity" nor "balanced" would be true.
+          <EmptyState
+            icon={FiAlertTriangle}
+            title={t('reports.trialBalance.unavailable.title')}
+            message={t('reports.trialBalance.unavailable.message')}
+          />
         ) : activeRows.length === 0 ? (
           <EmptyState
             icon={FiBookOpen}

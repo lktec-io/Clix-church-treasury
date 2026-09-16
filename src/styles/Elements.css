@@ -1,4 +1,216 @@
 /* ==========================================================================
+   ELEMENTS — buttons and form controls: the interactive primitives every
+   page is built from.
+   ========================================================================== */
+
+/* ==========================================================================
+   BUTTONS — one button system, five variants + icon button. Transitions
+   are itemized (background/border-color/color/box-shadow/transform), never
+   `transition: all`, so a hover never accidentally animates layout.
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
+    color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium),
+    transform var(--motion-fast) var(--ease-premium);
+}
+
+@media (max-width: 480px) {
+  /* ~44px minimum touch target on phones, not just desktop precision
+     sizing (small/icon buttons excluded — .btn--sm is deliberately
+     compact for dense table rows). */
+  .btn:not(.btn--sm) {
+    min-height: 44px;
+  }
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Full-width CTA — auth forms and any single-action panel. */
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+
+/* Green focus ring on every button, matching the field focus treatment.
+   :focus-visible (not :focus) so a mouse click doesn't leave a ring behind. */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+}
+
+/* ---------- Variants, assigned by action depth ----------
+   navy  (.btn--primary)   structural / committing — Sign in, Save, Record
+   green (.btn--accent)    affirmative / completion — Approve, Send, Export
+   Solid fills, never gradients: a gradient on a small control reads as
+   decoration, a solid deep navy reads as weight. */
+
+.btn--primary {
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 8px 20px -10px rgba(var(--color-primary-rgb), 0.7);
+}
+/* Deepens toward #071432 and picks up a green hairline — the accent colour
+   arrives on hover as confirmation rather than sitting there at rest. */
+.btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-deep);
+  border-color: rgba(var(--color-accent-rgb), 0.55);
+  box-shadow: 0 12px 26px -10px rgba(var(--color-primary-rgb), 0.8), var(--ring-accent);
+  transform: translateY(-1px);
+}
+
+/* Vibrant green — lifts and scales, where navy only deepens. */
+.btn--accent {
+  background: var(--color-accent);
+  color: #ffffff;
+  box-shadow: 0 8px 20px -10px rgba(var(--color-accent-rgb), 0.65);
+}
+.btn--accent:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  box-shadow: 0 16px 32px -12px rgba(var(--color-accent-rgb), 0.75);
+  transform: scale(1.02);
+}
+
+/* Restore the press response. These sit after the hover rules deliberately:
+   :active and :hover carry equal specificity here, so source order is what
+   decides which wins while a button is held down. */
+.btn--primary:active:not(:disabled),
+.btn--accent:active:not(:disabled),
+.btn--secondary:active:not(:disabled),
+.btn--danger:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Navy-tinted outline, not a grey chrome button. */
+.btn--secondary {
+  background: var(--surface);
+  color: var(--color-primary);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
+  box-shadow: var(--shadow-sm);
+}
+.btn--secondary:hover:not(:disabled) {
+  background: rgba(var(--color-primary-rgb), 0.04);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  box-shadow: var(--shadow-md);
+}
+
+.btn--danger {
+  background: var(--color-danger);
+  color: #ffffff;
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--color-danger) 70%, transparent);
+}
+.btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 85%, black 15%);
+  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--color-danger) 80%, transparent);
+}
+
+/* The affirmative counterpart to .btn--danger, built on the accent green
+   the product already uses for money that has landed correctly. Introduced
+   for the expense approval gateway, where "approve" and "reject" sit side
+   by side and must be told apart instantly — .btn--primary is navy, which
+   against the red reads as neutral rather than as the positive choice. */
+.btn--success {
+  background: var(--color-accent);
+  color: #ffffff;
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+.btn--success:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 88%, black 12%);
+  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+.btn--ghost:hover:not(:disabled) {
+  background: rgba(var(--color-primary-rgb), 0.06);
+  color: var(--color-primary);
+}
+
+.btn--sm {
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
+  background: var(--surface);
+  /* Real touch target: 38px is fine for a mouse; a phone gets the ~44px
+     minimum recommended tap size without visually bloating desktop UI. */
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium),
+    border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
+}
+.icon-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.04);
+  border-color: rgba(var(--color-primary-rgb), 0.34);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+.icon-btn:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent-strong);
+}
+
+@media (max-width: 480px) {
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Inline loading spinner for a button mid-submit — a small honest "this is
+   working" signal instead of only swapping the label text. Opt-in via
+   btn--loading so pages adopt it deliberately, not automatically. */
+.btn--loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.btn--loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  animation: spin 0.7s linear infinite;
+}
+.btn--secondary.btn--loading::after {
+  border-color: rgba(var(--color-primary-rgb), 0.2);
+  border-top-color: var(--color-primary);
+}
+
+/* ==========================================================================
    FORMS — one grid system (auto-fit, collapses to a single column with no
    media query needed), one input treatment, one action-row pattern that
    stacks on phones instead of overflowing.
@@ -311,7 +523,7 @@
   flex-shrink: 0;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   background: var(--bg-muted);
   color: var(--text-muted);
   font-size: 12px;
@@ -319,10 +531,10 @@
 }
 
 .wizard-steps__label {
+  /* Wraps rather than truncating: this carries data or a translated label,
+     and a Swahili string cut to "Mapato na Mi…" is unreadable. */
+  overflow-wrap: anywhere;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .wizard-steps__item.is-current .wizard-steps__btn {
@@ -571,4 +783,80 @@
 .import-error__list strong {
   font-weight: 700;
   text-transform: capitalize;
+}
+
+/* ---------- Member identity document (registration) ---------- */
+.id-fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 16px;
+  margin: 18px 0 0;
+  min-width: 0; /* fieldsets default to min-content and overflow on phones */
+}
+
+.id-fieldset__legend {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+/* Digits read in groups of four more easily than a 20-character run. */
+.field input.id-input--nida {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+/* Sharp, unmissable blocking alert — square corners and a solid rule on the
+   left distinguish it from the softer page-level .alert. */
+.id-alert,
+.id-verified {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 11px 14px;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.id-alert {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-left-width: 4px;
+}
+
+.id-verified {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-left: 4px solid var(--color-success);
+}
+
+.id-alert svg,
+.id-verified svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.id-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.id-cell__type {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.id-cell__number {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.compliance-legend {
+  margin-top: 12px;
 }

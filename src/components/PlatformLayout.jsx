@@ -23,12 +23,12 @@ const NAV_ITEMS = [
 
 const QUICK_NAV = NAV_ITEMS.map((item) => ({ ...item, permission: null }));
 
-// Mirrors Layout.jsx exactly — right-anchored drawer, spring entry,
+// Mirrors Layout.jsx exactly — left-anchored drawer, spring entry,
 // staggered links. See that file for the reasoning on the variant names.
 const drawerVariants = {
-  hidden: { x: '100%' },
+  hidden: { x: '-100%' },
   visible: { x: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-  exit: { x: '100%', transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
+  exit: { x: '-100%', transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
 };
 const overlayVariants = {
   hidden: { opacity: 0 },
@@ -40,7 +40,7 @@ const navListVariants = {
   navVisible: { transition: { staggerChildren: 0.05, delayChildren: 0.12 } },
 };
 const navItemVariants = {
-  navHidden: { opacity: 0, x: 24 },
+  navHidden: { opacity: 0, x: -24 },
   navVisible: { opacity: 1, x: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
 };
 

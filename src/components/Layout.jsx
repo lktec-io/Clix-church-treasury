@@ -29,6 +29,8 @@ import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import PageTransition from './ui/PageTransition.jsx';
 import ThemeToggle from './ui/ThemeToggle.jsx';
 import NotificationsMenu from './ui/NotificationsMenu.jsx';
+import SystemStatus from './ui/SystemStatus.jsx';
+import ProfileMenu from './ui/ProfileMenu.jsx';
 import BottomNav from './ui/BottomNav.jsx';
 
 // Grouped to match the product's real workflow shape (docs/MASTER_TODO.md
@@ -113,17 +115,17 @@ const SIDEBAR_WIDTH = 240;
 const SIDEBAR_WIDTH_COLLAPSED = 76;
 const COLLAPSE_STORAGE_KEY = 'clix.sidebarCollapsed';
 
-// Slides in from the RIGHT edge (+100%, not -100%) to match the
-// right-anchored drawer in layout.css. Spring rather than a fixed
-// duration so it settles with weight instead of arriving linearly.
+// Slides in from the LEFT edge (-100%) to match the left-anchored drawer in
+// Sidebar.css. Spring rather than a fixed duration so it settles with weight
+// instead of arriving linearly.
 const drawerVariants = {
-  hidden: { x: '100%', opacity: 0 },
+  hidden: { x: '-100%', opacity: 0 },
   visible: {
     x: 0,
     opacity: 1,
     transition: { type: 'spring', stiffness: 300, damping: 30, opacity: { duration: 0.18 } },
   },
-  exit: { x: '100%', opacity: 0, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
+  exit: { x: '-100%', opacity: 0, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
 };
 const overlayVariants = {
   hidden: { opacity: 0 },
@@ -133,14 +135,14 @@ const overlayVariants = {
 
 // Nav links cascade in behind the drawer. Own variant names (not
 // hidden/visible) so these never collide with the drawer's variants via
-// Framer's parent→child propagation. Links slide LEFT into place, i.e.
-// from the right edge they entered from.
+// Framer's parent→child propagation. Links slide RIGHT into place, i.e.
+// from the left edge they entered from.
 const navListVariants = {
   navHidden: {},
   navVisible: { transition: { staggerChildren: 0.05, delayChildren: 0.12 } },
 };
 const navItemVariants = {
-  navHidden: { opacity: 0, x: 24 },
+  navHidden: { opacity: 0, x: -24 },
   navVisible: { opacity: 1, x: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
 };
 
@@ -352,8 +354,12 @@ export default function Layout() {
             <span>{t('app.name')}</span>
           </div>
           <div className="app-topbar__actions">
+            {/* Live network + API reachability, so a treasurer knows before
+                pressing Save whether the entry can reach the server. */}
+            <SystemStatus />
             <NotificationsMenu />
             <ThemeToggle />
+            <ProfileMenu />
             <button
               type="button"
               className="app-topbar__menu-btn"

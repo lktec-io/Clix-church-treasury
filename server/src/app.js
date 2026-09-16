@@ -18,6 +18,7 @@ import { auditRoutes } from './modules/audit/audit.routes.js';
 import { accountsRoutes } from './modules/accounts/accounts.routes.js';
 import { fundsRoutes } from './modules/funds/funds.routes.js';
 import { categoriesRoutes } from './modules/categories/categories.routes.js';
+import { departmentsRoutes } from './modules/departments/departments.routes.js';
 import { contributorsRoutes } from './modules/contributors/contributors.routes.js';
 import { contributionsRoutes } from './modules/contributions/contributions.routes.js';
 import { expensesRoutes } from './modules/expenses/expenses.routes.js';
@@ -69,6 +70,7 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
   app.use('/api/v1/accounts', apiRateLimiter, auth, tenantContext, accountsRoutes());
   app.use('/api/v1/funds', apiRateLimiter, auth, tenantContext, fundsRoutes());
   app.use('/api/v1/categories', apiRateLimiter, auth, tenantContext, categoriesRoutes());
+  app.use('/api/v1/departments', apiRateLimiter, auth, tenantContext, departmentsRoutes());
   app.use('/api/v1/contributors', apiRateLimiter, auth, tenantContext, contributorsRoutes());
   app.use('/api/v1/contributions', apiRateLimiter, auth, tenantContext, contributionsRoutes());
   app.use('/api/v1/expenses', apiRateLimiter, auth, tenantContext, expensesRoutes());

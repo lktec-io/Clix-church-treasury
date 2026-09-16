@@ -35,15 +35,20 @@ export const BUDGET_COLUMNS = [
   { key: 'variance', header: 'Variance' },
 ];
 
-// Trial balance. Debit/Credit are matched by the money-column regex in
-// exporters.js (isMoneyColumn), so both right-align on the decimal — which
+// Trial balance. Debit/Credit right-align on the decimal in the PDF, which
 // is the whole readability point of the report.
+//
+// `width` is a CHARACTER width: toExcelBuffer hands it straight to ExcelJS.
+// These previously held proportional weights (1, 3, 1.6 …) intended for
+// layout, which ExcelJS read literally — the exported spreadsheet had columns
+// one to three characters wide and was unreadable. The PDF exporter divides
+// its width evenly and ignores this value, so it only ever mattered to Excel.
 export const TRIAL_BALANCE_COLUMNS = [
-  { key: 'code', header: 'Code', width: 1 },
-  { key: 'name', header: 'Account', width: 3 },
-  { key: 'accountType', header: 'Type', width: 1.4 },
-  { key: 'debit', header: 'Debit', width: 1.6, align: 'right' },
-  { key: 'credit', header: 'Credit', width: 1.6, align: 'right' },
+  { key: 'code', header: 'Code', width: 10 },
+  { key: 'name', header: 'Account', width: 38 },
+  { key: 'accountType', header: 'Type', width: 14 },
+  { key: 'debit', header: 'Debit', width: 18, align: 'right' },
+  { key: 'credit', header: 'Credit', width: 18, align: 'right' },
 ];
 
 export function contributionRowForExport(row) {

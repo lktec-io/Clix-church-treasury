@@ -4,6 +4,9 @@ import { isPositiveMoneyString, sumMoney, compareMoney } from '../financial/mone
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_ITEMS = 20;
+// Non-negative money: a transfer fee of zero is a legitimate recorded value.
+const MONEY_RE = /^\d{1,12}(\.\d{1,2})?$/;
+export const MOBILE_PROVIDERS = ['mpesa', 'tigo_pesa', 'airtel_money', 'halopesa', 'other'];
 
 // Optional receipt/statement-level breakdown (e.g. "Sadaka ya Kambi = 5,000"
 // + "Ujenzi wa Kambi = 5,000" under one 10,000 payment) — see
@@ -76,6 +79,34 @@ export function validateCreateContribution(body) {
     }
   }
 
+  // Department (migration 0038). Optional; that it belongs to this tenant is
+  // checked in the service, which has the database.
+  if (body.departmentId !== undefined && body.departmentId !== null && !Number.isInteger(body.departmentId)) {
+    fields.departmentId = 'must be an integer if provided';
+  }
+
+  // Mobile-money provider and agent/transfer fee (makato). Both belong ONLY
+  // to a mobile-money payment: a cash offering with an agent fee is not
+  // something that happened, and accepting one would pollute the Makato totals.
+  const isMobileMoney = body.paymentMethod === 'mobile_money';
+  const hasProvider = body.mobileProvider !== undefined && body.mobileProvider !== null && body.mobileProvider !== '';
+  const hasFee = body.transferFee !== undefined && body.transferFee !== null && body.transferFee !== '';
+  if ((hasProvider || hasFee) && !isMobileMoney) {
+    fields.paymentMethod = 'a mobile-money provider or transfer fee can only be recorded for a mobile_money payment';
+  }
+  if (hasProvider && !MOBILE_PROVIDERS.includes(body.mobileProvider)) {
+    fields.mobileProvider = `must be one of: ${MOBILE_PROVIDERS.join(', ')}`;
+  }
+  if (hasFee) {
+    if (typeof body.transferFee !== 'string' || !MONEY_RE.test(body.transferFee)) {
+      fields.transferFee = 'must be a non-negative decimal string with at most 2 places';
+    } else if (isPositiveMoneyString(body.amount) && compareMoney(body.transferFee, body.amount) >= 0) {
+      // A fee equal to or larger than the whole gift is almost certainly the
+      // amount typed into the wrong box.
+      fields.transferFee = 'must be less than the amount sent';
+    }
+  }
+
   const items = validateItems(body.items, body.amount, fields);
 
   if (Object.keys(fields).length > 0) {
@@ -95,6 +126,9 @@ export function validateCreateContribution(body) {
     notes: body.notes?.trim() || null,
     idempotencyKey: body.idempotencyKey?.trim() || null,
     items,
+    departmentId: body.departmentId ?? null,
+    mobileProvider: hasProvider ? body.mobileProvider : null,
+    transferFee: hasFee ? body.transferFee : null,
   };
 }
 

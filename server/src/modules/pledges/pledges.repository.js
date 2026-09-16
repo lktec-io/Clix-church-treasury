@@ -32,6 +32,20 @@ class PledgesRepository extends TenantScopedRepository {
   // Derived, never stored — same principle as account balances
   // (docs/FINANCIAL_ARCHITECTURE.md §7). Only counts posted contributions;
   // a reversed pledge payment no longer counts toward fulfillment.
+  // Amount paid AND how many payments made it up, in one query. The pledge
+  // list shows both ("paid 3 times"), and fetching them separately would
+  // double the per-pledge round trips on a page that already makes one each.
+  async getFulfillmentStats(tenantId, pledgeId, connection) {
+    assertTenantId(tenantId);
+    const [rows] = await this.runner(connection).query(
+      `SELECT CAST(COALESCE(SUM(amount), 0) AS DECIMAL(14,2)) AS fulfilled, COUNT(*) AS payment_count
+         FROM contributions
+        WHERE tenant_id = ? AND pledge_id = ? AND status = 'posted'`,
+      [tenantId, pledgeId]
+    );
+    return { fulfilled: rows[0].fulfilled, paymentCount: Number(rows[0].payment_count) };
+  }
+
   async getFulfilledAmount(tenantId, pledgeId, connection) {
     assertTenantId(tenantId);
     const [rows] = await this.runner(connection).query(

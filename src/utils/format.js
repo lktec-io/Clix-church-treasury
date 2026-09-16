@@ -86,9 +86,54 @@ export function sumMoneyStrings(values) {
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
 
+// The server stores DATETIME columns in UTC (server/src/db/time.js uses
+// toISOString) and mysql2's `dateStrings` returns them as
+// "YYYY-MM-DD HH:MM:SS" with NO zone marker. Handing that string straight to
+// `new Date()` is wrong twice over: Safari rejects the space separator as an
+// Invalid Date, and other browsers read it as LOCAL time — every timestamp
+// would show three hours early in Tanzania (EAT, UTC+3). Parsed explicitly as
+// UTC here, then rendered in the viewer's own timezone.
+//
+// A plain "YYYY-MM-DD" (a DATE column) is parsed as a calendar date with no
+// time, so it can never roll over to the previous or next day.
+function parseServerDate(value) {
+  if (value instanceof Date) return value;
+  const text = String(value);
+  const dateTime = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(text);
+  if (dateTime && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(text)) {
+    const [, y, mo, d, h, mi, s] = dateTime;
+    return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s ?? 0)));
+  }
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (dateOnly) {
+    const [, y, mo, d] = dateOnly;
+    return new Date(Number(y), Number(mo) - 1, Number(d));
+  }
+  return new Date(text);
+}
+
 export function formatDate(value) {
   if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseServerDate(value);
+  if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/**
+ * Date AND time to the minute, in the viewer's timezone — e.g.
+ * "16 Sep 2026, 14:05". 24-hour clock: it is the convention on Tanzanian
+ * financial documents and removes AM/PM ambiguity from an audit trail.
+ */
+export function formatDateTime(value) {
+  if (!value) return '—';
+  const date = parseServerDate(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 }

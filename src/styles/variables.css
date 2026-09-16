@@ -53,9 +53,20 @@ a,
   --space-lg: 24px;
   --space-xl: 40px;
 
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 18px;
+  /* SHARP geometry: every card, button, input, container and badge sits
+     between 2px and 4px. These three tokens are the whole radius scale —
+     every former pill (999px) and circle on a surface now resolves to one of
+     them, so the product cannot drift back to rounded shapes one component
+     at a time. The only true circles left are the loading spinner and the
+     live-status dot, which are glyphs rather than containers. */
+  --radius-sm: 2px;
+  --radius: 3px;
+  --radius-lg: 4px;
+
+  /* Touch target floor. 48px is Android's recommended minimum and above
+     Apple's 44pt — field officers entering collections on a phone are the
+     primary mobile users, often outdoors and often in a hurry. */
+  --touch-target: 48px;
 
   --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-fast: 0.15s;

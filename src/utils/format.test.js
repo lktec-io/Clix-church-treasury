@@ -3,7 +3,7 @@
 // "amountString.startsWith is not a function", which unmounted the React
 // tree and rendered a blank page immediately after login.
 import { describe, it, expect } from 'vitest';
-import { formatMoney, formatCurrency, sumMoneyStrings, sanitizeAmountInput } from './format.js';
+import { formatMoney, formatCurrency, sumMoneyStrings, sanitizeAmountInput, formatDateTime } from './format.js';
 
 describe('formatMoney — never throws', () => {
   it('formats the normal decimal-string case', () => {
@@ -79,5 +79,22 @@ describe('sanitizeAmountInput', () => {
     expect(sanitizeAmountInput('10,000.50')).toBe('10000.50');
     expect(sanitizeAmountInput(' 1 234 ')).toBe('1234');
     expect(sanitizeAmountInput(null)).toBe('');
+  });
+});
+
+describe('formatDateTime — server UTC timestamps', () => {
+  const opts = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false };
+
+  // The server writes UTC with no zone marker. Parsed as local time it would
+  // be off by the viewer's UTC offset (three hours in Tanzania), and Safari
+  // rejects the space separator outright.
+  it('parses a zone-less "YYYY-MM-DD HH:MM:SS" as UTC', () => {
+    const expected = new Date(Date.UTC(2026, 8, 16, 11, 5, 0)).toLocaleString(undefined, opts);
+    expect(formatDateTime('2026-09-16 11:05:00')).toBe(expected);
+  });
+
+  it('shows a dash for a missing value', () => {
+    expect(formatDateTime(null)).toBe('—');
+    expect(formatDateTime('')).toBe('—');
   });
 });

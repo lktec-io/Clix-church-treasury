@@ -97,7 +97,7 @@
   width: 38px;
   height: 38px;
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   background: rgba(var(--metric-tint-rgb), 0.12);
   color: var(--metric-tint);
   font-size: 17px;
@@ -113,37 +113,37 @@
    definition; the components differ only in which custom property they
    read. --meter-tint is set alongside --metric-tint because .fund-tile__icon
    and .progress-meter are tinted from the same suffix by the same caller. */
-.metric-icon--income,
-.stat-tile__icon--income,
-.fund-tile__icon--income,
-.progress-meter--income {
+.metric-icon.metric-icon--income,
+.stat-tile__icon.stat-tile__icon--income,
+.fund-tile__icon.fund-tile__icon--income,
+.progress-meter.progress-meter--income {
   --metric-tint: var(--color-accent);
   --metric-tint-rgb: var(--color-accent-rgb);
   --meter-tint: var(--color-accent);
   --meter-tint-rgb: var(--color-accent-rgb);
 }
-.metric-icon--savings,
-.stat-tile__icon--savings,
-.fund-tile__icon--savings,
-.progress-meter--savings {
+.metric-icon.metric-icon--savings,
+.stat-tile__icon.stat-tile__icon--savings,
+.fund-tile__icon.fund-tile__icon--savings,
+.progress-meter.progress-meter--savings {
   --metric-tint: var(--color-warning);
   --metric-tint-rgb: 245, 158, 11;
   --meter-tint: var(--color-warning);
   --meter-tint-rgb: 245, 158, 11;
 }
-.metric-icon--info,
-.stat-tile__icon--info,
-.fund-tile__icon--info,
-.progress-meter--info {
+.metric-icon.metric-icon--info,
+.stat-tile__icon.stat-tile__icon--info,
+.fund-tile__icon.fund-tile__icon--info,
+.progress-meter.progress-meter--info {
   --metric-tint: var(--color-blue);
   --metric-tint-rgb: 59, 130, 246;
   --meter-tint: var(--color-blue);
   --meter-tint-rgb: 59, 130, 246;
 }
-.metric-icon--danger,
-.stat-tile__icon--danger,
-.fund-tile__icon--danger,
-.progress-meter--danger {
+.metric-icon.metric-icon--danger,
+.stat-tile__icon.stat-tile__icon--danger,
+.fund-tile__icon.fund-tile__icon--danger,
+.progress-meter.progress-meter--danger {
   --metric-tint: var(--color-danger);
   --metric-tint-rgb: var(--color-danger-rgb);
   --meter-tint: var(--color-danger);
@@ -207,49 +207,6 @@
   position: relative;
   overflow: hidden;
   min-width: 0;
-}
-
-.hero-card::after {
-  content: '';
-  position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
-}
-
-/* A single, slow light sweep that passes across the card every few
-   seconds — reads as "this is live data updating in the background," not
-   as decoration. One pass, long pause, never a continuous shimmer (that
-   would read as a loading state, the opposite of what "live" should
-   communicate). */
-.hero-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 40%, rgba(255, 255, 255, 0.09) 50%, transparent 60%);
-  transform: translateX(-100%);
-  animation: heroSweep 6s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes heroSweep {
-  0%,
-  70% {
-    transform: translateX(-100%);
-  }
-  85%,
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-card::before {
-    display: none;
-  }
 }
 
 .hero-card__top {
@@ -434,7 +391,7 @@
   gap: 5px;
   padding: 4px 11px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.015em;
@@ -484,7 +441,7 @@
   padding: 0;
   flex-shrink: 0;
   border: none;
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   background: rgba(var(--color-primary-rgb), 0.1);
   color: inherit;
   font: inherit;
@@ -544,7 +501,7 @@
 .empty-state__icon {
   width: 52px;
   height: 52px;
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -563,428 +520,6 @@
 .empty-state__message {
   font-size: 13px;
   max-width: 320px;
-}
-
-/* ==========================================================================
-   WELCOME BANNER (dashboard)
-   ========================================================================== */
-.welcome-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 18px;
-  padding: 26px 24px;
-  margin-bottom: 18px;
-  border-radius: var(--radius-lg);
-  background-color: var(--color-primary);
-  background-image: var(--gradient-hero);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: var(--shadow-xl);
-  color: #ffffff;
-}
-
-.welcome-banner__body {
-  min-width: 0;
-  /* Sits above the shimmer sweep. */
-  position: relative;
-  z-index: 1;
-}
-
-/* The greeting ("Hujambo, …") is the heaviest type on the page — brief §1
-   asks for title greetings in a bold, heavy corporate presentation. It
-   stays white because it sits on the purple gradient banner, not on the
-   light canvas. */
-.welcome-banner__title {
-  margin: 0;
-  font-size: 26px;
-  line-height: 1.2;
-  font-weight: var(--font-weight-heavy);
-  letter-spacing: -0.025em;
-  color: #ffffff;
-  overflow-wrap: anywhere;
-}
-
-.welcome-banner__subtitle {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.72);
-}
-
-/* Structured date: big numeral, weekday and month stacked beside it. */
-.welcome-banner__date {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.welcome-banner__date-day {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-accent);
-}
-
-.welcome-banner__date-rest {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.welcome-banner__date-weekday {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #ffffff;
-  white-space: nowrap;
-}
-
-.welcome-banner__date-month {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.68);
-  white-space: nowrap;
-}
-
-@media (min-width: 700px) {
-  .welcome-banner {
-    padding: 30px 32px;
-  }
-  .welcome-banner__title {
-    font-size: 32px;
-  }
-}
-
-/* ==========================================================================
-   FUND ALLOCATION DONUT
-   ========================================================================== */
-.fund-donut {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 22px;
-  margin-bottom: 20px;
-}
-
-.fund-donut__chart {
-  position: relative;
-  width: 190px;
-  height: 190px;
-  flex-shrink: 0;
-  margin-inline: auto;
-}
-
-.fund-donut__chart svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.fund-donut__chart circle {
-  cursor: pointer;
-}
-
-.fund-donut__center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  text-align: center;
-  /* The ring underneath owns the hover — without this, moving onto the
-     centre readout would count as leaving the segment and reset it. */
-  pointer-events: none;
-  padding: 0 34px;
-}
-
-.fund-donut__center-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
-  line-height: 1.3;
-}
-
-.fund-donut__center-value {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-heading);
-}
-
-.fund-donut__center-share {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-accent);
-}
-
-.fund-donut__legend {
-  flex: 1 1 220px;
-  min-width: 0;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.fund-donut__legend-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 7px 9px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-premium);
-}
-
-.fund-donut__legend-item:hover,
-.fund-donut__legend-item.is-active {
-  background: rgba(var(--color-primary-rgb), 0.06);
-}
-
-.fund-donut__legend-item:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-accent);
-}
-
-.fund-donut__swatch {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  border-radius: 3px;
-}
-
-.fund-donut__legend-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fund-donut__legend-share {
-  flex-shrink: 0;
-  font-weight: 700;
-  color: var(--text-heading);
-}
-
-.fund-donut__empty {
-  padding: 22px 0;
-  color: var(--text-muted);
-  font-size: 13px;
-  text-align: center;
-}
-
-/* ==========================================================================
-   ANALYTICS CANVAS — income trends & forecast
-   Shares .fund-tile's padding/typography scale so the two stacked panels
-   read as one system rather than two components that happen to be adjacent.
-   ========================================================================== */
-.analytics-canvas {
-  padding: 20px;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.07);
-  box-shadow: var(--shadow-lg);
-  /* min-width:0 lets this shrink inside a grid/flex parent; without it a
-     wide SVG child sets the floor and pushes the page into horizontal
-     scroll on a 320px viewport. width/max-width pin it to the column it is
-     given rather than to its content, so nothing inside — the SVG, the
-     legend, or a long fund name in the tooltip — can widen the panel. */
-  min-width: 0;
-  width: 100%;
-  max-width: 100%;
-  /* Deliberately NOT `overflow: hidden` any more. That clipped the hover
-     tooltip — which is a floating box anchored to a data point and can
-     legitimately sit slightly proud of the panel — in half at the first and
-     last month of the series. It cannot be `overflow-x: hidden` with a
-     visible y either: CSS computes the visible axis to `auto` when the other
-     is clipped, which would hang a scrollbar off the panel.
-     What actually prevents a sideways page break is the pair above (this
-     panel can never exceed the column it is given), the edge-aware tooltip
-     anchoring in TrendChart.jsx, and #root's own
-     `max-width: 100vw; overflow-x: hidden` backstop in layout.css. */
-  overflow: visible;
-}
-
-@media (min-width: 640px) {
-  .analytics-canvas {
-    padding: 26px 28px;
-  }
-}
-
-.analytics-canvas__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  margin-bottom: 18px;
-}
-
-.analytics-canvas__title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--text-heading);
-}
-
-/* The English half of the bilingual title, one step down the hierarchy so
-   the pair reads as one heading rather than two competing ones. */
-.analytics-canvas__subtitle {
-  margin: 3px 0 0;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.analytics-canvas__legend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.analytics-canvas__legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  white-space: nowrap;
-}
-
-.analytics-canvas__swatch {
-  width: 16px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--color-accent);
-}
-
-.analytics-canvas__swatch--forecast {
-  background: repeating-linear-gradient(
-    90deg,
-    var(--color-accent) 0 4px,
-    transparent 4px 7px
-  );
-}
-
-.analytics-canvas__note {
-  margin: 14px 0 0;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-/* ---------- The chart itself ---------- */
-.trend-chart {
-  position: relative;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
-/* The SVG is fluid by construction: a fixed viewBox plus width:100% and
-   height:auto means the browser rescales all geometry to whatever width the
-   panel hands it, at any viewport, with no JS measurement and no fixed
-   pixel width anywhere in the chart. max-width pins it to the container so
-   the aspect-ratio box can never round up past its parent. */
-.trend-chart svg {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-.trend-chart rect:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-/* Navy glass tooltip. The `transform` that anchors it against the node is
-   set INLINE by TrendChart.jsx (tooltipPlacement), because the anchor has to
-   change near the panel edges — a fixed translate(-50%, -120%) here would be
-   overridden anyway and is left out so there is exactly one source of truth
-   for the placement. pointer-events:none so it can never sit between the
-   cursor and the hit-area column underneath, which would make it flicker. */
-.trend-chart__tooltip {
-  position: absolute;
-  /* Never wider than the panel it is clipped by — on a 360px phone the
-     150px floor plus padding would otherwise reach the edge regardless of
-     which way it is anchored. */
-  max-width: 100%;
-  min-width: 150px;
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  background: rgba(30, 41, 59, 0.94);
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-  border: 1px solid rgba(var(--color-accent-rgb), 0.28);
-  box-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.7);
-  color: #ffffff;
-  pointer-events: none;
-  z-index: 3;
-}
-
-/* Anchored below its node instead of above (top of the plot). The shadow is
-   thrown the other way so the box still reads as lifted off the panel rather
-   than pressed into it. */
-.trend-chart__tooltip.is-flipped {
-  box-shadow: 0 -18px 40px -20px rgba(0, 0, 0, 0.7);
-}
-
-.trend-chart__tooltip-month {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  margin-bottom: 6px;
-}
-
-.trend-chart__tooltip-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-  font-size: 12.5px;
-}
-
-.trend-chart__tooltip-key {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.trend-chart__tooltip-value {
-  font-weight: 700;
-  color: #ffffff;
 }
 
 /* ==========================================================================
@@ -1024,14 +559,14 @@
 
 .sms-dispatch__track {
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: rgba(var(--color-primary-rgb), 0.1);
   overflow: hidden;
 }
 
 .sms-dispatch__bar {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--gradient-primary);
   box-shadow: 0 0 12px 0 rgba(var(--color-accent-rgb), 0.55);
 }
@@ -1049,7 +584,7 @@
   width: 38px;
   height: 38px;
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   background: var(--color-accent);
   color: #ffffff;
   font-size: 20px;
@@ -1063,7 +598,7 @@
   width: 34px;
   height: 34px;
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   background: var(--color-info-bg);
   color: var(--color-info);
   font-size: 17px;
@@ -1142,158 +677,6 @@
 }
 .skeleton-text:last-child {
   margin-bottom: 0;
-}
-
-/* ---------- Timeline (member history) ---------- */
-.timeline-group {
-  margin-bottom: 18px;
-}
-
-.timeline-group__label {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-  padding-left: 2px;
-}
-
-.timeline-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 8px;
-}
-
-.timeline-item__icon {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-success-bg);
-  color: var(--color-success);
-  font-size: 16px;
-}
-
-.timeline-item__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.timeline-item__title {
-  font-weight: 600;
-  color: var(--text-heading);
-  font-size: 14px;
-}
-
-.timeline-item__meta {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 1px;
-}
-
-.timeline-item__amount {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-heading);
-  flex-shrink: 0;
-}
-
-/* ---------- Fund allocation tiles (DashboardPage) ---------- */
-/* One tile per fund the church has defined. Same surface language as
-   .stat-tile but with a heavier accent treatment, since this is the
-   "where the money sits" block rather than a plain metric. */
-.fund-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-  gap: 14px;
-}
-
-.fund-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: none;
-  transition: border-color var(--motion-fast) var(--ease-premium);
-}
-
-/* Feedback is a border tint, not a lift — see the note on .card. */
-@media (hover: hover) and (pointer: fine) {
-  .fund-tile:hover {
-    border-color: rgba(var(--color-primary-rgb), 0.35);
-  }
-}
-
-.fund-tile__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-/* Circular tinted enclosure, same system as .metric-icon — a fund tile
-   accepts the --income/--savings/--info modifiers so each fund carries its
-   own category colour (brief §2B). */
-.fund-tile__icon {
-  --metric-tint: var(--color-primary);
-  --metric-tint-rgb: var(--color-primary-rgb);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: rgba(var(--metric-tint-rgb), 0.12);
-  color: var(--metric-tint);
-  font-size: 17px;
-}
-
-/* Share-of-total badge — the premium green accent, used here because it
-   genuinely encodes something (proportion of funds held), not decoration. */
-.fund-tile__share {
-  flex-shrink: 0;
-  padding: 3px 9px;
-  border-radius: 999px;
-  /* Neutral lavender rather than success green: this encodes a proportion
-     of the total, which is neither good nor bad news. Green here read as
-     "this fund is healthy", which is not what the number says. */
-  background: var(--color-lavender-soft);
-  color: var(--color-primary-hover);
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.fund-tile__name {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
-}
-
-.fund-tile__value {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text-heading);
-  overflow-wrap: anywhere;
 }
 
 /* ==========================================================================
@@ -1400,7 +783,7 @@
 .sms-pop-center__badge-ring {
   position: absolute;
   inset: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   background: rgba(var(--color-accent-rgb), 0.12);
   box-shadow: inset 0 0 0 2px rgba(var(--color-accent-rgb), 0.28);
 }
@@ -1412,7 +795,7 @@
   justify-content: center;
   width: 84px;
   height: 84px;
-  border-radius: 50%;
+  border-radius: var(--radius-lg);
   background: linear-gradient(150deg, var(--color-accent), var(--color-accent-dark));
   color: #ffffff;
   font-size: 44px;
@@ -1493,187 +876,6 @@
 }
 
 /* ==========================================================================
-   EXPENSE APPROVAL GATEWAY — dashboard pending-request rows
-   A row list rather than a <table>: each entry is a decision with two
-   actions, not tabular data to scan across, and it has to reflow to a
-   stacked card on a phone without a horizontal scroller.
-   ========================================================================== */
-.approval-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.approval-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  /* Amber left edge — this row is waiting on the reader, and the colour
-     matches the "submitted" status badge used everywhere else. */
-  border-left: 3px solid var(--color-warning);
-}
-
-.approval-row__detail {
-  flex: 1 1 190px;
-  min-width: 0;
-}
-
-.approval-row__payee {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-heading);
-  overflow-wrap: anywhere;
-}
-
-.approval-row__meta {
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
-}
-
-.approval-row__amount {
-  flex: 0 0 auto;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-heading);
-  white-space: nowrap;
-}
-
-.approval-row__actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  flex: 0 0 auto;
-}
-
-/* On a phone the amount leads its own line and the two decisions split the
-   full width, so neither is a cramped target next to the other. */
-@media (max-width: 560px) {
-  .approval-row {
-    align-items: stretch;
-  }
-  .approval-row__amount {
-    flex: 1 1 100%;
-  }
-  .approval-row__actions {
-    flex: 1 1 100%;
-  }
-  .approval-row__actions .btn {
-    flex: 1 1 0;
-  }
-}
-
-/* Workflow sub-label above the approval grid. Framed rather than plain
-   muted text: it corrects a misreading that costs real money (believing
-   "Idhinisha" releases the funds), so it has to survive being skimmed. */
-.approval-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--color-warning-bg);
-  border: 1px solid color-mix(in srgb, var(--color-warning) 28%, transparent);
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--text);
-}
-
-.approval-note svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  font-size: 15px;
-  color: var(--color-warning);
-}
-
-/* ==========================================================================
-   REMITTANCE CONFIRMATION DRAWER
-   Reuses .sms-pop-overlay for the blurred backdrop — same blur, same z-tier,
-   one definition. This is the sign-off surface before real money leaves the
-   church, so it states the full breakdown rather than just asking "sure?".
-   ========================================================================== */
-.remit-drawer {
-  width: 100%;
-  max-width: 520px;
-  max-height: 88svh;
-  overflow-y: auto;
-  padding: 24px;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
-  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.55);
-}
-
-.remit-drawer__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.remit-drawer__head h2 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-heading);
-}
-
-.remit-drawer__rows {
-  margin: 0 0 18px;
-  padding: 14px 16px;
-  border-radius: var(--radius-sm);
-  background: rgba(var(--color-primary-rgb), 0.04);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
-}
-
-.remit-drawer__rows > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 4px 0;
-  font-size: 13px;
-}
-
-.remit-drawer__rows dt {
-  color: var(--text-muted);
-}
-
-.remit-drawer__rows dd {
-  margin: 0;
-  font-weight: 600;
-  color: var(--text-heading);
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-/* The outstanding figure is the one being settled, closed off with the same
-   green double rule the PDFs use for a grand total. */
-.remit-drawer__total {
-  margin-top: 8px;
-  padding-top: 10px !important;
-  border-top: 2px solid var(--color-accent);
-}
-
-.remit-drawer__total dt {
-  font-weight: 700;
-  color: var(--text-heading) !important;
-}
-
-.remit-drawer__total dd {
-  font-size: 17px;
-  color: var(--color-accent) !important;
-}
-
-/* ==========================================================================
    SEGMENTED TABS — Hub / Rules switch on the Remittance page
    ========================================================================== */
 .seg-tabs {
@@ -1694,7 +896,7 @@
   gap: 7px;
   padding: 8px 16px;
   border: none;
-  border-radius: calc(var(--radius) - 4px);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   font: inherit;
@@ -1793,115 +995,6 @@
 }
 
 /* ==========================================================================
-   TRIAL BALANCE TABLE + INTEGRITY STRIP
-   ========================================================================== */
-.trial-balance__code {
-  width: 1%;
-  white-space: nowrap;
-  color: var(--text-muted);
-  font-size: 12.5px;
-}
-
-/* Section band (Assets, Liabilities, …) inside the table, so the grouping
-   survives the horizontal scroll a narrow screen forces. */
-.trial-balance__section td {
-  padding-top: 14px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  background: rgba(var(--color-primary-rgb), 0.045);
-}
-
-.trial-balance__name {
-  display: block;
-  font-weight: 600;
-  color: var(--text-heading);
-}
-
-/* The other language, one step down — a mixed English/Swahili church board
-   reads a single sheet rather than switching the UI language mid-meeting. */
-.trial-balance__name-alt {
-  display: block;
-  font-size: 11.5px;
-  color: var(--text-muted);
-}
-
-.trial-balance__totals td {
-  padding-top: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-heading);
-  /* Double rule in accent green — the accounting convention for a closing
-     sum, matching the PDF exports (pdfTheme.js#drawGrandTotal). */
-  border-top: 3px double var(--color-accent);
-}
-
-/* The report's conclusion. Loud on purpose: an auditor opens this page to
-   answer one question. */
-.integrity-strip {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 18px;
-  padding: 16px 18px;
-  border-radius: var(--radius);
-  border: 1px solid transparent;
-}
-
-.integrity-strip.is-balanced {
-  background: rgba(var(--color-accent-rgb), 0.1);
-  border-color: rgba(var(--color-accent-rgb), 0.45);
-}
-
-.integrity-strip.is-unbalanced {
-  background: rgba(var(--color-danger-rgb), 0.1);
-  border-color: rgba(var(--color-danger-rgb), 0.45);
-}
-
-.integrity-strip__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  font-size: 22px;
-  color: #ffffff;
-}
-
-.integrity-strip.is-balanced .integrity-strip__icon {
-  background: var(--color-accent);
-  box-shadow: 0 8px 20px -8px rgba(var(--color-accent-rgb), 0.7);
-}
-
-.integrity-strip.is-unbalanced .integrity-strip__icon {
-  background: var(--color-danger);
-  box-shadow: 0 8px 20px -8px rgba(var(--color-danger-rgb), 0.7);
-}
-
-.integrity-strip__copy {
-  min-width: 0;
-}
-
-.integrity-strip__headline {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-heading);
-}
-
-.integrity-strip__detail {
-  margin-top: 2px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
-}
-
-
-/* ==========================================================================
    PROGRESS METER — fluid allocation/budget bars (brief §3)
    Rounded caps, a soft track, and a fill tinted per category so a column of
    department rows reads as the reference's multi-coloured sliders.
@@ -1911,7 +1004,7 @@
   --meter-tint-rgb: var(--color-primary-rgb);
   width: 100%;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--color-gray-light);
   overflow: hidden;
 }
@@ -1919,7 +1012,7 @@
 .progress-meter__fill {
   display: block;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: var(--meter-tint);
   /* Width is set inline from real data; the transition is what makes a
      value change glide rather than jump when a figure refreshes. */

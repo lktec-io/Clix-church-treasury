@@ -1,5 +1,6 @@
 import { withTransaction } from '../../config/db.js';
-import { notFound, AppError } from '../../errors/AppError.js';
+import { notFound, AppError, validationError } from '../../errors/AppError.js';
+import { departmentsRepository } from '../departments/departments.repository.js';
 import { contributionsRepository } from './contributions.repository.js';
 import { contributionItemsRepository } from './contributionItems.repository.js';
 import { postLedgerEntry } from '../financial/financialEngine.service.js';
@@ -155,26 +156,45 @@ export async function recordContribution(tenantId, data, actorUserId) {
       financialPeriodId: openPeriod.id,
     });
 
-    const contribution = await contributionsRepository.insert(
-      tenantId,
-      {
-        contributor_id: data.contributorId,
-        pledge_id: data.pledgeId ?? null,
-        account_id: data.accountId,
-        fund_id: data.fundId,
-        category_id: data.categoryId,
-        transaction_id: transaction.id,
-        amount: data.amount,
-        payment_method: data.paymentMethod,
-        contribution_date: data.contributionDate,
-        reference: data.reference,
-        idempotency_key: data.idempotencyKey ?? null,
-        notes: data.notes,
-        status: 'posted',
-        recorded_by_user_id: actorUserId,
-      },
-      connection
-    );
+    const contributionRow = {
+      contributor_id: data.contributorId,
+      pledge_id: data.pledgeId ?? null,
+      account_id: data.accountId,
+      fund_id: data.fundId,
+      category_id: data.categoryId,
+      transaction_id: transaction.id,
+      amount: data.amount,
+      payment_method: data.paymentMethod,
+      contribution_date: data.contributionDate,
+      reference: data.reference,
+      idempotency_key: data.idempotencyKey ?? null,
+      notes: data.notes,
+      status: 'posted',
+      recorded_by_user_id: actorUserId,
+    };
+
+    // Migration-0038 columns join the INSERT only when used. A contribution
+    // recorded without a department or a mobile-money fee writes exactly the
+    // columns it always did, so it keeps working on a server whose database
+    // has not been migrated yet — recording income is the core of the
+    // product and must not break over an optional field.
+    //
+    // `amount` stays the FULL amount the member sent; the fee is recorded
+    // beside it, never subtracted from it (see migration 0038). The member's
+    // tithe statement must show what they gave, not what the agent left.
+    if (data.departmentId) {
+      const department = await departmentsRepository.findById(tenantId, data.departmentId, connection);
+      if (!department || !department.is_active) {
+        throw validationError('Invalid department', {
+          departmentId: 'must reference an active department of this church',
+        });
+      }
+      contributionRow.department_id = data.departmentId;
+    }
+    if (data.mobileProvider) contributionRow.mobile_provider = data.mobileProvider;
+    if (data.transferFee !== null && data.transferFee !== undefined) contributionRow.transfer_fee = data.transferFee;
+
+    const contribution = await contributionsRepository.insert(tenantId, contributionRow, connection);
 
     // Ledger row's reference_id points back at the domain row it belongs to
     // — the one sanctioned post-insert linkage mutation (see financialEngine

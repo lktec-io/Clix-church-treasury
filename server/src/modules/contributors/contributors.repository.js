@@ -74,7 +74,7 @@ class ContributorsRepository extends TenantScopedRepository {
     return rows[0] ?? null;
   }
 
-  async create(tenantId, { fullName, phone, email, gender, memberNumber }, connection) {
+  async create(tenantId, { fullName, phone, email, gender, memberNumber, idType, idNumber, idNote }, connection) {
     const row = {
       full_name: fullName,
       phone: phone ?? null,
@@ -95,6 +95,19 @@ class ContributorsRepository extends TenantScopedRepository {
     // rejecting the whole file.
     if (await hasGenderColumn(this.runner(connection))) {
       row.gender = gender ?? null;
+    }
+
+    // Identity columns (migration 0038) are written ONLY when the member
+    // actually has identity data. A plain registration — and the bulk
+    // import, which carries no document fields — therefore produces the
+    // same INSERT as before and keeps working on a server where 0038 has
+    // not been applied yet. Supplying a document on such a server still
+    // fails loudly, which is correct: silently discarding a NIDA number the
+    // clerk typed would be worse than an error.
+    if (idType) {
+      row.id_type = idType;
+      row.id_number = idNumber ?? null;
+      row.id_note = idNote ?? null;
     }
 
     return this.insert(tenantId, row, connection);

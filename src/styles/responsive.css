@@ -1,25 +1,120 @@
 /* ==========================================================================
-   RESPONSIVE — the global viewport-containment safety net. This is a
-   backstop, not the fix: every real overflow source is closed at the
-   component level (layout.css/forms.css/tables.css/cards.css). These rules
-   exist so that if something new is ever added and misses a fix, the page
-   still cannot scroll sideways — html/body/#root simply refuse to grow
-   past the viewport.
+   RESPONSIVE — viewport containment and the mobile legibility layer.
    ========================================================================== */
 
-html {
+/* ---- Horizontal containment WITHOUT creating scroll containers ----
+   This used to be `overflow-x: hidden` on html, body and #root. That is the
+   source of the scroll-freezing and broken-sticky bugs: when one overflow
+   axis is `hidden`, the other axis computes to `auto`, so each of those
+   elements silently became its own scroll container. Sticky elements then
+   stick to the wrong box, and on iOS momentum scrolling gets trapped inside
+   body instead of scrolling the page.
+
+   `overflow-x: clip` clips exactly the same overflow but does NOT create a
+   scroll container, so vertical scrolling stays with the viewport. The
+   `hidden` declaration before it is the fallback for the few browsers that
+   predate `clip`; they ignore the second declaration and keep the old
+   behaviour. */
+html,
+body,
+#root {
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
   width: 100%;
-  overflow-x: hidden;
 }
 
 @media (min-width: 1280px) {
   .app-content {
     padding-left: var(--space-xl);
     padding-right: var(--space-xl);
+  }
+}
+
+/* ==========================================================================
+   MOBILE LEGIBILITY — phones and small tablets
+   Field officers record collections on phones, often outdoors. Everything
+   here scales UP below 720px: larger base type, larger figures, and touch
+   targets at or above --touch-target (48px).
+   ========================================================================== */
+@media (max-width: 719px) {
+  body {
+    font-size: 16px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 18px;
+  }
+
+  /* 16px is the threshold below which iOS Safari zooms the whole page when
+     a field is focused — at the previous 14px every form tap jumped the
+     layout. Also simply easier to read in sunlight. */
+  .field input,
+  .field select,
+  .field textarea,
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .field input,
+  .field select {
+    min-height: var(--touch-target);
+  }
+
+  .field label {
+    font-size: 14px;
+  }
+
+  .btn {
+    min-height: var(--touch-target);
+    font-size: 15px;
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  /* Small buttons are small on desktop; on a phone they are still fingers. */
+  .btn--sm {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .topbar-btn,
+  .app-topbar__menu-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .app-sidebar__link {
+    min-height: var(--touch-target);
+    font-size: 15.5px;
+  }
+
+  .stat-tile__label {
+    font-size: 12.5px;
+  }
+  .stat-tile__value {
+    font-size: 26px;
+  }
+
+  /* Tables keep their horizontal scroll (never truncation) but their text
+     grows with the rest of the page. */
+  table.data-table {
+    font-size: 15px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 14px 14px;
+  }
+
+  .badge {
+    font-size: 12.5px;
   }
 }

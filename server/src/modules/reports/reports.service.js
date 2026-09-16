@@ -9,6 +9,8 @@ import { listPledges } from '../pledges/pledges.service.js';
 import { getFinancialSummary } from '../financial/financialSummary.service.js';
 import { addMoney, compareMoney, normalizeMoney, subtractMoney, sumMoney } from '../financial/money.js';
 import { chartOfAccountsRepository } from '../financial/chartOfAccounts.repository.js';
+import { CHART_OF_ACCOUNTS_TEMPLATE, NORMAL_BALANCE_BY_TYPE } from '../../db/seeds/chartOfAccountsTemplate.js';
+import { withSchemaFallback } from '../../db/schemaGuard.js';
 
 // Every report here composes an existing repository/service method — none
 // of them run their own aggregation SQL. This is what
@@ -186,8 +188,50 @@ export async function getFinancialSummaryReport(tenantId, financialPeriodId) {
 // `isBalanced` is the whole point of the report. If it is ever false the
 // books are broken and the number is more useful than a thrown error: an
 // auditor needs to SEE the discrepancy and its size, not get a 500.
+// Zero-balance rows built from the standard chart-of-accounts template, in
+// memory. Used when there is no ledger to read, so the report still renders
+// the real account structure instead of an empty sheet — without writing
+// anything to the database from a GET.
+function baselineAccountsFromTemplate() {
+  return CHART_OF_ACCOUNTS_TEMPLATE.map((account) => ({
+    code: account.code,
+    name: account.name,
+    name_sw: account.nameSw,
+    account_type: account.accountType,
+    normal_balance: NORMAL_BALANCE_BY_TYPE[account.accountType],
+    total_debit: '0.00',
+    total_credit: '0.00',
+  }));
+}
+
 export async function getTrialBalanceReport(tenantId, { financialPeriodId } = {}) {
-  const accounts = await chartOfAccountsRepository.trialBalance(tenantId, { financialPeriodId });
+  // THE 500 FIX. On a server where migration 0037 has not been applied,
+  // chart_of_accounts does not exist and MySQL raises ER_NO_SUCH_TABLE. A raw
+  // driver error carries no HTTP status, so it surfaced as a 500 — and
+  // because this query runs before the controller branches on format, the
+  // screen, PDF and XLSX exports all failed identically.
+  //
+  // Only a SCHEMA-MISSING error is absorbed. Any other failure still
+  // propagates as an error: returning zeros for a query that genuinely broke
+  // would show an auditor "Books are Balanced, 0.00" — a confident, false
+  // answer is worse than a visible failure. When the ledger is unavailable
+  // the response says so (`available: false`, `isBalanced: null`) rather than
+  // claiming the books balance.
+  let available = true;
+  let accounts = await withSchemaFallback(
+    'reports.trial_balance',
+    () => chartOfAccountsRepository.trialBalance(tenantId, { financialPeriodId }),
+    () => {
+      available = false;
+      return baselineAccountsFromTemplate();
+    }
+  );
+
+  // A church that has never posted since the general ledger was introduced
+  // has no chart-of-accounts rows yet (they are seeded on first posting).
+  // Show the standard structure at zero rather than a blank report — that
+  // IS its correct trial balance.
+  if (available && accounts.length === 0) accounts = baselineAccountsFromTemplate();
 
   const rows = accounts.map((account) => {
     const debit = normalizeMoney(String(account.total_debit ?? '0'));
@@ -216,7 +260,74 @@ export async function getTrialBalanceReport(tenantId, { financialPeriodId } = {}
   return {
     rows,
     totals: { code: '', name: 'TOTAL', debit: totals.debit, credit: totals.credit },
-    isBalanced: compareMoney(totals.debit, totals.credit) === 0,
+    available,
+    // null, not true, when the ledger could not be read: zero equals zero,
+    // but that is not evidence the books balance.
+    isBalanced: available ? compareMoney(totals.debit, totals.credit) === 0 : null,
     difference: subtractMoney(totals.debit, totals.credit),
+  };
+}
+
+// DASHBOARD INSIGHTS — the cockpit's three aggregate panels in one round trip:
+//   collections   posted giving split into tithe (Zaka) / offering (Sadaka) / other
+//   departments   posted giving per church department (migration 0038)
+//   makato        mobile-money volume and agent/transfer fees (migration 0038)
+//
+// Each panel degrades independently. `departments` and `makato` depend on
+// migration 0038; on a server where it is pending they come back with
+// `available: false` instead of taking the whole dashboard down, and the UI
+// explains that rather than showing a misleading zero.
+export async function getDashboardInsights(tenantId, { dateFrom, dateTo }) {
+  const [groupRows, departmentRows, feeRows] = await Promise.all([
+    contributionsRepository.sumByReportGroup(tenantId, { dateFrom, dateTo }),
+    withSchemaFallback('dashboard.departments', () => contributionsRepository.sumByDepartment(tenantId, { dateFrom, dateTo }), null),
+    withSchemaFallback('dashboard.makato', () => contributionsRepository.mobileMoneyFees(tenantId, { dateFrom, dateTo }), null),
+  ]);
+
+  const byGroup = Object.fromEntries(groupRows.map((row) => [row.report_group, String(row.total)]));
+  const tithe = normalizeMoney(byGroup.tithe ?? '0');
+  const offering = normalizeMoney(byGroup.offering ?? '0');
+  const other = normalizeMoney(byGroup.other ?? '0');
+
+  const providers = (feeRows ?? []).map((row) => ({
+    provider: row.provider,
+    transactionCount: Number(row.transaction_count),
+    totalSent: normalizeMoney(String(row.total_sent)),
+    totalFees: normalizeMoney(String(row.total_fees)),
+  }));
+  const totalSent = sumMoney(providers.map((p) => p.totalSent));
+  const totalFees = sumMoney(providers.map((p) => p.totalFees));
+  const transactionCount = providers.reduce((sum, p) => sum + p.transactionCount, 0);
+
+  // Fee as a share of what was sent, in basis points computed from integer
+  // cents so the percentage is exact rather than a float artefact.
+  const sentCents = Math.round(Number(totalSent) * 100);
+  const feeCents = Math.round(Number(totalFees) * 100);
+  const feeRateBasisPoints = sentCents > 0 ? Math.round((feeCents * 10000) / sentCents) : 0;
+
+  return {
+    dateFrom,
+    dateTo,
+    collections: { tithe, offering, other, total: sumMoney([tithe, offering, other]) },
+    departments: {
+      available: departmentRows !== null,
+      rows: (departmentRows ?? []).map((row) => ({
+        id: row.id,
+        name: row.name,
+        total: normalizeMoney(String(row.total)),
+        contributionCount: Number(row.contribution_count),
+      })),
+    },
+    makato: {
+      available: feeRows !== null,
+      totalSent,
+      totalFees,
+      // What actually reached the church after agents took their cut.
+      netReceived: subtractMoney(totalSent, totalFees),
+      transactionCount,
+      feeRatePercent: (feeRateBasisPoints / 100).toFixed(2),
+      averageFee: transactionCount > 0 ? (Math.round(feeCents / transactionCount) / 100).toFixed(2) : '0.00',
+      providers,
+    },
   };
 }

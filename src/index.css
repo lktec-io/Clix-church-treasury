@@ -14,10 +14,18 @@
 @import './styles/typography.css';
 @import './styles/spacing.css';
 @import './styles/layout.css';
-@import './styles/buttons.css';
-@import './styles/forms.css';
-@import './styles/tables.css';
+/* Sidebar.css was the middle of layout.css; it sits directly after it so its
+   rules keep their original cascade position. */
+@import './styles/Sidebar.css';
+/* buttons.css + forms.css, merged in their original order. */
+@import './styles/Elements.css';
 @import './styles/cards.css';
+/* Dashboard.css and Accounting.css hold sections that previously lived inside
+   cards.css, so they load after it. Accounting.css also carries the former
+   tables.css; no rule in cards.css targets tables, so moving it after cards
+   changes no computed style (verified before the split). */
+@import './styles/Dashboard.css';
+@import './styles/Accounting.css';
 @import './styles/animations.css';
 @import './styles/responsive.css';
 @import './styles/utilities.css';
