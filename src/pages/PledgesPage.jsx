@@ -7,7 +7,16 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
-import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
+import ChoiceTiles from '../components/ui/ChoiceTiles.jsx';
+import { formatDate, formatMoney, sanitizeAmountInput } from '../utils/format.js';
+
+// Paid share of the pledge, 0–100, for the progress bar. Display only.
+function paidPercent(pledge) {
+  const pledged = Number(pledge.pledged_amount);
+  const paid = Number(pledge.fulfilled_amount);
+  if (!Number.isFinite(pledged) || pledged <= 0 || !Number.isFinite(paid)) return 0;
+  return Math.max(0, Math.min(100, Math.round((paid / pledged) * 100)));
+}
 
 const STATUS_BADGE = {
   active: 'badge--warning',
@@ -109,11 +118,11 @@ export default function PledgesPage() {
 
   return (
     <div>
-      <PageHeader title={t('pledges.title')} />
+      <PageHeader title={t('pledges.title')} subtitle={t('pledges.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="pledges.create">
-        <div className="card">
+        <div className="card form-card">
           <div className="card__header">
             <h2>{t('pledges.new')}</h2>
           </div>
@@ -149,13 +158,13 @@ export default function PledgesPage() {
                   required
                 />
               </div>
-              <div className="field">
-                <label htmlFor="pledge-frequency">{t('pledges.frequency')}</label>
-                <select id="pledge-frequency" value={form.frequency} onChange={handleChange('frequency')}>
-                  {FREQUENCIES.map((f) => (
-                    <option key={f} value={f}>{t(`pledges.frequency.${f}`)}</option>
-                  ))}
-                </select>
+              <div className="field field--full">
+                <ChoiceTiles
+                  legend={t('pledges.frequency')}
+                  options={FREQUENCIES.map((f) => ({ value: f, label: t(`pledges.frequency.${f}`) }))}
+                  value={form.frequency}
+                  onChange={(frequency) => setForm((current) => ({ ...current, frequency }))}
+                />
               </div>
               <div className="field">
                 <label htmlFor="pledge-date">{t('pledges.pledgeDate')}</label>
@@ -184,76 +193,127 @@ export default function PledgesPage() {
         </div>
       </PermissionGate>
 
-      <div className="card">
+      <div className="card ledger-card">
+        <div className="ledger-toolbar">
+          <div className="ledger-toolbar__title">
+            <h2>{t('pledges.ledger.title')}</h2>
+            {!loading && (
+              <span className="ledger-toolbar__count tabular-nums">{t('pledges.ledger.count', { count: pledges.length })}</span>
+            )}
+          </div>
+        </div>
         {loading ? (
           <SkeletonTable rows={4} columns={8} />
         ) : pledges.length === 0 ? (
           <div className="empty-state">{t('common.noResults')}</div>
         ) : (
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table data-table--dense">
               <thead>
                 <tr>
                   <th>{t('pledges.contributor')}</th>
-                  <th>{t('pledges.fund')}</th>
                   <th className="is-amount">{t('pledges.pledgedAmount')}</th>
                   <th>{t('pledges.installment')}</th>
-                  <th className="is-amount">{t('pledges.timesContributed')}</th>
                   <th className="is-amount">{t('pledges.fulfilled')}</th>
                   <th className="is-amount">{t('pledges.remaining')}</th>
+                  <th>{t('pledges.repayment')}</th>
                   <th>{t('pledges.progress')}</th>
                   <th>{t('common.status')}</th>
-                  <th>{t('common.actions')}</th>
+                  <th className="col-actions">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {pledges.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.contributor?.full_name ?? '—'}</td>
-                    <td>{funds.find((f) => f.id === p.fund_id)?.name ?? '—'}</td>
-                    <td className="is-amount">{formatMoney(p.pledged_amount)}</td>
-                    <td>
-                      {p.schedule ? (
-                        <span className="pledge-installment">
-                          <span className="tabular-nums">{formatMoney(p.schedule.installment)}</span>
-                          <span className="field-hint">
-                            {t(`pledges.per.${p.schedule.frequency}`)} · {t('pledges.periodsElapsed', { elapsed: p.schedule.periodsElapsed, total: p.schedule.periods })}
+                {pledges.map((p) => {
+                  const percent = paidPercent(p);
+                  const behind = p.schedule && p.status === 'active' && Number(p.schedule.arrears) > 0;
+                  return (
+                    <tr key={p.id} className={behind ? 'is-behind' : undefined}>
+                      <td>
+                        <span className="cell-stack">
+                          <span className="cell-stack__primary">{p.contributor?.full_name ?? '—'}</span>
+                          <span className="cell-stack__secondary">
+                            {funds.find((f) => f.id === p.fund_id)?.name ?? '—'}
+                            {p.target_date ? ` · ${t('pledges.due', { date: formatDate(p.target_date) })}` : ''}
                           </span>
                         </span>
-                      ) : (
-                        <span className="field-hint">{t(`pledges.frequency.${p.frequency ?? 'once'}`)}</span>
-                      )}
-                    </td>
-                    <td className="is-amount">{p.payment_count ?? 0}</td>
-                    <td className="is-amount">{formatMoney(p.fulfilled_amount)}</td>
-                    <td className="is-amount">{formatMoney(p.remaining_amount)}</td>
-                    <td>
-                      {/* Only meaningful for a live recurring pledge: a one-off
-                          or finished pledge has no "behind" to be. */}
-                      {p.schedule && p.status === 'active' ? (
-                        Number(p.schedule.arrears) > 0 ? (
-                          <span className="badge badge--danger">{t('pledges.behind', { amount: formatMoney(p.schedule.arrears) })}</span>
+                      </td>
+                      <td className="is-amount">
+                        <span className="cell-stack is-end">
+                          <span className="cell-stack__primary">{formatMoney(p.pledged_amount)}</span>
+                          <span className="cell-stack__secondary">{t(`pledges.frequency.${p.frequency ?? 'once'}`)}</span>
+                        </span>
+                      </td>
+                      <td>
+                        {p.schedule ? (
+                          <span className="cell-stack">
+                            <span className="cell-stack__primary tabular-nums">
+                              {formatMoney(p.schedule.installment)}{' '}
+                              <span className="cell-unit">{t(`pledges.per.${p.schedule.frequency}`)}</span>
+                            </span>
+                            <span className="cell-stack__secondary tabular-nums">
+                              {t('pledges.periodsElapsed', { elapsed: p.schedule.periodsElapsed, total: p.schedule.periods })}
+                            </span>
+                          </span>
                         ) : (
-                          <span className="badge badge--success">{t('pledges.onTrack')}</span>
-                        )
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge ${STATUS_BADGE[p.status]}`}>{t(`pledges.status.${p.status}`)}</span>
-                    </td>
-                    <td>
-                      {p.status === 'active' && (
-                        <PermissionGate permission="pledges.create">
-                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleCancel(p)}>
-                            {t('pledges.cancel')}
-                          </button>
-                        </PermissionGate>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                          <span className="cell-muted">{t('pledges.lumpSum')}</span>
+                        )}
+                      </td>
+                      <td className="is-amount">
+                        <span className="cell-stack is-end">
+                          <span className="cell-stack__primary">{formatMoney(p.fulfilled_amount)}</span>
+                          <span className="cell-stack__secondary tabular-nums">
+                            {t('pledges.paymentsCount', { count: p.payment_count ?? 0 })}
+                          </span>
+                        </span>
+                      </td>
+                      <td className={`is-amount${Number(p.remaining_amount) > 0 ? ' is-outstanding' : ''}`}>
+                        {formatMoney(p.remaining_amount)}
+                      </td>
+                      <td>
+                        {/* Only meaningful for a live recurring pledge: a one-off
+                            or finished pledge has no schedule to be behind on. */}
+                        {p.schedule && p.status === 'active' ? (
+                          <span className="cell-stack">
+                            {behind ? (
+                              <span className="badge badge--dot badge--danger">
+                                {t('pledges.behind', { amount: formatMoney(p.schedule.arrears) })}
+                              </span>
+                            ) : (
+                              <span className="badge badge--dot badge--success">{t('pledges.onTrack')}</span>
+                            )}
+                            <span className="cell-stack__secondary tabular-nums">
+                              {t('pledges.expectedToDate', { amount: formatMoney(p.schedule.expectedToDate) })}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="cell-muted">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="amortization-progress">
+                          <span className="progress-meter progress-meter--income" role="img" aria-label={`${percent}%`}>
+                            <span className="progress-meter__fill" style={{ width: `${percent}%` }} />
+                          </span>
+                          <span className="amortization-progress__value tabular-nums">{percent}%</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge badge--dot ${STATUS_BADGE[p.status]}`}>{t(`pledges.status.${p.status}`)}</span>
+                      </td>
+                      <td className="col-actions">
+                        {p.status === 'active' && (
+                          <PermissionGate permission="pledges.create">
+                            <div className="row-actions">
+                              <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleCancel(p)}>
+                                {t('pledges.cancel')}
+                              </button>
+                            </div>
+                          </PermissionGate>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

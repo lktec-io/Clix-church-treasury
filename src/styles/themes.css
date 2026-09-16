@@ -1,183 +1,205 @@
 /* ==========================================================================
    PALETTE — the single authoritative colour set for the whole product.
 
-   FINTECH ORANGE. A decisive orange (#FF6B00 → #E65F00) for every active
-   state, focus and primary action, set against deep charcoal (#1E1E24)
-   structure — the sidebar, the mobile drawer and high-contrast headers — on a
-   crisp #F8F9FA workspace with pure white panels divided by #EEEEEE hairlines.
+   DEEP ROYAL EMERALD & MUTED GOLD. A private-banking palette: deep emerald
+   (#0F5132) carries the brand, headers and every committing action; muted
+   gold (#D4AF37) marks "you are here" — the active navigation item, the
+   current step, the selected option. Structure is near-black charcoal
+   (#111418) for the sidebar and drawer, set against a #F8F9FA workspace
+   with pure white panels divided by #EAEAEA hairlines.
 
    This file is the ONLY place raw colour values live. Every other stylesheet
    consumes these by name and colors.css maps the semantic aliases (--text,
-   --bg, --surface, --border …) onto them, which is why a palette change is a
-   change to this one file.
+   --bg, --surface, --border …) onto them.
 
    ── DIVISION OF LABOUR (keep it when editing) ─────────────────────────────
-   --color-primary   ORANGE — brand and interaction: active nav, primary
-                     buttons, focus rings, key figures.
-   --color-accent    EMERALD — success and money in: approved collections,
-                     successful entries, delivered ticks, "books balanced".
-   --color-danger    MUTED CRIMSON — money out, overdue and deficit.
-   Orange is deliberately NOT used for success. A primary action and a
-   confirmed result must never look alike.
+   --color-primary   EMERALD — brand, headers, primary buttons, focus rings.
+   --color-gold      GOLD — active/selected state only. Never body text on
+                     white: #D4AF37 on #FFFFFF is ~2.1:1 and fails WCAG. Gold
+                     is used as a fill (with charcoal text on it), as an
+                     indicator rule, or as text on the dark sidebar, where it
+                     is ~8.6:1. --color-gold-ink is the text-safe variant.
+   --color-accent    SUCCESS GREEN — money in, approved, balanced. Brighter
+                     than the brand emerald so a confirmed result and a
+                     brand surface are never the same colour.
+   --color-danger    MUTED CRIMSON — money out, overdue, deficit, leakage.
+
+   ── FLAT BY DESIGN ────────────────────────────────────────────────────────
+   Hairlines separate surfaces, not shadows. The shadow tokens are kept so
+   every consumer still resolves, but sm/md/lg are `none`. Only --shadow-xl
+   survives, for layers that genuinely float over content (menus, dialogs,
+   the mobile drawer) and would otherwise be indistinguishable from it.
    ========================================================================== */
 
 :root {
-  /* Brand — fintech orange */
-  --color-primary: #ff6b00;
-  --color-primary-hover: #e65f00;
-  --color-primary-rgb: 255, 107, 0;
-  --color-primary-deep: #c25100;
+  /* Brand — deep royal emerald */
+  --color-primary: #0f5132;
+  --color-primary-hover: #0b3f27;
+  --color-primary-rgb: 15, 81, 50;
+  --color-primary-deep: #08301e;
 
-  /* Success / approved collections — soft emerald */
-  --color-accent: #10a36a;
-  --color-accent-hover: #0c8a59;
-  --color-accent-rgb: 16, 163, 106;
-  --color-blue: #2563eb;
+  /* Active / selected — muted gold */
+  --color-gold: #d4af37;
+  --color-gold-rgb: 212, 175, 55;
+  --color-gold-ink: #7a5f12; /* text-safe gold on white, 6.0:1 */
+  --color-gold-soft: #faf5e4;
+  --color-on-gold: #111418;
 
-  /* Neutrals — crisp workspace, pure white panels, soft hairlines */
+  /* Success / money in */
+  --color-accent: #1a7f4e;
+  --color-accent-hover: #146a40;
+  --color-accent-rgb: 26, 127, 78;
+  --color-blue: #2f5f8a;
+
+  /* Neutrals — crisp workspace, pure white panels, hairline borders */
   --color-background: #f8f9fa;
-  --color-border: #eeeeee;
-  --color-gray-light: #f1f3f5;
-  --color-gray-dark: #34343c;
+  --color-border: #eaeaea;
+  /* Form-control outline. #EAEAEA is right for panel hairlines but far too
+     faint to show where a text field is (WCAG 1.4.11 wants 3:1). */
+  --color-input-border: #b9bfc6;
+  --color-gray-light: #f1f3f4;
+  --color-gray-dark: #2b3036;
 
-  /* Status */
-  --color-success: #10a36a;
-  --color-warning: #d97706;
-  /* Muted crimson: serious without shouting — expenses, overdue, deficits. */
-  --color-danger: #b4323c;
-  --color-danger-rgb: 180, 50, 60;
-  --color-info: #2563eb;
-  --color-success-bg: #e3f6ee;
-  --color-warning-bg: #fdf1e1;
-  --color-danger-bg: #f8e6e8;
-  --color-info-bg: #e5edfd;
+  /* Status — muted, never neon */
+  --color-success: #1a7f4e;
+  --color-success-on-dark: #4cbb85; /* success marks on charcoal surfaces */
+  --color-warning: #9a6b00;
+  --color-danger: #a4262c;
+  --color-danger-rgb: 164, 38, 44;
+  --color-info: #2f5f8a;
+  --color-success-bg: #eaf4ee;
+  --color-warning-bg: #fbf4e2;
+  --color-danger-bg: #fbeced;
+  --color-info-bg: #ebf1f7;
 
   /* Surfaces — solid, flat */
   --color-card-bg: #ffffff;
   --color-card-glass-bg: #ffffff;
-  --color-navbar-bg: rgba(255, 255, 255, 0.92);
+  --color-navbar-bg: #ffffff;
   --navbar-height: 64px;
   --glass-panel-bg: #ffffff;
-  --modal-backdrop-bg: rgba(30, 30, 36, 0.55);
+  --modal-backdrop-bg: rgba(17, 20, 24, 0.55);
 
-  /* Sidebar — deep charcoal structure panel with orange active state. */
-  --color-sidebar-bg: #1e1e24;
+  /* Sidebar — near-black charcoal with a gold active state */
+  --color-sidebar-bg: #111418;
   --gradient-sidebar: none;
 
-  /* Text — near-black charcoal ink rather than pure black. */
-  --color-text-primary: #1e1e24;
-  --color-text-secondary: #6b6b76;
-  --color-text-on-sidebar: #b4b4bf;
+  /* Text — near-black ink rather than pure black */
+  --color-text-primary: #111418;
+  --color-text-secondary: #5f6670;
+  --color-text-on-sidebar: #a4abb4;
 
-  /* Sidebar chrome. Controls inside the charcoal panel (language switch,
-     logout, avatar) read these rather than the page-surface tokens, so they
-     stay legible on the dark panel whatever the workspace looks like. */
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  /* Sidebar chrome. Controls inside the charcoal panel read these rather
+     than the page-surface tokens, so they stay legible on the dark panel. */
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.05);
   --sidebar-hover-text: #ffffff;
-  --sidebar-active-bg: rgba(255, 107, 0, 0.16);
-  --sidebar-active-text: #ff8a33;
-  --sidebar-text-strong: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-control-bg: rgba(255, 255, 255, 0.05);
-  --sidebar-control-border: rgba(255, 255, 255, 0.12);
+  --sidebar-active-bg: rgba(212, 175, 55, 0.1);
+  --sidebar-active-text: #d4af37;
+  --sidebar-text-strong: #f4f5f6;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-control-bg: rgba(255, 255, 255, 0.04);
+  --sidebar-control-border: rgba(255, 255, 255, 0.1);
 
-  /* Soft orange beds — selected rows, tinted icon enclosures, tracks. */
-  --color-lavender: #ffe8d6;
-  --color-lavender-soft: #fff4eb;
+  /* Soft emerald beds — selected rows, tinted enclosures, tracks. (The
+     token names predate this palette; renaming them would touch every
+     consumer for no visual gain.) */
+  --color-lavender: #e3eee8;
+  --color-lavender-soft: #f2f7f4;
 
-  /* Depth */
-  --glass-blur: 16px;
-  --gradient-primary: linear-gradient(135deg, #ff6b00 0%, #e65f00 100%);
-  /* Charcoal hero with an orange edge — high contrast for the headline
-     figure without a decorative wash behind it. */
-  --gradient-hero: linear-gradient(120deg, #1e1e24 0%, #2a2a32 70%, #3a2a20 100%);
+  /* Solid fills. Kept as gradient-typed tokens so `background:` consumers
+     are unchanged, but each is a single colour: no decorative washes. */
+  --glass-blur: 0px;
+  --gradient-primary: linear-gradient(var(--color-primary), var(--color-primary));
+  --gradient-hero: linear-gradient(var(--color-primary), var(--color-primary));
 
-  /* Flat by design: hairlines separate surfaces, not shadows. These remain
-     as tokens so every existing consumer keeps working and renders flat. */
-  --shadow-sm: 0 1px 2px rgba(30, 30, 36, 0.04);
-  --shadow-md: 0 2px 6px -2px rgba(30, 30, 36, 0.06);
-  --shadow-lg: 0 4px 12px -4px rgba(30, 30, 36, 0.07);
-  --shadow-xl: 0 16px 40px -16px rgba(30, 30, 36, 0.28);
-  --shadow-glow: 0 0 20px rgba(255, 107, 0, 0.22);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: 0 12px 32px -12px rgba(17, 20, 24, 0.28);
+  --shadow-glow: none;
 
-  /* Focus rings — orange. Names kept so every consumer is unchanged. */
-  --ring-accent: 0 0 0 3px rgba(var(--color-primary-rgb), 0.22);
-  --ring-accent-strong: 0 0 0 3px rgba(var(--color-primary-rgb), 0.32);
+  /* Focus rings — emerald on light surfaces (gold would fail contrast). */
+  --ring-accent: 0 0 0 3px rgba(var(--color-primary-rgb), 0.16);
+  --ring-accent-strong: 0 0 0 3px rgba(var(--color-primary-rgb), 0.28);
+  --ring-gold: 0 0 0 2px rgba(var(--color-gold-rgb), 0.85);
 
-  /* Series colours — orange-led. */
-  --chart-1: #ff6b00;
-  --chart-2: #10a36a;
-  --chart-3: #2563eb;
-  --chart-4: #b4323c;
-  --chart-5: #7c5cd6;
-  --chart-6: #0891b2;
+  /* Series colours — emerald-led, gold second. */
+  --chart-1: #0f5132;
+  --chart-2: #d4af37;
+  --chart-3: #2f5f8a;
+  --chart-4: #a4262c;
+  --chart-5: #6b7c5a;
+  --chart-6: #5f6670;
 }
 
 /* ==========================================================================
    DARK PALETTE
-
    Only authoritative tokens are redefined; colors.css maps every alias.
-   --color-primary and --color-primary-rgb stay DECOUPLED as before: the rgb
-   triple is consumed as a low-alpha tint over surfaces, so here it is a
-   lighter orange whose washes stay visible on a dark ground.
+   Emerald lifts toward jade so it stays visible on a dark ground; gold is
+   already legible on dark and needs only a touch more light.
    ========================================================================== */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --color-primary: #ff7a1a;
-  --color-primary-hover: #ff8f40;
-  --color-primary-deep: #e65f00;
-  --color-primary-rgb: 255, 145, 77;
-  --color-accent: #34c28a;
-  --color-accent-hover: #4fd39e;
-  --color-accent-rgb: 52, 194, 138;
-  --color-blue: #60a5fa;
+  /* Mid emerald: white button text stays ~4.6:1 and it still reads as
+     emerald on the near-black ground. */
+  --color-primary: #268456;
+  --color-primary-hover: #2f9463;
+  --color-primary-deep: #1d6c46;
+  --color-primary-rgb: 58, 160, 111;
 
-  --color-background: #121216;
+  --color-gold: #dfbd4f;
+  --color-gold-rgb: 223, 189, 79;
+  --color-gold-ink: #dfbd4f;
+  --color-gold-soft: rgba(223, 189, 79, 0.1);
+
+  --color-accent: #4cbb85;
+  --color-accent-hover: #63c796;
+  --color-accent-rgb: 76, 187, 133;
+  --color-blue: #7aa7d1;
+
+  --color-background: #0c0e11;
   --color-border: rgba(255, 255, 255, 0.08);
-  --color-gray-light: #1b1b21;
-  --color-gray-dark: #d4d4dc;
+  --color-input-border: rgba(255, 255, 255, 0.22);
+  --color-gray-light: #171a1f;
+  --color-gray-dark: #d6dade;
 
-  --color-success: #34c28a;
-  --color-warning: #fbbf24;
-  --color-danger: #e0707a;
-  --color-danger-rgb: 224, 112, 122;
-  --color-info: #60a5fa;
-  --color-success-bg: rgba(52, 194, 138, 0.15);
-  --color-warning-bg: rgba(251, 191, 36, 0.14);
-  --color-danger-bg: rgba(224, 112, 122, 0.15);
-  --color-info-bg: rgba(96, 165, 250, 0.15);
+  --color-success: #4cbb85;
+  --color-warning: #dfbd4f;
+  --color-danger: #e07a7f;
+  --color-danger-rgb: 224, 122, 127;
+  --color-info: #7aa7d1;
+  --color-success-bg: rgba(76, 187, 133, 0.13);
+  --color-warning-bg: rgba(223, 189, 79, 0.12);
+  --color-danger-bg: rgba(224, 122, 127, 0.13);
+  --color-info-bg: rgba(122, 167, 209, 0.13);
 
-  --color-card-bg: #1a1a20;
-  --color-card-glass-bg: #1a1a20;
-  --color-navbar-bg: rgba(22, 22, 27, 0.92);
-  --glass-panel-bg: #1a1a20;
+  --color-card-bg: #14171b;
+  --color-card-glass-bg: #14171b;
+  --color-navbar-bg: #14171b;
+  --glass-panel-bg: #1a1e23;
   --modal-backdrop-bg: rgba(0, 0, 0, 0.66);
 
-  --color-sidebar-bg: #0d0d10;
+  --color-sidebar-bg: #08090b;
 
-  --color-text-primary: #ececf1;
-  --color-text-secondary: #9a9aa6;
-  --color-text-on-sidebar: #a2a2ad;
+  --color-text-primary: #eceef0;
+  --color-text-secondary: #99a0a8;
+  --color-text-on-sidebar: #99a0a8;
 
-  --sidebar-active-bg: rgba(255, 122, 26, 0.18);
-  --sidebar-active-text: #ff9a52;
+  --sidebar-active-bg: rgba(223, 189, 79, 0.1);
+  --sidebar-active-text: #dfbd4f;
   --sidebar-border: rgba(255, 255, 255, 0.06);
 
-  --color-lavender: rgba(255, 122, 26, 0.2);
-  --color-lavender-soft: rgba(255, 122, 26, 0.1);
+  --color-lavender: rgba(58, 160, 111, 0.2);
+  --color-lavender-soft: rgba(58, 160, 111, 0.09);
 
-  --gradient-hero: linear-gradient(120deg, #0d0d10 0%, #1d1d24 70%, #2c1f16 100%);
+  --gradient-hero: linear-gradient(#0f3b27, #0f3b27);
+  --shadow-xl: 0 16px 40px -16px rgba(0, 0, 0, 0.8);
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 3px 10px -4px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 6px 18px -8px rgba(0, 0, 0, 0.65);
-  --shadow-xl: 0 20px 48px -24px rgba(0, 0, 0, 0.8);
-
-  --chart-1: #ff7a1a;
-  --chart-2: #34c28a;
-  --chart-3: #60a5fa;
-  --chart-4: #e0707a;
-  --chart-5: #a78bfa;
-  --chart-6: #22d3ee;
+  --chart-1: #3aa06f;
+  --chart-2: #dfbd4f;
+  --chart-3: #7aa7d1;
+  --chart-4: #e07a7f;
+  --chart-5: #9fb08a;
+  --chart-6: #99a0a8;
 }

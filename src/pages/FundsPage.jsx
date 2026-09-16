@@ -141,13 +141,15 @@ export default function FundsPage() {
                       </span>
                     </td>
                     <PermissionGate permission="funds.manage">
-                      <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleRename(f)}>
-                          {t('common.rename')}
-                        </button>
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => toggleActive(f)}>
-                          {f.is_active ? t('common.deactivate') : t('common.activate')}
-                        </button>
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleRename(f)}>
+                            {t('common.rename')}
+                          </button>
+                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => toggleActive(f)}>
+                            {f.is_active ? t('common.deactivate') : t('common.activate')}
+                          </button>
+                        </div>
                       </td>
                     </PermissionGate>
                   </tr>

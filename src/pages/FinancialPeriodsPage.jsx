@@ -166,24 +166,26 @@ export default function FinancialPeriodsPage() {
                         {t(`financialPeriods.status.${p.status}`)}
                       </span>
                     </td>
-                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button type="button" className="btn btn--secondary btn--sm" onClick={() => viewPeriod(p)}>
-                        {t('financialPeriods.closingSummary')}
-                      </button>
-                      {p.status === 'open' && (
-                        <PermissionGate permission="financial_period.close">
-                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleClose(p)}>
-                            {t('financialPeriods.close')}
-                          </button>
-                        </PermissionGate>
-                      )}
-                      {p.status === 'closed' && (
-                        <PermissionGate permission="financial_period.reopen">
-                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleReopen(p)}>
-                            {t('financialPeriods.reopen')}
-                          </button>
-                        </PermissionGate>
-                      )}
+                    <td>
+                      <div className="row-actions">
+                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => viewPeriod(p)}>
+                          {t('financialPeriods.closingSummary')}
+                        </button>
+                        {p.status === 'open' && (
+                          <PermissionGate permission="financial_period.close">
+                            <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleClose(p)}>
+                              {t('financialPeriods.close')}
+                            </button>
+                          </PermissionGate>
+                        )}
+                        {p.status === 'closed' && (
+                          <PermissionGate permission="financial_period.reopen">
+                            <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleReopen(p)}>
+                              {t('financialPeriods.reopen')}
+                            </button>
+                          </PermissionGate>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

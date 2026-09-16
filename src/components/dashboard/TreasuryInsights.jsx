@@ -1,7 +1,7 @@
-// Dashboard analytics blocks. Every figure is read from the server's own
-// aggregations (reports.service.js#getDashboardInsights, budgetVsActual,
-// transactionJournal) — the only arithmetic here is the share of a total a
-// bar should fill, which is presentation, never a financial figure.
+// Dashboard analytics blocks. Every money figure is read from the server's
+// own aggregations (reports.service.js#getDashboardInsights, budgetVsActual,
+// transactionJournal). The only arithmetic here is presentational: how much
+// of a bar to fill, and a provider's fee rate shown as a percentage.
 import {
   FiArrowDownLeft,
   FiArrowUpRight,
@@ -13,11 +13,12 @@ import {
   FiTarget,
   FiRotateCcw,
   FiSliders,
+  FiTrendingDown,
 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 import EmptyState from '../ui/EmptyState.jsx';
-import { formatDateTime, formatMoney } from '../../utils/format.js';
+import { formatDate, formatMoney, formatTime } from '../../utils/format.js';
 
 // Percent of `part` in `whole`, clamped to 0–100, or 0 when there is no whole.
 function share(part, whole) {
@@ -27,46 +28,62 @@ function share(part, whole) {
   return Math.max(0, Math.min(100, Math.round((p / w) * 100)));
 }
 
+// Same, unrounded — for widths where a 0.4% fee slice must still be visible.
+function exactShare(part, whole) {
+  const p = Number(part);
+  const w = Number(whole);
+  if (!Number.isFinite(p) || !Number.isFinite(w) || w <= 0) return 0;
+  return Math.max(0, Math.min(100, (p / w) * 100));
+}
+
 function Meter({ percent, tint }) {
   return (
-    <div className={tint ? `progress-meter progress-meter--${tint}` : 'progress-meter'} role="img" aria-label={`${percent}%`}>
+    <div className={tint ? `progress-meter progress-meter--${tint}` : 'progress-meter'} role="img" aria-label={`${Math.round(percent)}%`}>
       <span className="progress-meter__fill" style={{ width: `${percent}%` }} />
     </div>
   );
 }
 
-/** Zaka / Sadaka / other collections for the selected range. */
-export function CollectionsOverview({ collections }) {
+/**
+ * Zaka / Sadaka / other income for the selected range, presented as account
+ * balance blocks. `periodLabel` names the range the figures cover.
+ */
+export function CollectionsOverview({ collections, periodLabel }) {
   const { t } = useLocale();
-  const tiles = [
-    { key: 'tithe', icon: FiDollarSign, tint: 'income', value: collections.tithe },
-    { key: 'offering', icon: FiGift, tint: 'info', value: collections.offering },
-    { key: 'other', icon: FiLayers, tint: 'savings', value: collections.other },
+  const accounts = [
+    { key: 'tithe', icon: FiDollarSign, value: collections.tithe },
+    { key: 'offering', icon: FiGift, value: collections.offering },
+    { key: 'other', icon: FiLayers, value: collections.other },
   ];
 
   return (
-    <section className="card insight-card">
-      <div className="card__header">
-        <h2>{t('insights.collections.title')}</h2>
-        <span className="insight-card__total tabular-nums">
-          <span className="insight-card__total-label">{t('reports.total')}</span> TZS {formatMoney(collections.total)}
+    <section className="account-blocks" aria-label={t('insights.collections.title')}>
+      <header className="account-blocks__head">
+        <h2 className="section-heading">{t('insights.collections.title')}</h2>
+        <span className="account-blocks__total">
+          <span className="account-blocks__total-label">{t('insights.collections.totalFor', { period: periodLabel })}</span>
+          <span className="account-blocks__total-value tabular-nums">TZS {formatMoney(collections.total)}</span>
         </span>
-      </div>
-      <div className="collection-grid">
-        {tiles.map(({ key, icon: Icon, tint, value }) => {
+      </header>
+      <div className="account-blocks__grid">
+        {accounts.map(({ key, icon: Icon, value }) => {
           const percent = share(value, collections.total);
           return (
-            <div className="collection-tile" key={key}>
-              <div className="collection-tile__head">
-                <span className={`stat-tile__icon stat-tile__icon--${tint}`}>
-                  <Icon aria-hidden="true" />
+            <article className={`account-block account-block--${key}`} key={key}>
+              <div className="account-block__head">
+                <span className="account-block__icon" aria-hidden="true">
+                  <Icon />
                 </span>
-                <span className="collection-tile__share">{percent}%</span>
+                <span className="account-block__name">{t(`insights.collections.${key}`)}</span>
+                <span className="account-block__share tabular-nums">{percent}%</span>
               </div>
-              <div className="collection-tile__label">{t(`insights.collections.${key}`)}</div>
-              <div className="collection-tile__value tabular-nums">{formatMoney(value)}</div>
-              <Meter percent={percent} tint={tint} />
-            </div>
+              <div className="account-block__label">{t('insights.collections.balanceLabel')}</div>
+              <div className="account-block__balance tabular-nums">
+                <span className="account-block__currency">TZS</span>
+                {formatMoney(value)}
+              </div>
+              <Meter percent={percent} tint={key === 'tithe' ? 'income' : undefined} />
+            </article>
           );
         })}
       </div>
@@ -83,7 +100,9 @@ export function DepartmentCollections({ departments }) {
   return (
     <section className="card insight-card">
       <div className="card__header">
-        <h2>{t('insights.departments.title')}</h2>
+        <h2>
+          <FiLayers aria-hidden="true" /> {t('insights.departments.title')}
+        </h2>
       </div>
       {!departments.available ? (
         <p className="field-hint">{t('insights.migrationPending')}</p>
@@ -110,64 +129,118 @@ export function DepartmentCollections({ departments }) {
   );
 }
 
-/** Mobile-money agent fees (Makato) deducted before gifts reached the church. */
+/**
+ * Mobile-money agent fees (Makato) as an expense-leakage widget: how much of
+ * what members sent never reached the church, and through which provider.
+ */
 export function MakatoOverviewCard({ makato }) {
   const { t } = useLocale();
+  const hasData = makato.available && makato.transactionCount > 0;
+  const netWidth = hasData ? exactShare(makato.netReceived, makato.totalSent) : 0;
+  const feeWidth = hasData ? Math.max(exactShare(makato.totalFees, makato.totalSent), Number(makato.totalFees) > 0 ? 0.6 : 0) : 0;
+  const providerRates = hasData
+    ? makato.providers.map((provider) => ({
+        ...provider,
+        rate: Number(provider.totalSent) > 0 ? (Number(provider.totalFees) / Number(provider.totalSent)) * 100 : 0,
+      }))
+    : [];
+  const maxRate = providerRates.reduce((m, p) => Math.max(m, p.rate), 0);
 
   return (
-    <section className="card insight-card makato-card">
-      <div className="card__header">
-        <h2 className="makato-card__title">
+    <section className="card insight-card leakage">
+      <div className="leakage__head">
+        <h2 className="leakage__title">
           <FiSmartphone aria-hidden="true" /> {t('insights.makato.title')}
         </h2>
-        {makato.available && makato.transactionCount > 0 && (
-          <span className="badge badge--danger">{t('insights.makato.rate', { rate: makato.feeRatePercent })}</span>
+        {hasData && (
+          <span className="leakage__rate">
+            <FiTrendingDown aria-hidden="true" />
+            <span className="tabular-nums">{t('insights.makato.rate', { rate: makato.feeRatePercent })}</span>
+          </span>
         )}
       </div>
 
       {!makato.available ? (
         <p className="field-hint">{t('insights.migrationPending')}</p>
-      ) : makato.transactionCount === 0 ? (
+      ) : !hasData ? (
         <EmptyState icon={FiSmartphone} message={t('insights.makato.empty')} />
       ) : (
         <>
-          <dl className="makato-card__figures">
-            <div>
-              <dt>{t('insights.makato.sent')}</dt>
-              <dd className="tabular-nums">{formatMoney(makato.totalSent)}</dd>
-            </div>
-            <div>
-              <dt>{t('insights.makato.fees')}</dt>
-              <dd className="tabular-nums makato-card__fees">− {formatMoney(makato.totalFees)}</dd>
-            </div>
-            <div>
-              <dt>{t('insights.makato.net')}</dt>
-              <dd className="tabular-nums makato-card__net">{formatMoney(makato.netReceived)}</dd>
-            </div>
-          </dl>
-          <p className="field-hint">
-            {t('insights.makato.summary', { count: makato.transactionCount, average: formatMoney(makato.averageFee) })}
-          </p>
+          <div className="leakage__headline">
+            <span className="leakage__headline-label">{t('insights.makato.lost')}</span>
+            <span className="leakage__headline-value tabular-nums">TZS {formatMoney(makato.totalFees)}</span>
+            <span className="leakage__headline-meta tabular-nums">
+              {t('insights.makato.summary', { count: makato.transactionCount, average: formatMoney(makato.averageFee) })}
+            </span>
+          </div>
 
-          <ul className="makato-card__providers">
-            {makato.providers.map((provider) => (
-              <li key={provider.provider ?? 'unknown'} className="makato-provider">
-                <div className="makato-provider__head">
-                  <span className="makato-provider__name">
-                    {provider.provider ? t(`mobileProvider.${provider.provider}`) : t('insights.makato.unknownProvider')}
-                  </span>
-                  <span className="makato-provider__fee tabular-nums">{formatMoney(provider.totalFees)}</span>
-                </div>
-                <Meter percent={share(provider.totalFees, makato.totalFees)} tint="danger" />
-                <span className="field-hint">
-                  {t('insights.makato.providerDetail', {
-                    count: provider.transactionCount,
-                    sent: formatMoney(provider.totalSent),
-                  })}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {/* One bar = everything members sent. The crimson slice is what the
+              agents kept. */}
+          <div className="leakage__flow" role="img" aria-label={t('insights.makato.flowLabel', { rate: makato.feeRatePercent })}>
+            <span className="leakage__flow-net" style={{ width: `${netWidth}%` }} />
+            <span className="leakage__flow-fee" style={{ width: `${feeWidth}%` }} />
+          </div>
+
+          <div className="makato-equation makato-equation--compact">
+            <div className="makato-equation__term">
+              <span className="makato-equation__label">{t('insights.makato.sent')}</span>
+              <span className="makato-equation__value tabular-nums">{formatMoney(makato.totalSent)}</span>
+            </div>
+            <span className="makato-equation__op" aria-hidden="true">−</span>
+            <div className="makato-equation__term is-fee">
+              <span className="makato-equation__label">{t('insights.makato.fees')}</span>
+              <span className="makato-equation__value tabular-nums">{formatMoney(makato.totalFees)}</span>
+            </div>
+            <span className="makato-equation__op" aria-hidden="true">=</span>
+            <div className="makato-equation__term is-net">
+              <span className="makato-equation__label">{t('insights.makato.net')}</span>
+              <span className="makato-equation__value tabular-nums">{formatMoney(makato.netReceived)}</span>
+            </div>
+          </div>
+
+          <table className="leakage__providers">
+            <caption className="leakage__providers-caption">{t('insights.makato.byProvider')}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{t('contributions.makato.provider')}</th>
+                <th scope="col" className="is-num">{t('insights.makato.fees')}</th>
+                <th scope="col" className="leakage__rate-col">{t('insights.makato.rateColumn')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {providerRates.map((provider) => (
+                <tr key={provider.provider ?? 'unknown'}>
+                  <th scope="row">
+                    <span className="cell-stack">
+                      <span className="cell-stack__primary">
+                        {provider.provider ? t(`mobileProvider.${provider.provider}`) : t('insights.makato.unknownProvider')}
+                      </span>
+                      <span className="cell-stack__secondary tabular-nums">
+                        {t('insights.makato.providerDetail', {
+                          count: provider.transactionCount,
+                          sent: formatMoney(provider.totalSent),
+                        })}
+                      </span>
+                    </span>
+                  </th>
+                  <td className="is-num leakage__fee tabular-nums">{formatMoney(provider.totalFees)}</td>
+                  <td className="leakage__rate-col">
+                    <span className="leakage__rate-bar">
+                      {/* Scaled to the most expensive provider, so the worst
+                          offender fills the bar. */}
+                      <span className="leakage__rate-track">
+                        <span
+                          className="leakage__rate-fill"
+                          style={{ width: `${maxRate > 0 ? (provider.rate / maxRate) * 100 : 0}%` }}
+                        />
+                      </span>
+                      <span className="leakage__rate-value tabular-nums">{provider.rate.toFixed(2)}%</span>
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </>
       )}
       {/* The fee is recorded for visibility, not posted to the ledger — say so
@@ -192,7 +265,7 @@ export function TargetsTracker({ rows, fundNameById }) {
     const percent = share(row.actual_amount, row.budget_amount);
     const over = Number(row.actual_amount) > Number(row.budget_amount);
     // Over-target income is good news; over-limit spending is not.
-    const tint = row.type === 'income' ? 'income' : over ? 'danger' : 'savings';
+    const tint = row.type === 'income' ? 'income' : over ? 'danger' : undefined;
     return (
       <li className="target-row" key={row.id}>
         <div className="target-row__head">
@@ -249,7 +322,11 @@ const TIMELINE_ICON = {
   adjustment: FiSliders,
 };
 
-/** Recent ledger postings as a timeline, stamped to the minute. */
+/**
+ * Recent ledger postings on a vertical axis. The stamp column has a fixed
+ * width so every time lines up; the list is plain document flow (no inner
+ * scroll container), so it can never capture the page's scroll.
+ */
 export function ActivityTimeline({ transactions }) {
   const { t } = useLocale();
 
@@ -262,9 +339,14 @@ export function ActivityTimeline({ transactions }) {
       {transactions.map((tx) => {
         const Icon = TIMELINE_ICON[tx.type] ?? FiRepeat;
         const incoming = tx.direction === 'in';
+        const stamp = tx.posted_at ?? tx.created_at;
         return (
           <li key={tx.id} className={`activity-timeline__item ${incoming ? 'is-in' : 'is-out'}`}>
-            <span className="activity-timeline__marker" aria-hidden="true">
+            <span className="activity-timeline__stamp">
+              <span className="activity-timeline__date">{formatDate(stamp)}</span>
+              <span className="activity-timeline__time">{formatTime(stamp)}</span>
+            </span>
+            <span className="activity-timeline__node" aria-hidden="true">
               <Icon />
             </span>
             <div className="activity-timeline__body">
@@ -272,9 +354,8 @@ export function ActivityTimeline({ transactions }) {
                 {tx.description || t(`insights.timeline.type.${tx.type}`)}
               </div>
               <div className="activity-timeline__meta">
-                <span>{formatDateTime(tx.posted_at ?? tx.created_at)}</span>
-                {' · '}
-                {tx.transaction_number}
+                <span className="is-mono">{tx.transaction_number}</span>
+                <span className="activity-timeline__type">{t(`insights.timeline.type.${tx.type}`)}</span>
               </div>
             </div>
             <span className="activity-timeline__amount tabular-nums">

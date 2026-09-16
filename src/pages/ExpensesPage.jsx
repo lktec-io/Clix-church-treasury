@@ -9,7 +9,19 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
-import { formatDateTime, formatMoney, sanitizeAmountInput } from '../utils/format.js';
+import { formatDate, formatMoney, formatTime, sanitizeAmountInput } from '../utils/format.js';
+
+// Recorded timestamp as a padded two-line stamp: local date over local
+// hour:minute. Both are derived from the same UTC value, so the date line
+// is the Tanzanian calendar date even for entries made after 21:00 UTC.
+function RecordedStamp({ value }) {
+  return (
+    <span className="ledger-stamp">
+      <span className="ledger-stamp__date">{formatDate(value)}</span>
+      <span className="ledger-stamp__time">{formatTime(value)}</span>
+    </span>
+  );
+}
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
 const PAGE_SIZE = 50;
@@ -182,7 +194,7 @@ export default function ExpensesPage() {
         <PermissionGate permission="expense.approve">
           <button
             type="button"
-            className="btn btn--primary btn--sm"
+            className="btn btn--success btn--sm"
             onClick={() => runAction(() => expensesApi.approve(expense.id), t('expenses.approvedToast'))}
           >
             {t('expenses.approve')}
@@ -292,38 +304,47 @@ export default function ExpensesPage() {
           zero balance effect — approval is a separate gate BEFORE payment,
           not the payment itself. */}
       <PermissionGate permission="expense.approve">
-        <div className="card">
-          <div className="card__header">
-            <h2>
-              {t('expenses.pendingApprovals')}
-              {pending.length > 0 && <span className="badge badge--warning" style={{ marginLeft: 8 }}>{pending.length}</span>}
-            </h2>
+        <div className="card ledger-card">
+          <div className="ledger-toolbar">
+            <div className="ledger-toolbar__title">
+              <h2>{t('expenses.pendingApprovals')}</h2>
+              {pending.length > 0 && <span className="badge badge--warning tabular-nums">{pending.length}</span>}
+            </div>
           </div>
-          <p className="field-hint" style={{ margin: '0 0 14px' }}>{t('expenses.pendingHint')}</p>
+          <p className="ledger-note">{t('expenses.pendingHint')}</p>
           {loading ? (
             <SkeletonTable rows={2} columns={5} />
           ) : pending.length === 0 ? (
             <div className="empty-state">{t('expenses.noPending')}</div>
           ) : (
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table data-table--dense">
                 <thead>
                   <tr>
                     <th>{t('expenses.recordedAt')}</th>
+                    <th>{t('expenses.voucher')}</th>
                     <th>{t('expenses.payee')}</th>
-                    <th>{t('common.amount')}</th>
-                    <th>{t('common.reference')}</th>
-                    <th>{t('common.actions')}</th>
+                    <th className="is-amount">{t('common.amount')}</th>
+                    <th className="col-actions">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pending.map((expense) => (
                     <tr key={expense.id}>
-                      <td className="ledger-time">{formatDateTime(expense.created_at)}</td>
-                      <td>{expense.payee}</td>
-                      <td className="is-amount">{formatMoney(expense.amount)}</td>
-                      <td>{expense.expense_number}</td>
-                      <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{approvalActions(expense)}</td>
+                      <td>
+                        <RecordedStamp value={expense.created_at} />
+                      </td>
+                      <td className="is-mono">{expense.expense_number ?? '—'}</td>
+                      <td>
+                        <span className="cell-stack">
+                          <span className="cell-stack__primary">{expense.payee}</span>
+                          {expense.description && <span className="cell-stack__secondary">{expense.description}</span>}
+                        </span>
+                      </td>
+                      <td className="is-amount is-expense">− {formatMoney(expense.amount)}</td>
+                      <td className="col-actions">
+                        <div className="row-actions">{approvalActions(expense)}</div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -333,18 +354,22 @@ export default function ExpensesPage() {
         </div>
       </PermissionGate>
 
-      <div className="card">
-        <div className="card__header">
-          <h2>{t('expenses.title')}</h2>
+      <div className="card ledger-card">
+        <div className="ledger-toolbar">
+          <div className="ledger-toolbar__title">
+            <h2>{t('expenses.ledger.title')}</h2>
+            {!loading && (
+              <span className="ledger-toolbar__count tabular-nums">{t('expenses.ledger.count', { count: expenses.length })}</span>
+            )}
+          </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label={t('expenses.filterStatus')}
-            style={{ maxWidth: 180 }}
           >
             <option value="">{t('expenses.allStatuses')}</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>{t(`expenses.status.${s}`)}</option>
+            {STATUSES.map((status) => (
+              <option key={status} value={status}>{t(`expenses.status.${status}`)}</option>
             ))}
           </select>
         </div>
@@ -354,53 +379,67 @@ export default function ExpensesPage() {
           <div className="empty-state">{t('common.noResults')}</div>
         ) : (
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table data-table--dense">
               <thead>
                 <tr>
                   <th>{t('expenses.recordedAt')}</th>
+                  <th>{t('expenses.voucher')}</th>
                   <th>{t('expenses.payee')}</th>
-                  <th>{t('common.reference')}</th>
-                  <th className="is-amount">{t('common.amount')}</th>
+                  <th className="is-amount">{t('expenses.outflow')}</th>
                   <th>{t('common.status')}</th>
-                  <th>{t('common.actions')}</th>
+                  <th className="col-actions">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {expenses.map((expense) => (
                   <tr key={expense.id}>
-                    <td className="ledger-time">{formatDateTime(expense.created_at)}</td>
-                    <td>{expense.payee}</td>
-                    <td>{expense.expense_number ?? '—'}</td>
-                    <td className="is-amount is-expense">{formatMoney(expense.amount)}</td>
                     <td>
-                      <span className={`badge ${STATUS_BADGE[expense.status]}`}>
+                      <RecordedStamp value={expense.created_at} />
+                    </td>
+                    <td className="is-mono">{expense.expense_number ?? '—'}</td>
+                    <td>
+                      <span className="cell-stack">
+                        <span className="cell-stack__primary">{expense.payee}</span>
+                        {expense.description && <span className="cell-stack__secondary">{expense.description}</span>}
+                      </span>
+                    </td>
+                    {/* Only a paid expense has actually left the account; anything
+                        earlier is a request, shown muted rather than as money out. */}
+                    <td className={`is-amount${expense.status === 'paid' ? ' is-expense' : ' is-pending-amount'}`}>
+                      {expense.status === 'paid' ? '− ' : ''}
+                      {formatMoney(expense.amount)}
+                    </td>
+                    <td>
+                      <span className={`badge badge--dot ${STATUS_BADGE[expense.status]}`}>
                         {t(`expenses.status.${expense.status}`)}
                       </span>
                     </td>
-                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {expense.status === 'draft' && isOwnRequest(expense) && (
-                        <PermissionGate permission="expense.submit">
-                          <button
-                            type="button"
-                            className="btn btn--secondary btn--sm"
-                            onClick={() => runAction(() => expensesApi.submit(expense.id), t('expenses.submittedToast'))}
-                          >
-                            {t('expenses.submit')}
-                          </button>
-                        </PermissionGate>
-                      )}
-                      {expense.status === 'submitted' && approvalActions(expense)}
-                      {expense.status === 'approved' && (
-                        <PermissionGate permission="expense.pay">
-                          <button
-                            type="button"
-                            className="btn btn--primary btn--sm"
-                            onClick={() => runAction(() => expensesApi.pay(expense.id), t('expenses.paidToast'))}
-                          >
-                            {t('expenses.pay')}
-                          </button>
-                        </PermissionGate>
-                      )}
+                    <td className="col-actions">
+                      <div className="row-actions">
+                        {expense.status === 'draft' && isOwnRequest(expense) && (
+                          <PermissionGate permission="expense.submit">
+                            <button
+                              type="button"
+                              className="btn btn--secondary btn--sm"
+                              onClick={() => runAction(() => expensesApi.submit(expense.id), t('expenses.submittedToast'))}
+                            >
+                              {t('expenses.submit')}
+                            </button>
+                          </PermissionGate>
+                        )}
+                        {expense.status === 'submitted' && approvalActions(expense)}
+                        {expense.status === 'approved' && (
+                          <PermissionGate permission="expense.pay">
+                            <button
+                              type="button"
+                              className="btn btn--primary btn--sm"
+                              onClick={() => runAction(() => expensesApi.pay(expense.id), t('expenses.paidToast'))}
+                            >
+                              {t('expenses.pay')}
+                            </button>
+                          </PermissionGate>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -409,7 +448,7 @@ export default function ExpensesPage() {
           </div>
         )}
         {hasMore && (
-          <div style={{ textAlign: 'center', marginTop: 14 }}>
+          <div className="ledger-more">
             <button type="button" className="btn btn--secondary btn--sm" onClick={loadMore} disabled={loadingMore}>
               {loadingMore ? t('common.loading') : t('common.loadMore')}
             </button>

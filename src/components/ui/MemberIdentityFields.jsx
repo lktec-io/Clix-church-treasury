@@ -1,45 +1,41 @@
 import { useId } from 'react';
-import { FiAlertOctagon, FiCheckCircle } from 'react-icons/fi';
+import {
+  FiAlertOctagon,
+  FiCreditCard,
+  FiFileText,
+  FiInfo,
+  FiLock,
+  FiMinus,
+  FiNavigation,
+  FiShield,
+  FiUserX,
+} from 'react-icons/fi';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
-import { NIDA_LENGTH, normalizeNida, validateMemberIdentity, validateNida } from '../../utils/memberId.js';
+import { NIDA_LENGTH, normalizeNida } from '../../utils/memberId.js';
+import { identityError } from '../../utils/memberIdentityForm.js';
+import ChoiceTiles from './ChoiceTiles.jsx';
 
-export function emptyIdentity() {
-  return { idType: '', idNumber: '', idNote: '' };
-}
-
-/**
- * Error message for the identity block, or null when it may be submitted.
- * Uses the same validator the server runs, so a form that passes here is not
- * rejected there for identity reasons.
- */
-export function identityError(identity, t) {
-  if (identity.idType === 'nida') {
-    const result = validateNida(identity.idNumber);
-    return result.valid ? null : t(`memberId.nida.error.${result.reason}`, { length: NIDA_LENGTH });
-  }
-  const { fields } = validateMemberIdentity(identity);
-  if (fields.idNumber) return t('memberId.document.error');
-  if (fields.idNote) return t('memberId.note.error');
-  return null;
-}
-
-/** The body the API expects — empty values omitted rather than sent as ''. */
-export function identityPayload(identity) {
-  if (!identity.idType) return {};
-  if (identity.idType === 'none') return { idType: 'none', idNote: identity.idNote.trim() || undefined };
-  return { idType: identity.idType, idNumber: identity.idNumber };
-}
-
-// Only shown once the digits are complete — the birth date is what a
-// treasurer can check against the member standing in front of them.
-function nidaBirthDate(idNumber) {
+// Birth date as a UTC calendar date (the NIN's first eight digits), plus the
+// holder's age today. Only called once the number has passed validation, so
+// the date is known to be real and not in the future.
+function nidaBirthFacts(idNumber, now = new Date()) {
   const digits = normalizeNida(idNumber);
-  const date = new Date(Date.UTC(Number(digits.slice(0, 4)), Number(digits.slice(4, 6)) - 1, Number(digits.slice(6, 8))));
-  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+  const year = Number(digits.slice(0, 4));
+  const month = Number(digits.slice(4, 6)) - 1;
+  const day = Number(digits.slice(6, 8));
+  const birth = new Date(Date.UTC(year, month, day));
+  let age = now.getUTCFullYear() - year;
+  if (now.getUTCMonth() < month || (now.getUTCMonth() === month && now.getUTCDate() < day)) age -= 1;
+  return {
+    date: birth.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }),
+    age,
+    // The grouping printed on the physical card: YYYYMMDD-XXXXX-XXXXX-XX.
+    grouped: `${digits.slice(0, 8)}-${digits.slice(8, 13)}-${digits.slice(13, 18)}-${digits.slice(18)}`,
+  };
 }
 
 /**
- * Dynamic identity-document block for member registration.
+ * Identity-document block for member registration.
  *
  * `showErrors` is raised by the parent on a submit attempt, so an untouched
  * form is not painted red; a NIDA number is also checked live as soon as it
@@ -55,28 +51,31 @@ export default function MemberIdentityFields({ value, onChange, showErrors }) {
   const nidaComplete = value.idType === 'nida' && digits.length >= NIDA_LENGTH;
   const visibleError = error && (showErrors || nidaComplete) ? error : null;
   const errorId = `${baseId}-error`;
+  const verified = value.idType === 'nida' && !error ? nidaBirthFacts(value.idNumber) : null;
+
+  const documentOptions = [
+    { value: '', label: t('memberId.type.unset'), icon: FiMinus },
+    { value: 'nida', label: t('memberId.type.nida'), meta: t('memberId.type.nida.meta'), icon: FiCreditCard },
+    { value: 'voter_id', label: t('memberId.type.voter_id'), icon: FiFileText },
+    { value: 'driving_licence', label: t('memberId.type.driving_licence'), icon: FiNavigation },
+    { value: 'none', label: t('memberId.type.none'), icon: FiUserX },
+  ];
 
   return (
     <fieldset className="id-fieldset">
-      <legend className="id-fieldset__legend">{t('memberId.title')}</legend>
+      <legend className="id-fieldset__legend">
+        <FiShield aria-hidden="true" /> {t('memberId.title')}
+      </legend>
 
-      <div className="form-grid">
-        <div className="field">
-          <label htmlFor={`${baseId}-type`}>{t('memberId.type')}</label>
-          <select
-            id={`${baseId}-type`}
-            value={value.idType}
-            // Switching type clears the number: a voter ID left in a NIDA
-            // field would otherwise surface as a confusing "digits only" error.
-            onChange={(e) => onChange({ idType: e.target.value, idNumber: '', idNote: '' })}
-          >
-            <option value="">{t('memberId.type.unset')}</option>
-            <option value="nida">{t('memberId.type.nida')}</option>
-            <option value="voter_id">{t('memberId.type.voter_id')}</option>
-            <option value="driving_licence">{t('memberId.type.driving_licence')}</option>
-            <option value="none">{t('memberId.type.none')}</option>
-          </select>
-        </div>
+      <div className="id-fieldset__body">
+        <ChoiceTiles
+          legend={t('memberId.type')}
+          options={documentOptions}
+          value={value.idType}
+          // Switching type clears the number: a voter ID left in a NIDA field
+          // would otherwise surface as a confusing "digits only" error.
+          onChange={(idType) => onChange({ idType, idNumber: '', idNote: '' })}
+        />
 
         {value.idType === 'nida' && (
           <div className="field">
@@ -95,9 +94,16 @@ export default function MemberIdentityFields({ value, onChange, showErrors }) {
               aria-invalid={Boolean(visibleError)}
               aria-describedby={visibleError ? errorId : `${baseId}-count`}
             />
-            <span id={`${baseId}-count`} className="field-hint">
-              {t('memberId.nida.count', { count: digits.length, length: NIDA_LENGTH })}
-            </span>
+            <div className="id-digit-meter">
+              <div className="id-digit-meter__track" aria-hidden="true">
+                {Array.from({ length: NIDA_LENGTH }, (_, i) => (
+                  <span key={i} className={`id-digit-meter__cell${i < digits.length ? ' is-filled' : ''}`} />
+                ))}
+              </div>
+              <span id={`${baseId}-count`} className="field-hint tabular-nums">
+                {t('memberId.nida.count', { count: digits.length, length: NIDA_LENGTH })}
+              </span>
+            </div>
           </div>
         )}
 
@@ -106,6 +112,7 @@ export default function MemberIdentityFields({ value, onChange, showErrors }) {
             <label htmlFor={`${baseId}-doc`}>{t(`memberId.number.${value.idType}`)}</label>
             <input
               id={`${baseId}-doc`}
+              className="id-input--nida"
               autoComplete="off"
               spellCheck={false}
               maxLength={30}
@@ -118,7 +125,7 @@ export default function MemberIdentityFields({ value, onChange, showErrors }) {
         )}
 
         {value.idType === 'none' && (
-          <div className="field field--full">
+          <div className="field">
             <label htmlFor={`${baseId}-note`}>{t('memberId.note.label')}</label>
             <input
               id={`${baseId}-note`}
@@ -129,21 +136,48 @@ export default function MemberIdentityFields({ value, onChange, showErrors }) {
             />
           </div>
         )}
+
+        {visibleError && (
+          <div id={errorId} className="id-alert" role="alert">
+            <FiAlertOctagon className="id-alert__icon" aria-hidden="true" />
+            <div>
+              <div className="id-alert__title">{t('memberId.error.title')}</div>
+              <div className="id-alert__message">{visibleError}</div>
+            </div>
+          </div>
+        )}
+
+        {verified && (
+          <section className="id-card" role="status" aria-label={t('memberId.card.title')}>
+            <div className="id-card__head">
+              <span className="id-card__title">
+                <FiShield aria-hidden="true" /> {t('memberId.card.title')}
+              </span>
+              <span className="id-card__seal">
+                <FiLock aria-hidden="true" /> {t('memberId.card.readOnly')}
+              </span>
+            </div>
+            <dl className="id-card__body">
+              <div>
+                <dt>{t('memberId.card.birthDate')}</dt>
+                <dd>{verified.date}</dd>
+              </div>
+              <div>
+                <dt>{t('memberId.card.age')}</dt>
+                <dd className="tabular-nums">{t('memberId.card.ageValue', { years: verified.age })}</dd>
+              </div>
+              <div>
+                <dt>{t('memberId.card.nin')}</dt>
+                <dd className="is-mono">{verified.grouped}</dd>
+              </div>
+            </dl>
+            {/* Stated on the card itself: a format check is not a lookup. */}
+            <p className="id-card__foot">
+              <FiInfo aria-hidden="true" /> {t('memberId.card.note')}
+            </p>
+          </section>
+        )}
       </div>
-
-      {visibleError && (
-        <div id={errorId} className="id-alert" role="alert">
-          <FiAlertOctagon aria-hidden="true" />
-          <span>{visibleError}</span>
-        </div>
-      )}
-
-      {value.idType === 'nida' && !error && (
-        <div className="id-verified" role="status">
-          <FiCheckCircle aria-hidden="true" />
-          <span>{t('memberId.nida.valid', { date: nidaBirthDate(value.idNumber) })}</span>
-        </div>
-      )}
     </fieldset>
   );
 }

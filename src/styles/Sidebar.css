@@ -116,10 +116,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 22px 20px;
-  font-weight: 700;
-  font-size: 17px;
-  letter-spacing: -0.01em;
+  /* Same height as the topbar row it sits under, so the two hairlines align. */
+  min-height: 64px;
+  padding: 0 18px 0 20px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.01em;
   color: var(--sidebar-text-strong);
   border-bottom: 1px solid var(--sidebar-border);
   white-space: nowrap;
@@ -132,10 +134,11 @@
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  /* Solid brand orange with white initial. It was a green gradient with
-     orange text — two brand colours fighting inside a 32px square. */
+  /* Emerald seal with a gold initial and gold hairline — the one place the
+     two brand colours meet, like an embossed bank monogram. */
   background: var(--color-primary);
-  color: #ffffff;
+  border: 1px solid rgba(var(--color-gold-rgb), 0.55);
+  color: var(--color-gold);
   font-weight: var(--font-weight-heavy);
   flex-shrink: 0;
 }
@@ -189,13 +192,13 @@
 }
 
 .app-sidebar__group-label {
-  padding: 4px 12px 2px;
-  font-size: 11px;
+  padding: 6px 16px 6px;
+  font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
   color: var(--color-text-on-sidebar);
-  opacity: 0.65;
+  opacity: 0.6;
   white-space: nowrap;
 }
 
@@ -203,17 +206,20 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 14px 12px;
+  /* The drawer's own list scrolls; it must never hand the gesture to the
+     page underneath when it reaches its end. */
+  overscroll-behavior: contain;
+  padding: 14px 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .app-sidebar__group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-top: 10px;
+  gap: 1px;
+  padding-top: 12px;
   border-top: 1px solid var(--sidebar-border);
 }
 
@@ -227,15 +233,30 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  /* Fully rounded — the capsule shape is what the active bed inherits. */
-  border-radius: var(--radius-sm);
+  min-height: 42px;
+  /* Full-bleed rows: the active indicator sits on the panel's own edge. */
+  padding: 10px 20px;
+  border-radius: 0;
   color: var(--color-text-on-sidebar);
   text-decoration: none;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   transition: background var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
+}
+
+/* The gold indicator rule. Always present at zero height so activation
+   draws it from the centre rather than popping it in. */
+.app-sidebar__link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  background: var(--color-gold);
+  transform: translateY(-50%);
+  transition: height var(--motion-base) var(--ease-premium);
 }
 
 /* Fixed-size, centred icon box (brief §2A: "uniformly sized, clean and
@@ -254,25 +275,26 @@
   background: var(--sidebar-hover-bg);
   color: var(--sidebar-hover-text);
 }
-.app-sidebar__link:hover svg {
-  transform: translateX(1px);
+
+.app-sidebar__link:focus-visible {
+  outline: none;
+  box-shadow: inset var(--ring-gold);
 }
 
-/* ACTIVE = a rounded soft-purple capsule. The signature element of the
-   reference design: a solid lavender bed with indigo text, fully rounded,
-   sitting inside the item's own padding rather than bleeding to the panel
-   edge. Replaces the old green gradient wash plus edge marker — that
-   treatment was built to glow against a dark navy panel and reads as
-   grubby on white. */
+/* ACTIVE = gold indicator rule on the left edge, gold label, and a whisper
+   of gold behind the row. The rule does the work; the wash only ties the
+   label to it. */
 .app-sidebar__link.is-active {
   background: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
   font-weight: 700;
 }
 
+.app-sidebar__link.is-active::before {
+  height: 100%;
+}
+
 .app-sidebar__link.is-active svg {
-  /* The icon carries the accent too, so the capsule reads as one object
-     rather than tinted text next to a grey glyph. */
   color: var(--sidebar-active-text);
 }
 
@@ -360,12 +382,10 @@
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  border-radius: var(--radius-lg);
-  /* Lavender chip with indigo initials — on a white panel the old
-     white-on-translucent-green avatar had almost no contrast. */
-  background: var(--color-lavender);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.22);
-  color: var(--color-primary-hover);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-gold-rgb), 0.12);
+  border: 1px solid rgba(var(--color-gold-rgb), 0.35);
+  color: var(--color-gold);
   font-size: 13px;
   font-weight: 700;
 }
@@ -487,9 +507,8 @@
   gap: 12px;
   padding: 0 24px;
   height: var(--navbar-height);
+  /* Opaque and flat: a hairline, no blur, no drop shadow. */
   background: var(--color-navbar-bg);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
   border-bottom: 1px solid var(--border);
   position: fixed;
   top: 0;
@@ -497,7 +516,6 @@
   width: 100%;
   z-index: 100;
   color: var(--text-heading);
-  box-shadow: 0 8px 28px -18px rgba(0, 0, 0, 0.55);
   transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
 }
 
@@ -515,13 +533,14 @@
   flex: 1;
   min-width: 0;
   order: 1;
-  font-weight: 700;
-  font-size: 15.5px;
-  letter-spacing: -0.01em;
-  color: var(--text-heading);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  color: var(--color-primary);
+  /* Wraps rather than truncating — a Swahili church name cut to "Hazina
+     ya Ka…" is unreadable. Two short lines fit the 64px bar. */
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .app-topbar__mark {
@@ -532,10 +551,17 @@
   height: 30px;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
-  background: var(--color-lavender);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  background: var(--color-primary);
+  color: var(--color-gold);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
+}
+
+/* The desktop sidebar already carries the brand beside it. */
+@media (min-width: 900px) {
+  .app-topbar__mark {
+    display: none;
+  }
 }
 
 .app-topbar__actions {
@@ -568,14 +594,21 @@
 
 .topbar-btn:hover {
   background: var(--color-lavender-soft);
-  border-color: rgba(var(--color-accent-rgb), 0.5);
-  color: var(--color-primary-hover);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  color: var(--color-primary);
 }
 
 .topbar-btn:focus-visible {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
   box-shadow: var(--ring-accent-strong);
+}
+
+/* An open menu keeps its trigger in the active (gold) state. */
+.topbar-btn[aria-expanded='true'] {
+  border-color: var(--color-gold);
+  box-shadow: inset 0 -2px 0 var(--color-gold);
+  color: var(--color-primary);
 }
 
 /* Fixed-size stack so the sun/moon crossfade can't shift the topbar. */
@@ -592,27 +625,25 @@
   display: inline-flex;
 }
 
-/* Red, not the accent green. Green is this product's "money moved
-   correctly" colour — it is on every success tick, total and positive
-   variance — so a green count reads as reassurance rather than as something
-   asking to be looked at. An unread counter is an attention signal. */
+/* Crimson, not green: an unread counter asks to be looked at, and green is
+   this product's "money moved correctly" colour. */
 .topbar-btn__badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: -6px;
+  right: -6px;
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
   border-radius: var(--radius-sm);
-  background: #ef4444;
+  background: var(--color-danger);
   color: #ffffff;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 18px;
   text-align: center;
-  /* Separates the badge from the icon underneath it on both themes, and
-     gives the red a little lift off the glass topbar. */
-  box-shadow: 0 0 0 2px var(--navbar-bg, var(--surface)), 0 2px 6px rgba(239, 68, 68, 0.5);
+  font-variant-numeric: tabular-nums;
+  /* A 2px ring of the bar's own colour cuts it cleanly off the icon. */
+  box-shadow: 0 0 0 2px var(--color-navbar-bg);
 }
 
 .topbar-btn__bell {
@@ -676,9 +707,11 @@
   right: 0;
   width: min(280px, calc(100vw - 28px));
   padding: 6px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--glass-panel-bg);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+  border: 1px solid var(--border);
+  /* Emerald cap: marks the panel as belonging to the bar above it. */
+  border-top: 2px solid var(--color-primary);
   box-shadow: var(--shadow-xl);
   color: var(--text);
   transform-origin: top right;
@@ -731,13 +764,17 @@
 }
 .app-topbar__menu-btn:hover {
   background: var(--color-lavender-soft);
-  border-color: rgba(var(--color-accent-rgb), 0.5);
-  color: var(--color-primary-hover);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  color: var(--color-primary);
 }
 .app-topbar__menu-btn:focus-visible {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
   box-shadow: var(--ring-accent-strong);
+}
+.app-topbar__menu-btn[aria-expanded='true'] {
+  border-color: var(--color-gold);
+  box-shadow: inset 0 -2px 0 var(--color-gold);
 }
 
 @media (min-width: 900px) {
@@ -749,11 +786,9 @@
 .app-overlay {
   position: fixed;
   inset: 0;
+  /* A plain dim, no blur: blurring the whole page every frame of the drawer
+     animation is what made low-end phones stutter on open. */
   background: var(--modal-backdrop-bg);
-  /* Heavy blur so the page visibly recedes behind the open drawer rather
-     than just dimming. */
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
   /* Sits directly under the drawer (92) and above the dock (90), so an open
      drawer dims the dock too rather than leaving it floating and tappable
      over the backdrop. */
@@ -791,10 +826,7 @@
      with a green top edge — the last dark surface in the app once the
      sidebar went light, and it read as a foreign bar pinned to the page. */
   background: var(--color-navbar-bg);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
   border-top: 1px solid var(--border);
-  box-shadow: 0 -2px 10px -6px rgba(15, 23, 42, 0.12);
   /* Clears the iOS home indicator / Android gesture bar, and collapses to
      0 on devices that have neither. */
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -824,8 +856,8 @@
 }
 
 .bottom-nav__item.is-active {
-  color: var(--color-primary-hover);
-  font-weight: 700;
+  color: var(--color-primary);
+  font-weight: 800;
 }
 
 .bottom-nav__item:focus-visible {
@@ -834,15 +866,17 @@
   border-radius: var(--radius-sm);
 }
 
-/* The travelling pill — Framer moves this between items via layoutId. */
+/* The travelling indicator — Framer moves this between items via layoutId.
+   A gold rule on the dock's top edge: the sidebar's left rule, turned to
+   fit a horizontal bar. */
 .bottom-nav__pill {
   position: absolute;
-  inset: 5px 8px;
-  /* Fully rounded, matching the sidebar's active capsule — the dock is the
-     same navigation state on a smaller screen and should read as the same
-     component. */
-  border-radius: var(--radius-sm);
-  background: var(--sidebar-active-bg);
+  top: 0;
+  left: 22%;
+  right: 22%;
+  height: 3px;
+  border-radius: 0;
+  background: var(--color-gold);
 }
 
 .bottom-nav__icon {
@@ -853,8 +887,7 @@
 }
 
 .bottom-nav__item.is-active .bottom-nav__icon {
-  color: var(--color-primary-hover);
-  transform: translateY(-1px);
+  color: var(--color-primary);
 }
 
 .bottom-nav__label {
@@ -886,14 +919,16 @@
 .system-status {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   height: 32px;
-  padding: 0 10px;
+  padding: 0 11px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 12px;
+  background: var(--color-gray-light);
+  font-size: 11px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -913,6 +948,8 @@
 }
 .system-status.is-online {
   color: var(--color-success);
+  background: var(--color-success-bg);
+  border-color: rgba(var(--color-accent-rgb), 0.25);
 }
 
 .system-status.is-degraded .status-dot {
@@ -920,6 +957,7 @@
 }
 .system-status.is-degraded {
   color: var(--color-warning);
+  background: var(--color-warning-bg);
   border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
 }
 
@@ -937,7 +975,9 @@
    and to screen readers via role="status". */
 @media (max-width: 599px) {
   .system-status {
-    padding: 0 8px;
+    width: 32px;
+    padding: 0;
+    justify-content: center;
   }
   .system-status__label {
     position: absolute;
@@ -982,7 +1022,12 @@
 }
 
 .profile-menu__trigger:hover {
-  border-color: rgba(var(--color-primary-rgb), 0.45);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+}
+
+.profile-menu__trigger[aria-expanded='true'] {
+  border-color: var(--color-gold);
+  box-shadow: inset 0 -2px 0 var(--color-gold);
 }
 
 .profile-menu__trigger:focus-visible {
@@ -999,7 +1044,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-gold);
   font-size: 13px;
   font-weight: var(--font-weight-heavy);
 }
@@ -1016,16 +1061,17 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--text-heading);
+  /* Wraps inside a fixed column instead of truncating a member's name. */
   max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .profile-menu__role {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-gold-ink);
 }
 
 .profile-menu__caret {
@@ -1050,8 +1096,9 @@
 }
 
 .profile-menu__header {
-  padding: 14px 16px;
+  padding: 16px;
   border-bottom: 1px solid var(--border);
+  background: var(--color-lavender-soft);
 }
 
 .profile-menu__header-name {
@@ -1102,7 +1149,8 @@
 }
 
 .seg-switch__opt {
-  min-width: 40px;
+  min-width: 44px;
+  min-height: 32px;
   padding: 5px 10px;
   border: none;
   border-radius: var(--radius-sm);
@@ -1115,8 +1163,8 @@
 }
 
 .seg-switch__opt.is-active {
-  background: var(--color-primary);
-  color: #ffffff;
+  background: var(--color-gold);
+  color: var(--color-on-gold);
 }
 
 .seg-switch__opt:focus-visible {

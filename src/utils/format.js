@@ -137,3 +137,14 @@ export function formatDateTime(value) {
     hour12: false,
   });
 }
+
+/**
+ * Hour and minute only, in the viewer's timezone, 24-hour — e.g. "14:05".
+ * For ledgers that print the date and the time on separate lines.
+ */
+export function formatTime(value) {
+  if (!value) return '—';
+  const date = parseServerDate(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+}

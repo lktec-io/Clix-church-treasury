@@ -141,13 +141,15 @@ export default function AccountsPage() {
                       </span>
                     </td>
                     <PermissionGate permission="accounts.manage">
-                      <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleRename(a)}>
-                          {t('common.rename')}
-                        </button>
-                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => toggleActive(a)}>
-                          {a.is_active ? t('common.deactivate') : t('common.activate')}
-                        </button>
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleRename(a)}>
+                            {t('common.rename')}
+                          </button>
+                          <button type="button" className="btn btn--secondary btn--sm" onClick={() => toggleActive(a)}>
+                            {a.is_active ? t('common.deactivate') : t('common.activate')}
+                          </button>
+                        </div>
                       </td>
                     </PermissionGate>
                   </tr>

@@ -3,7 +3,7 @@
 // "amountString.startsWith is not a function", which unmounted the React
 // tree and rendered a blank page immediately after login.
 import { describe, it, expect } from 'vitest';
-import { formatMoney, formatCurrency, sumMoneyStrings, sanitizeAmountInput, formatDateTime } from './format.js';
+import { formatMoney, formatCurrency, sumMoneyStrings, sanitizeAmountInput, formatDateTime, formatTime } from './format.js';
 
 describe('formatMoney — never throws', () => {
   it('formats the normal decimal-string case', () => {
@@ -96,5 +96,20 @@ describe('formatDateTime — server UTC timestamps', () => {
   it('shows a dash for a missing value', () => {
     expect(formatDateTime(null)).toBe('—');
     expect(formatDateTime('')).toBe('—');
+  });
+});
+
+describe('formatTime — hour and minute of a server UTC timestamp', () => {
+  it('renders the local 24-hour time of a zone-less UTC value', () => {
+    const expected = new Date(Date.UTC(2026, 8, 16, 11, 5, 0)).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    expect(formatTime('2026-09-16 11:05:00')).toBe(expected);
+  });
+
+  it('renders a placeholder for an empty value', () => {
+    expect(formatTime(null)).toBe('—');
   });
 });

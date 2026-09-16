@@ -222,34 +222,36 @@ export default function UsersPage() {
                       <span className={`badge ${STATUS_BADGE[u.status]}`}>{t(`users.status.${u.status}`)}</span>
                     </td>
                     <PermissionGate permission="users.manage">
-                      <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <select
-                          value={roleChoice[u.id] ?? ''}
-                          onChange={(e) => setRoleChoice((c) => ({ ...c, [u.id]: e.target.value }))}
-                          aria-label={t('users.assignRole')}
-                          disabled={assignableRoles(u).length === 0}
-                          style={{ maxWidth: 160 }}
-                        >
-                          <option value="">—</option>
-                          {assignableRoles(u).map((r) => (
-                            <option key={r.id} value={r.id}>{r.name}</option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          className="btn btn--secondary btn--sm"
-                          // Nothing picked means the handler returns early;
-                          // disabling says so before the click instead.
-                          disabled={!roleChoice[u.id]}
-                          onClick={() => handleAssignRole(u)}
-                        >
-                          {t('users.assignRole')}
-                        </button>
-                        {u.status !== 'disabled' && !isSelf(u) && (
-                          <button type="button" className="btn btn--danger btn--sm" onClick={() => handleDisable(u)}>
-                            {t('users.disable')}
+                      <td>
+                        <div className="row-actions row-actions--center">
+                          <select
+                            value={roleChoice[u.id] ?? ''}
+                            onChange={(e) => setRoleChoice((c) => ({ ...c, [u.id]: e.target.value }))}
+                            aria-label={t('users.assignRole')}
+                            disabled={assignableRoles(u).length === 0}
+                            style={{ maxWidth: 160 }}
+                          >
+                            <option value="">—</option>
+                            {assignableRoles(u).map((r) => (
+                              <option key={r.id} value={r.id}>{r.name}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn--secondary btn--sm"
+                            // Nothing picked means the handler returns early;
+                            // disabling says so before the click instead.
+                            disabled={!roleChoice[u.id]}
+                            onClick={() => handleAssignRole(u)}
+                          >
+                            {t('users.assignRole')}
                           </button>
-                        )}
+                          {u.status !== 'disabled' && !isSelf(u) && (
+                            <button type="button" className="btn btn--danger btn--sm" onClick={() => handleDisable(u)}>
+                              {t('users.disable')}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </PermissionGate>
                   </tr>

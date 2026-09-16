@@ -4,43 +4,40 @@
    ========================================================================== */
 
 /* ==========================================================================
-   BUTTONS — one button system, five variants + icon button. Transitions
-   are itemized (background/border-color/color/box-shadow/transform), never
-   `transition: all`, so a hover never accidentally animates layout.
+   BUTTONS — flat, sharp, weighty. No drop shadows and no hover lift: a bank
+   control confirms with a colour change, not by floating. Transitions are
+   itemized, never `transition: all`.
+
+   primary    EMERALD fill        committing — Save, Record, Sign in
+   accent /
+   success    GREEN fill          affirmative — Approve, Export
+   secondary  white + hairline    alternative actions
+   danger     CRIMSON fill        destructive — Reject
+   ghost      text only           tertiary
+   Active/pressed toggles ([aria-pressed='true'], .is-active) take GOLD.
    ========================================================================== */
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
+  min-height: 42px;
   padding: 10px 18px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
   cursor: pointer;
   text-decoration: none;
   transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
-    color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium),
-    transform var(--motion-fast) var(--ease-premium);
-}
-
-@media (max-width: 480px) {
-  /* ~44px minimum touch target on phones, not just desktop precision
-     sizing (small/icon buttons excluded — .btn--sm is deliberately
-     compact for dense table rows). */
-  .btn:not(.btn--sm) {
-    min-height: 44px;
-  }
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
+    color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
 }
 
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -50,91 +47,55 @@
   width: 100%;
 }
 
-/* Green focus ring on every button, matching the field focus treatment.
-   :focus-visible (not :focus) so a mouse click doesn't leave a ring behind. */
 .btn:focus-visible {
   outline: none;
   box-shadow: var(--ring-accent-strong);
 }
 
-/* ---------- Variants, assigned by action depth ----------
-   navy  (.btn--primary)   structural / committing — Sign in, Save, Record
-   green (.btn--accent)    affirmative / completion — Approve, Send, Export
-   Solid fills, never gradients: a gradient on a small control reads as
-   decoration, a solid deep navy reads as weight. */
-
 .btn--primary {
   background: var(--color-primary);
+  border-color: var(--color-primary);
   color: #ffffff;
-  box-shadow: 0 8px 20px -10px rgba(var(--color-primary-rgb), 0.7);
 }
-/* Deepens toward #071432 and picks up a green hairline — the accent colour
-   arrives on hover as confirmation rather than sitting there at rest. */
 .btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+/* A thin gold underline on press — the "confirmed" beat. */
+.btn--primary:active:not(:disabled) {
   background: var(--color-primary-deep);
-  border-color: rgba(var(--color-accent-rgb), 0.55);
-  box-shadow: 0 12px 26px -10px rgba(var(--color-primary-rgb), 0.8), var(--ring-accent);
-  transform: translateY(-1px);
+  box-shadow: inset 0 -2px 0 var(--color-gold);
 }
 
-/* Vibrant green — lifts and scales, where navy only deepens. */
-.btn--accent {
+.btn--accent,
+.btn--success {
   background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #ffffff;
-  box-shadow: 0 8px 20px -10px rgba(var(--color-accent-rgb), 0.65);
 }
-.btn--accent:hover:not(:disabled) {
+.btn--accent:hover:not(:disabled),
+.btn--success:hover:not(:disabled) {
   background: var(--color-accent-hover);
-  box-shadow: 0 16px 32px -12px rgba(var(--color-accent-rgb), 0.75);
-  transform: scale(1.02);
+  border-color: var(--color-accent-hover);
 }
 
-/* Restore the press response. These sit after the hover rules deliberately:
-   :active and :hover carry equal specificity here, so source order is what
-   decides which wins while a button is held down. */
-.btn--primary:active:not(:disabled),
-.btn--accent:active:not(:disabled),
-.btn--secondary:active:not(:disabled),
-.btn--danger:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-/* Navy-tinted outline, not a grey chrome button. */
 .btn--secondary {
   background: var(--surface);
   color: var(--color-primary);
-  border-color: rgba(var(--color-primary-rgb), 0.2);
-  box-shadow: var(--shadow-sm);
+  border-color: var(--color-input-border);
 }
 .btn--secondary:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.04);
-  border-color: rgba(var(--color-primary-rgb), 0.4);
-  box-shadow: var(--shadow-md);
+  background: var(--color-lavender-soft);
+  border-color: var(--color-primary);
 }
 
 .btn--danger {
   background: var(--color-danger);
+  border-color: var(--color-danger);
   color: #ffffff;
-  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--color-danger) 70%, transparent);
 }
 .btn--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-danger) 85%, black 15%);
-  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--color-danger) 80%, transparent);
-}
-
-/* The affirmative counterpart to .btn--danger, built on the accent green
-   the product already uses for money that has landed correctly. Introduced
-   for the expense approval gateway, where "approve" and "reject" sit side
-   by side and must be told apart instantly — .btn--primary is navy, which
-   against the red reads as neutral rather than as the positive choice. */
-.btn--success {
-  background: var(--color-accent);
-  color: #ffffff;
-  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--color-accent) 70%, transparent);
-}
-.btn--success:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-accent) 88%, black 12%);
-  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--color-accent) 80%, transparent);
+  background: color-mix(in srgb, var(--color-danger) 86%, black 14%);
 }
 
 .btn--ghost {
@@ -142,12 +103,21 @@
   color: var(--text-muted);
 }
 .btn--ghost:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.06);
+  background: var(--color-lavender-soft);
   color: var(--color-primary);
 }
 
+/* Selected state for toggle buttons — the gold of "you are here". */
+.btn[aria-pressed='true'],
+.btn.is-active {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: var(--color-on-gold);
+}
+
 .btn--sm {
-  padding: 7px 12px;
+  min-height: 34px;
+  padding: 6px 12px;
   font-size: 13px;
 }
 
@@ -158,38 +128,33 @@
   width: 38px;
   height: 38px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
+  border: 1px solid var(--color-input-border);
   background: var(--surface);
-  /* Real touch target: 38px is fine for a mouse; a phone gets the ~44px
-     minimum recommended tap size without visually bloating desktop UI. */
   color: var(--text-muted);
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
   transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium),
-    border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
+    border-color var(--motion-fast) var(--ease-premium);
 }
 .icon-btn:hover {
-  background: rgba(var(--color-primary-rgb), 0.04);
-  border-color: rgba(var(--color-primary-rgb), 0.34);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-md);
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 .icon-btn:focus-visible {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
   box-shadow: var(--ring-accent-strong);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 719px) {
   .icon-btn {
-    width: 44px;
-    height: 44px;
+    width: var(--touch-target);
+    height: var(--touch-target);
   }
 }
 
-/* Inline loading spinner for a button mid-submit — a small honest "this is
-   working" signal instead of only swapping the label text. Opt-in via
-   btn--loading so pages adopt it deliberately, not automatically. */
+/* Inline loading spinner for a button mid-submit. A spinner is a motion
+   glyph, not a container, so it is the one round shape here. */
 .btn--loading {
   position: relative;
   color: transparent !important;
@@ -241,11 +206,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
 }
 
 .field {
@@ -260,8 +225,9 @@
 }
 
 .field label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--text-heading);
 }
 
@@ -276,19 +242,34 @@
   max-width: 100%;
   min-width: 0;
   padding: 11px 13px;
-  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   font-size: 14px;
-  box-shadow: inset 0 1px 2px rgba(var(--color-primary-rgb), 0.04);
   transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium),
     background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .field textarea {
   min-height: unset;
+}
+
+/* Native <select> with a drawn chevron, so the control is flat and
+   identical across browsers. Long option text wraps in the open list on
+   every platform; the closed control is sized by .field, never by its
+   widest option. */
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 19px) 50%, calc(100% - 14px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  text-overflow: ellipsis;
 }
 
 /* ---------- Input with an inline control (password reveal) ---------- */
@@ -325,7 +306,7 @@
 }
 
 .field__reveal:hover {
-  background: rgba(var(--color-primary-rgb), 0.07);
+  background: var(--color-lavender-soft);
   color: var(--color-primary);
 }
 
@@ -335,7 +316,7 @@
    for the pointer-then-keyboard case. */
 .field__reveal:focus-visible {
   outline: none;
-  color: var(--color-accent);
+  color: var(--color-primary);
   box-shadow: var(--ring-accent);
 }
 
@@ -344,15 +325,15 @@
 .field input:hover:not(:disabled),
 .field select:hover:not(:disabled),
 .field textarea:hover:not(:disabled) {
-  border-color: rgba(var(--color-primary-rgb), 0.32);
+  border-color: var(--text-muted);
 }
 
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
   outline: none;
-  border-color: var(--color-accent);
-  box-shadow: var(--ring-accent-strong);
+  border-color: var(--color-primary);
+  box-shadow: var(--ring-accent);
 }
 
 .field input:disabled,
@@ -389,7 +370,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
   justify-content: flex-end;
 }
 
@@ -436,84 +419,144 @@
 /* Amount field emphasis — the single most important number on any
    recording form gets its own visual weight. */
 .field--amount input {
-  font-size: 20px;
-  font-weight: 700;
+  min-height: 64px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   color: var(--text-heading);
 }
 
+/* Currency code sits in its own fixed cell, like a bank transfer form. */
 .currency-input {
   position: relative;
 }
 .currency-input__prefix {
   position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  font-weight: 700;
+  left: 1px;
+  top: 1px;
+  bottom: 1px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-right: 1px solid var(--border);
+  background: var(--color-gray-light);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
   pointer-events: none;
 }
 .currency-input input {
-  padding-left: 50px;
+  padding-left: 64px;
+}
+.field--amount .currency-input__prefix {
+  padding: 0 16px;
+  font-size: 14px;
+}
+.field--amount .currency-input input {
+  padding-left: 78px;
 }
 
-/* ---------- Contribution wizard (ContributionsPage) ---------- */
-/* The stepper doubles as progress indicator and back-navigation. Built
-   from the same tokens as everything else — no new colour values. */
-/* Elevated canvas: the wizard is the highest-stakes surface in the app —
-   money is entered here — so it gets its own raised plane and breathing
-   room rather than sitting flush in the page like a settings form. */
+/* ==========================================================================
+   CONTRIBUTION WIZARD — styled as a bank transfer: an emerald header rule,
+   a connected step rail, the form on the left and a live transfer slip on
+   the right that fills in as the treasurer types.
+   ========================================================================== */
 .card.wizard-canvas {
-  padding: 18px;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
+  padding: 0;
+  overflow: hidden;
+  border-top: 3px solid var(--color-primary);
+}
+
+.wizard-canvas > .card__header {
+  margin: 0;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wizard-canvas > form {
+  padding: 20px;
 }
 
 @media (min-width: 640px) {
-  .card.wizard-canvas {
-    padding: 30px 32px;
+  .wizard-canvas > .card__header {
+    padding: 20px 28px;
+  }
+  .wizard-canvas > form {
+    padding: 24px 28px 26px;
   }
 }
 
+.wizard-layout {
+  display: grid;
+  gap: 22px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .wizard-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 28px;
+  }
+  .transfer-slip {
+    position: sticky;
+    top: calc(var(--navbar-height) + 16px);
+  }
+}
+
+/* ---------- Step rail ---------- */
 .wizard-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   list-style: none;
-  margin: 0 0 22px;
-  padding: 0 0 20px;
-  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.07);
-  counter-reset: none;
+  margin: 0 0 24px;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .wizard-steps__item {
-  flex: 1 1 140px;
   min-width: 0;
 }
 
 .wizard-steps__btn {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  min-height: var(--touch-target);
+  padding: 10px 8px 12px 0;
+  border: none;
+  background: transparent;
   color: var(--text-muted);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
-    color var(--motion-fast) var(--ease-premium);
+}
+
+/* The rail segment under each step; gold under the current one. */
+.wizard-steps__btn::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: transparent;
+  transition: background-color var(--motion-base) var(--ease-premium);
 }
 
 .wizard-steps__btn:disabled {
   cursor: default;
-  opacity: 0.65;
+}
+
+.wizard-steps__btn:focus-visible {
+  outline: none;
+  box-shadow: inset var(--ring-accent-strong);
 }
 
 .wizard-steps__marker {
@@ -521,134 +564,256 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-lg);
-  background: var(--bg-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-input-border);
+  background: var(--surface);
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .wizard-steps__label {
-  /* Wraps rather than truncating: this carries data or a translated label,
-     and a Swahili string cut to "Mapato na Mi…" is unreadable. */
   overflow-wrap: anywhere;
   min-width: 0;
+  line-height: 1.25;
 }
 
 .wizard-steps__item.is-current .wizard-steps__btn {
-  border-color: var(--color-accent);
   color: var(--text-heading);
-  background: rgba(var(--color-accent-rgb), 0.05);
-  box-shadow: var(--ring-accent);
+}
+.wizard-steps__item.is-current .wizard-steps__btn::after {
+  background: var(--color-gold);
 }
 .wizard-steps__item.is-current .wizard-steps__marker {
-  background: var(--gradient-primary);
-  color: #ffffff;
-  box-shadow: 0 0 12px -1px rgba(var(--color-accent-rgb), 0.55);
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: var(--color-on-gold);
 }
 
-.wizard-steps__item.is-done .wizard-steps__marker {
-  background: var(--color-accent);
-  color: #ffffff;
-}
 .wizard-steps__item.is-done .wizard-steps__btn {
-  color: var(--text);
+  color: var(--color-primary);
+}
+.wizard-steps__item.is-done .wizard-steps__btn::after {
+  background: var(--color-primary);
+}
+.wizard-steps__item.is-done .wizard-steps__marker {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
 }
 
-/* Inset breakdown panel (the optional Zaka/Sadaka line items). Recessed
-   rather than raised — it's nested inside the wizard canvas, so an inner
-   shadow reads as "carved into that surface" where an outer one would fight
-   the parent card for the same plane. Replaces an inline
-   `background: var(--bg-muted)` grey block. */
+/* Phones: numbers only on the rail, the current step's name underneath it. */
+@media (max-width: 559px) {
+  .wizard-steps__btn {
+    justify-content: center;
+    padding-right: 0;
+  }
+  .wizard-steps__item:not(.is-current) .wizard-steps__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .wizard-steps__item.is-current .wizard-steps__btn {
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+  }
+}
+
+/* ---------- Breakdown lines ---------- */
 .breakdown-panel {
   padding: 14px;
-  border-radius: var(--radius);
-  background: rgba(var(--color-primary-rgb), 0.035);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
-  box-shadow: inset 0 1px 3px rgba(var(--color-primary-rgb), 0.05);
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-light);
+  border: 1px solid var(--border);
 }
 
-/* These inputs live outside a .field wrapper, so they inherited no framing
-   at all — which is why they previously carried an inline background just
-   to be visible. They now get the same treatment as every other input:
-   white on the tinted panel, navy hairline, green ring on focus. */
 .breakdown-panel input {
   min-width: 0;
   padding: 10px 12px;
-  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   font-size: 14px;
-  min-height: 40px;
+  min-height: 44px;
   transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
 }
 
 .breakdown-panel input:hover {
-  border-color: rgba(var(--color-primary-rgb), 0.32);
+  border-color: var(--text-muted);
 }
 
 .breakdown-panel input:focus {
   outline: none;
-  border-color: var(--color-accent);
-  box-shadow: var(--ring-accent-strong);
+  border-color: var(--color-primary);
+  box-shadow: var(--ring-accent);
 }
 
-/* Back sits left, the primary action right — reversed from the default
-   right-aligned form-actions row. */
+.breakdown-total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-input-border);
+  font-weight: 800;
+}
+
+/* Back sits left, the primary action right. */
 .wizard-actions {
   justify-content: space-between;
 }
 
-/* ---------- Review step ---------- */
+/* ---------- Live transfer slip ---------- */
+.transfer-slip {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-light);
+  font-size: 13px;
+}
+
+.transfer-slip__head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.transfer-slip__amount {
+  padding: 16px;
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.transfer-slip__amount-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-gold);
+}
+
+.transfer-slip__amount-value {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.transfer-slip__rows {
+  margin: 0;
+  padding: 4px 16px 12px;
+}
+
+.transfer-slip__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--color-input-border);
+}
+
+.transfer-slip__row:last-child {
+  border-bottom: none;
+}
+
+.transfer-slip__row dt {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.transfer-slip__row dd {
+  margin: 0;
+  min-width: 0;
+  font-weight: 700;
+  color: var(--text-heading);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.transfer-slip__row dd.is-pending {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.transfer-slip__row dd.is-fee {
+  color: var(--color-danger);
+}
+
+.transfer-slip__row dd.is-net {
+  color: var(--color-success);
+}
+
+/* ---------- Review step (the receipt before posting) ---------- */
 .wizard-review__amount {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 16px 18px;
-  margin-bottom: 14px;
-  border-radius: var(--radius);
-  background: var(--gradient-hero);
+  gap: 4px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  border-left: 4px solid var(--color-gold);
   color: #ffffff;
 }
 
 .wizard-review__amount-label {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.12em;
+  color: var(--color-gold);
 }
 
 .wizard-review__amount-value {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 800;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 
 .wizard-review {
   margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 .wizard-review__row {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
-  padding: 9px 0;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--border);
+}
+.wizard-review__row:nth-child(even) {
+  background: var(--color-gray-light);
 }
 .wizard-review__row:last-child {
   border-bottom: none;
 }
 
 .wizard-review__row dt {
-  flex: 0 0 40%;
+  flex: 0 0 38%;
   min-width: 0;
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
+  padding-top: 2px;
 }
 
 .wizard-review__row dd {
@@ -656,7 +821,7 @@
   min-width: 0;
   margin: 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-heading);
   overflow-wrap: anywhere;
 }
@@ -674,9 +839,9 @@
   gap: 6px;
   width: 100%;
   padding: 28px 18px;
-  border: 1.5px dashed rgba(var(--color-primary-rgb), 0.28);
-  border-radius: var(--radius);
-  background: var(--surface-muted, rgba(var(--color-primary-rgb), 0.03));
+  border: 1px dashed var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-light);
   color: var(--text-muted);
   font: inherit;
   cursor: pointer;
@@ -687,20 +852,20 @@
 
 .dropzone:hover,
 .dropzone.is-dragging {
-  border-color: var(--color-accent);
-  background: rgba(var(--color-accent-rgb), 0.07);
+  border-color: var(--color-primary);
+  background: var(--color-lavender-soft);
 }
 
 .dropzone:focus-visible {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
   box-shadow: var(--ring-accent-strong);
 }
 
 .dropzone__icon {
   display: inline-flex;
   font-size: 26px;
-  color: var(--color-accent);
+  color: var(--color-primary);
 }
 
 .dropzone__label {
@@ -762,7 +927,7 @@
 .import-summary__list svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: var(--color-warning, #f59e0b);
+  color: var(--color-warning);
 }
 
 /* Server-supplied error detail under the import dropzone (which column,
@@ -785,78 +950,306 @@
   text-transform: capitalize;
 }
 
-/* ---------- Member identity document (registration) ---------- */
+/* ==========================================================================
+   CHOICE TILES — a flat radio group used where a native <select> would
+   truncate or hide the options: identity document type, church department.
+   Real <input type="radio"> inside each tile, so arrow-key navigation,
+   form semantics and screen-reader grouping come from the browser.
+   ========================================================================== */
+.choice-group {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.choice-group__legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-heading);
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+  gap: 8px;
+}
+
+.choice-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-premium), background-color var(--motion-fast) var(--ease-premium);
+}
+
+.choice-tile:hover {
+  border-color: var(--text-muted);
+}
+
+/* The radio itself is visually replaced by the square check cell. */
+.choice-tile input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.choice-tile__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: transparent;
+  font-size: 12px;
+}
+
+.choice-tile__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+.choice-tile__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.choice-tile__meta {
+  display: block;
+  margin-top: 1px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.choice-tile.is-checked {
+  border-color: var(--color-gold);
+  background: var(--color-gold-soft);
+  box-shadow: inset 3px 0 0 var(--color-gold);
+  color: var(--text-heading);
+}
+
+.choice-tile.is-checked .choice-tile__check {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  color: var(--color-on-gold);
+}
+
+.choice-tile.is-checked .choice-tile__icon {
+  color: var(--color-gold-ink);
+}
+
+.choice-tile:has(input:focus-visible) {
+  box-shadow: inset 3px 0 0 var(--color-gold), var(--ring-accent-strong);
+}
+
+/* ==========================================================================
+   MEMBER IDENTITY (registration & verification)
+   ========================================================================== */
 .id-fieldset {
+  margin: 22px 0 0;
+  padding: 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px 16px;
-  margin: 18px 0 0;
+  border-radius: var(--radius-sm);
   min-width: 0; /* fieldsets default to min-content and overflow on phones */
 }
 
 .id-fieldset__legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 14px;
   padding: 0 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-heading);
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
 }
 
-/* Digits read in groups of four more easily than a 20-character run. */
+.id-fieldset__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px 16px 18px;
+}
+
+/* NIDA digits: monospaced, tracked, large — a 20-digit number is checked
+   digit by digit against a card. */
 .field input.id-input--nida {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 17px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 
-/* Sharp, unmissable blocking alert — square corners and a solid rule on the
-   left distinguish it from the softer page-level .alert. */
-.id-alert,
-.id-verified {
+.id-digit-meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.id-digit-meter__track {
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  gap: 2px;
+  flex: 1 1 auto;
+  max-width: 260px;
+}
+
+.id-digit-meter__cell {
+  height: 4px;
+  background: var(--color-gray-light);
+  border: 1px solid var(--border);
+}
+
+.id-digit-meter__cell.is-filled {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* Blocking error: sharp crimson container, solid left rule. */
+.id-alert {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 11px 14px;
-  border-radius: 0;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--color-danger-rgb), 0.45);
+  border-left: 4px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.id-alert__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 18px;
+}
+
+.id-alert__title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.id-alert__message {
+  margin-top: 2px;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.45;
+  color: var(--text-heading);
 }
 
-.id-alert {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger);
-  border-left-width: 4px;
+/* Verified-format card: read-only, emerald, gold seal. */
+.id-card {
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
-.id-verified {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-  border-left: 4px solid var(--color-success);
-}
-
-.id-alert svg,
-.id-verified svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.id-cell {
+.id-card__head {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--color-primary);
+  color: #ffffff;
 }
 
-.id-cell__type {
-  font-size: 12px;
+.id-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.id-card__seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid rgba(var(--color-gold-rgb), 0.7);
+  border-radius: var(--radius-sm);
+  color: var(--color-gold);
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.id-card__body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 14px 20px;
+  margin: 0;
+  padding: 14px;
+  background: var(--color-lavender-soft);
+}
+
+.id-card__body dt {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 
-.id-cell__number {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.id-card__body dd {
+  margin: 3px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
 }
 
-.compliance-legend {
-  margin-top: 12px;
+.id-card__body dd.is-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.id-card__foot {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+.id-card__foot svg {
+  flex-shrink: 0;
+  margin-top: 2px;
 }

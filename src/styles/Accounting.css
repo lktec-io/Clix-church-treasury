@@ -5,8 +5,12 @@
    ========================================================================== */
 
 /* ==========================================================================
-   TABLES — the ONE place a wide table is allowed to scroll: horizontally,
+   LEDGER TABLES — the ONE place a wide table may scroll: horizontally,
    inside itself, never the page.
+
+   Banking-grid conventions: a tinted uppercase header band, hairline row
+   rules, tabular figures right-aligned on the decimal, identifiers in
+   monospace, and no zebra — alignment and rules carry the eye.
    ========================================================================== */
 
 .table-wrap {
@@ -14,71 +18,66 @@
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  /* Horizontal swipes stay in the table; vertical ones go to the page, so a
+     wide ledger never traps scrolling on a phone. */
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 table.data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 13.5px;
 }
 
 .data-table th,
 .data-table td {
   text-align: left;
-  /* Spacious rhythm — financial rows are scanned, not read. Widened again
-     for the flat treatment: with the boundary rules softened almost to
-     nothing, whitespace is what separates the rows. */
-  padding: 18px 20px;
+  padding: 14px 16px;
   white-space: nowrap;
-  transition: border-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
+  vertical-align: middle;
 }
 
 .data-table td {
-  /* Barely-there rule. The brief calls for "no dark boundary rows", so this
-     is now a whisper that keeps long rows trackable across a wide table
-     without drawing a grid over the data. */
   border-bottom: 1px solid var(--border);
   color: var(--text);
 }
 
-/* No rule under the final row — the card edge already closes the table. */
 .data-table tbody tr:last-child td {
   border-bottom: none;
 }
 
 .data-table thead th {
-  position: relative;
+  background: var(--color-gray-light);
+  border-bottom: 1px solid var(--color-input-border);
   color: var(--text-muted);
-  font-weight: 700;
-  font-size: 11px;
+  font-size: 10.5px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  /* No fill and no rounded cap: the header is now defined purely by its
-     uppercase slate tracking and a single rule, which is what makes the
-     table read as flat rather than as a boxed widget. */
-  background: transparent;
-  border-bottom: 1px solid var(--border);
-}
-
-/* Zebra FADE, not a stripe — a 1.8% slate wash. Enough to guide the eye
-   across a wide row, far too faint to compete with a status badge or to
-   look like alternating bands. */
-.data-table tbody tr:nth-child(even) {
-  background: rgba(15, 23, 42, 0.018);
+  letter-spacing: 0.1em;
+  padding-top: 11px;
+  padding-bottom: 11px;
 }
 
 .data-table tbody tr {
-  transition: background-color var(--motion-fast) var(--ease-premium),
-    box-shadow var(--motion-fast) var(--ease-premium);
+  transition: background-color var(--motion-fast) var(--ease-premium);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .data-table tbody tr:hover {
     background: var(--color-lavender-soft);
-    box-shadow: inset 3px 0 0 0 var(--color-primary);
   }
+  .data-table tbody tr:hover td:first-child {
+    box-shadow: inset 3px 0 0 var(--color-gold);
+  }
+}
+
+/* High-density variant: directories and ledgers scanned line by line. */
+.data-table--dense th,
+.data-table--dense td {
+  padding: 9px 14px;
 }
 
 .data-table .is-amount {
@@ -91,28 +90,220 @@ table.data-table {
 }
 
 /* Alignment-only sibling of .is-amount, for figures that must line up on the
-   decimal WITHOUT being emphasised — a trial-balance column and its <th>,
-   where bolding every cell would flatten the hierarchy the section bands and
-   totals row are carrying.
-   Applies to th as well as td: a right-aligned column whose header stays
-   left-aligned reads as a misalignment rather than a style choice. */
+   decimal WITHOUT being emphasised (trial-balance columns). Applies to th as
+   well as td so a numeric column's header aligns with its figures. */
 .data-table th.is-numeric,
 .data-table td.is-numeric {
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
-  /* Keeps a figure and its currency on one line so the decimal column can
-     never be broken by a wrap. */
   white-space: nowrap;
 }
 
-/* Phones: claw back the horizontal padding so fewer rows need a scroll to
-   read at all. Vertical rhythm is kept — that's the part doing the work. */
+.data-table th.is-amount {
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
 @media (max-width: 600px) {
   .data-table th,
   .data-table td {
     padding-left: 12px;
     padding-right: 12px;
+  }
+}
+
+/* ---------- Cell primitives ---------- */
+/* Two lines in one cell: the thing, and what identifies it. Halves the
+   column count of a directory without hiding anything. */
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.cell-stack__primary {
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.cell-stack__secondary {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.is-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.cell-stack__primary.is-mono {
+  font-weight: 600;
+}
+
+.cell-muted {
+  color: var(--text-muted);
+}
+
+/* Masked identity number: a fixed-width type code and a fixed-width
+   monospace mask, so every "•••• 0112" in the column lines up exactly. */
+.data-table .col-id {
+  width: 1%;
+}
+
+.id-mask {
+  display: inline-grid;
+  grid-template-columns: 4.5em 8.5ch;
+  align-items: center;
+  gap: 8px;
+}
+
+.id-mask__type {
+  justify-self: start;
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-light);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.id-mask__number {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-heading);
+}
+
+.data-table .col-actions {
+  width: 1%;
+  text-align: right;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.row-actions--center {
+  align-items: center;
+}
+
+/* In a dedicated, right-aligned actions column the buttons hug the edge. */
+.col-actions .row-actions {
+  justify-content: flex-end;
+}
+
+/* ---------- Ledger card chrome ---------- */
+.ledger-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ledger-card > .table-wrap {
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid var(--border);
+}
+
+.ledger-card > .empty-state {
+  border-top: 1px solid var(--border);
+}
+
+.ledger-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  padding: 14px 16px;
+}
+
+.ledger-toolbar__title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+.ledger-toolbar__title h2 {
+  margin: 0;
+}
+
+.ledger-toolbar__count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.ledger-toolbar select {
+  min-height: 40px;
+  padding: 8px 36px 8px 12px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.ledger-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 1 320px;
+  min-width: min(100%, 220px);
+}
+
+.ledger-search__icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.ledger-search input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.ledger-search input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--ring-accent);
+}
+
+.ledger-footnote {
+  margin: 0;
+  padding: 11px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--color-gray-light);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+@media (max-width: 719px) {
+  .ledger-search {
+    flex-basis: 100%;
+  }
+  .ledger-search input,
+  .ledger-toolbar select {
+    min-height: var(--touch-target);
+    font-size: 16px;
   }
 }
 
@@ -201,9 +392,8 @@ table.data-table {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
-  /* Amber left edge — this row is waiting on the reader, and the colour
-     matches the "submitted" status badge used everywhere else. */
-  border-left: 3px solid var(--color-warning);
+  /* Gold left edge — this row is waiting on the reader. */
+  border-left: 3px solid var(--color-gold);
 }
 
 .approval-row__detail {
@@ -228,7 +418,8 @@ table.data-table {
 .approval-row__amount {
   flex: 0 0 auto;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   color: var(--text-heading);
   white-space: nowrap;
 }
@@ -267,8 +458,9 @@ table.data-table {
   margin: 0 0 14px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: var(--color-warning-bg);
-  border: 1px solid color-mix(in srgb, var(--color-warning) 28%, transparent);
+  background: var(--color-gold-soft);
+  border: 1px solid rgba(var(--color-gold-rgb), 0.45);
+  border-left: 3px solid var(--color-gold);
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--text);
@@ -278,7 +470,7 @@ table.data-table {
   flex-shrink: 0;
   margin-top: 2px;
   font-size: 15px;
-  color: var(--color-warning);
+  color: var(--color-gold-ink);
 }
 
 /* ==========================================================================
@@ -295,8 +487,9 @@ table.data-table {
   padding: 24px;
   border-radius: var(--radius-lg);
   background: var(--surface);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
-  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--color-primary);
+  box-shadow: var(--shadow-xl);
 }
 
 .remit-drawer__head {
@@ -318,8 +511,8 @@ table.data-table {
   margin: 0 0 18px;
   padding: 14px 16px;
   border-radius: var(--radius-sm);
-  background: rgba(var(--color-primary-rgb), 0.04);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
+  background: var(--color-gray-light);
+  border: 1px solid var(--border);
 }
 
 .remit-drawer__rows > div {
@@ -381,7 +574,8 @@ table.data-table {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--color-primary);
-  background: rgba(var(--color-primary-rgb), 0.045);
+  background: var(--color-lavender-soft);
+  border-left: 3px solid var(--color-gold);
 }
 
 .trial-balance__name {
@@ -416,8 +610,9 @@ table.data-table {
   gap: 14px;
   margin-top: 18px;
   padding: 16px 18px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
+  border-left-width: 4px;
 }
 
 .integrity-strip.is-balanced {
@@ -437,19 +632,17 @@ table.data-table {
   width: 42px;
   height: 42px;
   flex-shrink: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   font-size: 22px;
   color: #ffffff;
 }
 
 .integrity-strip.is-balanced .integrity-strip__icon {
   background: var(--color-accent);
-  box-shadow: 0 8px 20px -8px rgba(var(--color-accent-rgb), 0.7);
 }
 
 .integrity-strip.is-unbalanced .integrity-strip__icon {
   background: var(--color-danger);
-  box-shadow: 0 8px 20px -8px rgba(var(--color-danger-rgb), 0.7);
 }
 
 .integrity-strip__copy {
@@ -472,55 +665,157 @@ table.data-table {
 
 
 
-/* ---------- Mobile-money agent fee (Makato) capture ---------- */
+/* ==========================================================================
+   MOBILE MONEY (Makato) CAPTURE — contribution wizard, step 1
+   ========================================================================== */
 .makato-panel {
-  margin-top: 16px;
-  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 16px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--color-primary);
+  border-left: 3px solid var(--color-gold);
   border-radius: var(--radius-sm);
-  background: var(--color-lavender-soft);
+  background: var(--color-gray-light);
 }
 
 .makato-panel__title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  color: var(--text-heading);
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
 }
 
-.makato-panel__summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-  margin: 14px 0 8px;
+.makato-panel__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.makato-panel__summary dt {
-  font-size: 12px;
+.makato-panel__fee-field {
+  max-width: 320px;
+}
+
+.makato-panel .choice-tile {
+  background: var(--surface);
+}
+
+/* "Amount sent − Makato = Net received", live. Three statement cells with
+   the operators between them; stacks to a column on a phone. */
+.makato-equation {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.makato-equation__term {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 11px 14px;
+}
+
+.makato-equation__label {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 
-.makato-panel__summary dd {
-  margin: 2px 0 0;
-  font-size: 18px;
+.makato-equation__value {
+  font-size: 17px;
   font-weight: 800;
   color: var(--text-heading);
+  overflow-wrap: anywhere;
 }
 
-.makato-panel__summary dd.makato-panel__fee {
+.makato-equation__term.is-fee .makato-equation__value {
   color: var(--color-danger);
 }
 
-.makato-panel__summary dd.makato-panel__net {
+.makato-equation__term.is-net {
+  background: var(--color-success-bg);
+}
+
+.makato-equation__term.is-net .makato-equation__value {
   color: var(--color-success);
 }
 
-/* Semantic money colours in ledgers: emerald for money in, crimson for money
-   out. Compound selector so it outranks .data-table .is-amount's heading
-   colour regardless of source order. */
+.makato-equation__op {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.makato-equation--compact {
+  margin-top: 14px;
+}
+
+.makato-equation--compact .makato-equation__value {
+  font-size: 15px;
+}
+
+@media (max-width: 519px) {
+  .makato-equation {
+    flex-direction: column;
+  }
+  .makato-equation__term {
+    flex-basis: auto;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .makato-equation__op {
+    flex-basis: 22px;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+}
+
+/* Optional breakdown toggle. */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--touch-target);
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+/* ==========================================================================
+   LEDGER CELL SEMANTICS — money direction, stamps, standing
+   ========================================================================== */
+/* Emerald for money in, crimson for money out. Compound selectors so they
+   outrank .data-table .is-amount's heading colour regardless of order. */
 .data-table td.is-amount.is-income {
   color: var(--color-success);
 }
@@ -529,16 +824,101 @@ table.data-table {
   color: var(--color-danger);
 }
 
-/* Recorded date + hour:minute. Kept on one line — a timestamp broken across
-   two rows is easy to misread as two entries. */
-.data-table td.ledger-time {
+/* An expense that has not been paid has not left any account yet. */
+.data-table td.is-amount.is-pending-amount {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.data-table td.ledger-fee {
+  font-size: 12.5px;
+  color: var(--color-danger);
+}
+
+.data-table td.is-amount.is-outstanding {
+  color: var(--color-danger);
+}
+
+.cell-stack.is-end {
+  align-items: flex-end;
+}
+
+.cell-unit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Recorded stamp: date over hour:minute, in a fixed-width padded cell so a
+   column of stamps reads as a clean vertical rule. */
+.ledger-stamp {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 7.5em;
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid var(--color-input-border);
+}
+
+.ledger-stamp__date {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-heading);
   white-space: nowrap;
+}
+
+.ledger-stamp__time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
 
-.pledge-installment {
+.data-table tr.is-reversed td {
+  color: var(--text-muted);
+}
+
+.data-table tr.is-reversed td.is-amount {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* A pledge behind schedule gets a crimson edge on its row. */
+.data-table tr.is-behind td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-danger);
+}
+
+.amortization-progress {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
+  min-width: 130px;
+}
+
+.amortization-progress .progress-meter {
+  flex: 1 1 auto;
+}
+
+.amortization-progress__value {
+  flex-shrink: 0;
+  min-width: 3ch;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-heading);
+}
+
+.ledger-note {
+  margin: 0;
+  padding: 0 16px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.ledger-more {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
 }

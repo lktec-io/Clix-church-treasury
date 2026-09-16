@@ -13,7 +13,8 @@ import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import BulkImportPanel from '../components/ui/BulkImportPanel.jsx';
 import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
 import { useActivity } from '../context/ActivityContext.jsx';
-import MemberIdentityFields, { emptyIdentity, identityError, identityPayload } from '../components/ui/MemberIdentityFields.jsx';
+import MemberIdentityFields from '../components/ui/MemberIdentityFields.jsx';
+import { emptyIdentity, identityError, identityPayload } from '../utils/memberIdentityForm.js';
 import { formatDate } from '../utils/format.js';
 
 function emptyForm() {
@@ -33,6 +34,9 @@ function maskedIdNumber(number) {
   if (!number) return '';
   return `•••• ${number.slice(-4)}`;
 }
+
+// Short document codes for the dense ID column.
+const ID_TYPE_CODE = { nida: 'NIDA', voter_id: 'VOTER', driving_licence: 'DL', none: '—' };
 
 export default function ContributorsPage() {
   const { t } = useLocale();
@@ -202,15 +206,14 @@ export default function ContributorsPage() {
             clerk see both without losing their place. */}
         <BulkImportPanel open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
 
-        <div className="card">
+        <div className="card form-card">
           <div className="card__header">
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h2 className="card__title-icon">
               <FiUserPlus aria-hidden="true" /> {t('contributors.addNew')}
             </h2>
             {/* Secondary to the form's own primary "Save" — importing is the
-                bulk alternative to filling this form in, not the main
-                action on the page. Hidden while the panel is open, since it
-                would then just be a toggle for something already visible. */}
+                bulk alternative to filling this form in. Hidden while the
+                panel is open, since it would then toggle something visible. */}
             {!importOpen && (
               <button type="button" className="btn btn--secondary btn--sm" onClick={() => setImportOpen(true)}>
                 <FiUpload aria-hidden="true" /> {t('contributors.import.open')}
@@ -218,22 +221,25 @@ export default function ContributorsPage() {
             )}
           </div>
           <form onSubmit={handleSubmit}>
+            <div className="form-section">
+              <div className="form-section__title">{t('contributors.section.member')}</div>
+            </div>
             <div className="form-grid">
               <div className="field">
-                <label>{t('contributors.fullName')}</label>
-                <input value={form.fullName} onChange={handleChange('fullName')} required />
+                <label htmlFor="member-full-name">{t('contributors.fullName')}</label>
+                <input id="member-full-name" value={form.fullName} onChange={handleChange('fullName')} required />
               </div>
               <div className="field">
-                <label>{t('contributors.phone')}</label>
-                <input value={form.phone} onChange={handleChange('phone')} />
+                <label htmlFor="member-phone">{t('contributors.phone')}</label>
+                <input id="member-phone" type="tel" inputMode="tel" value={form.phone} onChange={handleChange('phone')} />
               </div>
               <div className="field">
-                <label>{t('contributors.email')}</label>
-                <input type="email" value={form.email} onChange={handleChange('email')} />
+                <label htmlFor="member-email">{t('contributors.email')}</label>
+                <input id="member-email" type="email" value={form.email} onChange={handleChange('email')} />
               </div>
               <div className="field">
-                <label>{t('contributors.memberNumber')}</label>
-                <input value={form.memberNumber} onChange={handleChange('memberNumber')} />
+                <label htmlFor="member-number">{t('contributors.memberNumber')}</label>
+                <input id="member-number" value={form.memberNumber} onChange={handleChange('memberNumber')} />
               </div>
             </div>
             <MemberIdentityFields
@@ -250,23 +256,26 @@ export default function ContributorsPage() {
         </div>
       </PermissionGate>
 
-      <div className="card">
-        <div className="card__header">
-          <h2>{t('contributors.title')}</h2>
-        </div>
-        <div className="field" style={{ position: 'relative', marginBottom: 16, maxWidth: 320 }}>
-          <FiSearch
-            aria-hidden="true"
-            style={{ position: 'absolute', left: 12, top: 34, color: 'var(--text-muted)' }}
-          />
-          <input
-            type="search"
-            placeholder={t('contributors.searchPlaceholder')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ paddingLeft: 36 }}
-            aria-label={t('contributors.searchPlaceholder')}
-          />
+      <div className="card ledger-card">
+        <div className="ledger-toolbar">
+          <div className="ledger-toolbar__title">
+            <h2>{t('contributors.title')}</h2>
+            {!loading && (
+              <span className="ledger-toolbar__count tabular-nums">
+                {t('contributors.count', { shown: filteredContributors.length, total: contributors.length })}
+              </span>
+            )}
+          </div>
+          <label className="ledger-search">
+            <FiSearch aria-hidden="true" className="ledger-search__icon" />
+            <input
+              type="search"
+              placeholder={t('contributors.searchPlaceholder')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label={t('contributors.searchPlaceholder')}
+            />
+          </label>
         </div>
         {loading ? (
           <SkeletonTable rows={5} columns={5} />
@@ -278,42 +287,48 @@ export default function ContributorsPage() {
           />
         ) : (
           <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table data-table--dense">
               <thead>
                 <tr>
-                  <th>{t('contributors.fullName')}</th>
-                  <th>{t('contributors.phone')}</th>
-                  <th>{t('contributors.email')}</th>
-                  <th>{t('contributors.memberNumber')}</th>
-                  <th>{t('memberId.column')}</th>
+                  <th>{t('contributors.column.member')}</th>
+                  <th>{t('contributors.column.contact')}</th>
+                  <th className="col-id">{t('memberId.column')}</th>
                   <th>{t('compliance.column')}</th>
                   <th>{t('contributors.portalAccess')}</th>
                   <PermissionGate permission="contributors.manage">
-                    <th>{t('common.actions')}</th>
+                    <th className="col-actions">{t('common.actions')}</th>
                   </PermissionGate>
                 </tr>
               </thead>
               <tbody>
                 {filteredContributors.map((c) => (
                   <tr key={c.id}>
-                    <td style={{ fontWeight: 600 }}>{c.full_name}</td>
-                    <td>{c.phone ?? '—'}</td>
-                    <td>{c.email ?? '—'}</td>
-                    <td>{c.member_number ?? '—'}</td>
                     <td>
+                      <span className="cell-stack">
+                        <span className="cell-stack__primary">{c.full_name}</span>
+                        <span className="cell-stack__secondary is-mono">{c.member_number ?? '—'}</span>
+                      </span>
+                    </td>
+                    <td>
+                      <span className="cell-stack">
+                        <span className="cell-stack__primary is-mono">{c.phone ?? '—'}</span>
+                        {c.email && <span className="cell-stack__secondary">{c.email}</span>}
+                      </span>
+                    </td>
+                    <td className="col-id">
                       {c.id_type ? (
-                        <span className="id-cell">
-                          <span className="id-cell__type">{t(`memberId.type.${c.id_type}`)}</span>
-                          {c.id_number && <span className="id-cell__number">{maskedIdNumber(c.id_number)}</span>}
+                        <span className="id-mask" title={t(`memberId.type.${c.id_type}`)}>
+                          <span className="id-mask__type">{ID_TYPE_CODE[c.id_type] ?? c.id_type}</span>
+                          <span className="id-mask__number">{c.id_number ? maskedIdNumber(c.id_number) : '—'}</span>
                         </span>
                       ) : (
-                        '—'
+                        <span className="cell-muted">—</span>
                       )}
                     </td>
                     <td>
                       {c.tithe_compliance ? (
                         <span
-                          className={`badge ${COMPLIANCE_BADGE[c.tithe_compliance.status] ?? 'badge--neutral'}`}
+                          className={`badge badge--dot ${COMPLIANCE_BADGE[c.tithe_compliance.status] ?? 'badge--neutral'}`}
                           title={
                             c.tithe_compliance.last_tithe_date
                               ? t('compliance.lastTithe', { date: formatDate(c.tithe_compliance.last_tithe_date) })
@@ -323,36 +338,40 @@ export default function ContributorsPage() {
                           {t(`compliance.status.${c.tithe_compliance.status}`)}
                         </span>
                       ) : (
-                        '—'
+                        <span className="cell-muted">—</span>
                       )}
                     </td>
                     <td>
-                      <span className={`badge ${c.portal_enabled_at ? 'badge--success' : 'badge--neutral'}`}>
+                      <span className={`badge badge--dot ${c.portal_enabled_at ? 'badge--success' : 'badge--neutral'}`}>
                         {c.portal_enabled_at ? t('contributors.portalEnabled') : t('contributors.portalNotEnabled')}
                       </span>
                     </td>
                     <PermissionGate permission="contributors.manage">
-                      <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {!c.portal_enabled_at ? (
-                          <button
-                            type="button"
-                            className="btn btn--secondary btn--sm"
-                            disabled={actioningId === c.id || !c.phone}
-                            title={!c.phone ? t('contributors.phoneRequiredHint') : undefined}
-                            onClick={() => handleEnablePortal(c)}
-                          >
-                            <FiKey aria-hidden="true" /> {t('contributors.enablePortal')}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn btn--secondary btn--sm"
-                            disabled={actioningId === c.id}
-                            onClick={() => handleResetPin(c)}
-                          >
-                            <FiRotateCcw aria-hidden="true" /> {t('contributors.resetPin')}
-                          </button>
-                        )}
+                      <td className="col-actions">
+                        {/* A wrapper, not display:flex on the <td>: a flex
+                            cell stops being a table cell and breaks the row. */}
+                        <div className="row-actions">
+                          {!c.portal_enabled_at ? (
+                            <button
+                              type="button"
+                              className="btn btn--secondary btn--sm"
+                              disabled={actioningId === c.id || !c.phone}
+                              title={!c.phone ? t('contributors.phoneRequiredHint') : undefined}
+                              onClick={() => handleEnablePortal(c)}
+                            >
+                              <FiKey aria-hidden="true" /> {t('contributors.enablePortal')}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn--secondary btn--sm"
+                              disabled={actioningId === c.id}
+                              onClick={() => handleResetPin(c)}
+                            >
+                              <FiRotateCcw aria-hidden="true" /> {t('contributors.resetPin')}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </PermissionGate>
                   </tr>
@@ -362,7 +381,7 @@ export default function ContributorsPage() {
           </div>
         )}
         {!loading && filteredContributors.length > 0 && (
-          <p className="field-hint compliance-legend">{t('compliance.legend')}</p>
+          <p className="ledger-footnote">{t('compliance.legend')}</p>
         )}
       </div>
     </div>

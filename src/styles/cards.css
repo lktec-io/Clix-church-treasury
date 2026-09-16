@@ -54,6 +54,21 @@
   overflow-wrap: anywhere;
 }
 
+.card__title-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card__title-icon svg {
+  color: var(--color-primary);
+}
+
+/* Forms that create records get an emerald cap — the "new entry" surface. */
+.card.form-card {
+  border-top: 3px solid var(--color-primary);
+}
+
 /* min(170px, 100%) rather than a bare 170px floor: a grid column whose
    minimum exceeds the container width overflows it rather than shrinking,
    so on any viewport narrower than the floor the track would push the page
@@ -69,7 +84,7 @@
 .stat-tile {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   /* Roomier than before: the reference's metric blocks are generous, and
      the circular icon enclosure needs air above the figure. */
   padding: 18px;
@@ -97,11 +112,11 @@
   width: 38px;
   height: 38px;
   flex-shrink: 0;
-  border-radius: var(--radius-lg);
-  background: rgba(var(--metric-tint-rgb), 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--metric-tint-rgb), 0.1);
   color: var(--metric-tint);
-  font-size: 17px;
-  margin-bottom: 12px;
+  font-size: 16px;
+  margin-bottom: 14px;
 }
 
 /* Category tints. Purple = expenses/general (the default), green =
@@ -126,19 +141,19 @@
 .stat-tile__icon.stat-tile__icon--savings,
 .fund-tile__icon.fund-tile__icon--savings,
 .progress-meter.progress-meter--savings {
-  --metric-tint: var(--color-warning);
-  --metric-tint-rgb: 245, 158, 11;
-  --meter-tint: var(--color-warning);
-  --meter-tint-rgb: 245, 158, 11;
+  --metric-tint: var(--color-gold-ink);
+  --metric-tint-rgb: var(--color-gold-rgb);
+  --meter-tint: var(--color-gold);
+  --meter-tint-rgb: var(--color-gold-rgb);
 }
 .metric-icon.metric-icon--info,
 .stat-tile__icon.stat-tile__icon--info,
 .fund-tile__icon.fund-tile__icon--info,
 .progress-meter.progress-meter--info {
   --metric-tint: var(--color-blue);
-  --metric-tint-rgb: 59, 130, 246;
+  --metric-tint-rgb: 47, 95, 138;
   --meter-tint: var(--color-blue);
-  --meter-tint-rgb: 59, 130, 246;
+  --meter-tint-rgb: 47, 95, 138;
 }
 .metric-icon.metric-icon--danger,
 .stat-tile__icon.stat-tile__icon--danger,
@@ -151,11 +166,11 @@
 }
 
 .stat-tile__label {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
+  letter-spacing: 0.1em;
+  font-weight: 700;
 }
 
 .stat-tile__value {
@@ -198,14 +213,15 @@
    gradient) rather than a flat primary fill, which is what keeps the white
    figure text legible across the whole card. Kept deliberately compact
    (not a giant block) — "premium means restrained," not oversized. */
+/* Net treasury balance — the charcoal statement card beside the emerald
+   banner, so the two headline surfaces never merge into one block. */
 .hero-card {
-  background: var(--gradient-hero);
+  background: var(--color-sidebar-bg);
   color: #ffffff;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-sm);
+  border-top: 3px solid var(--color-gold);
   margin-bottom: 16px;
   position: relative;
-  overflow: hidden;
   min-width: 0;
 }
 
@@ -217,18 +233,19 @@
 }
 
 .hero-card__label {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.12em;
+  color: var(--color-gold);
 }
 
 .hero-card__value {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 34px;
+  font-weight: 800;
   letter-spacing: -0.02em;
-  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 6px;
   color: #ffffff;
 }
 
@@ -263,7 +280,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-accent);
+  /* Brighter than the ink green: it sits on the charcoal hero. */
+  background: var(--color-success-on-dark);
   box-shadow: 0 0 0 rgba(var(--color-accent-rgb), 0.5);
   animation: livePulse 2.4s ease-in-out infinite;
 }
@@ -290,9 +308,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   position: relative;
 }
 
@@ -313,7 +331,8 @@
 
 .hero-card__breakdown-value {
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   color: #ffffff;
   overflow-wrap: anywhere;
 }
@@ -334,22 +353,28 @@
   padding: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-sm);
   text-decoration: none;
   color: var(--text);
   cursor: pointer;
   font: inherit;
   text-align: left;
   min-width: 0;
-  transition: box-shadow var(--motion-fast) var(--ease-premium), transform var(--motion-fast) var(--ease-premium);
+  min-height: 88px;
+  transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .quick-action:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
+    border-color: var(--color-primary);
+    box-shadow: inset 0 -2px 0 var(--color-gold);
   }
+}
+
+.quick-action:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--ring-accent-strong);
 }
 
 .quick-action__icon {
@@ -365,18 +390,18 @@
 }
 
 .quick-action--primary {
-  background: var(--gradient-primary);
-  border-color: transparent;
-  color: var(--sidebar-active-text);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
 }
 .quick-action--primary .quick-action__icon {
-  background: rgba(255, 255, 255, 0.16);
-  color: var(--sidebar-active-text);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-gold);
 }
 
 .quick-action__label {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -388,13 +413,14 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 11px;
+  gap: 6px;
+  padding: 3px 8px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.015em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
   white-space: nowrap;
   transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium),
     border-color var(--motion-slow) var(--ease-premium);
@@ -416,9 +442,19 @@
   border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 .badge--neutral {
-  background: rgba(var(--color-primary-rgb), 0.06);
+  background: var(--color-gray-light);
   color: var(--text-muted);
-  border-color: rgba(var(--color-primary-rgb), 0.14);
+  border-color: var(--border);
+}
+
+/* Status marker: a small square in the badge's own colour, so status reads
+   by shape and position even for colour-blind readers scanning a column. */
+.badge--dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: currentColor;
 }
 .badge--accent {
   background: var(--color-accent-light);
@@ -499,9 +535,10 @@
 }
 
 .empty-state__icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-lg);
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -528,17 +565,15 @@
 .sms-dispatch {
   padding: 14px 16px;
   margin-bottom: 16px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
-  box-shadow: var(--shadow-md);
-  transition: border-color var(--motion-slow) var(--ease-premium),
-    box-shadow var(--motion-slow) var(--ease-premium);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--color-info);
+  transition: border-color var(--motion-slow) var(--ease-premium);
 }
 
 .sms-dispatch.is-sent {
-  border-color: rgba(var(--color-accent-rgb), 0.35);
-  box-shadow: 0 10px 30px -18px rgba(var(--color-accent-rgb), 0.5);
+  border-left-color: var(--color-success);
 }
 
 .sms-dispatch__progress-head {
@@ -567,8 +602,7 @@
 .sms-dispatch__bar {
   height: 100%;
   border-radius: var(--radius-sm);
-  background: var(--gradient-primary);
-  box-shadow: 0 0 12px 0 rgba(var(--color-accent-rgb), 0.55);
+  background: var(--color-primary);
 }
 
 .sms-dispatch__result {
@@ -584,11 +618,10 @@
   width: 38px;
   height: 38px;
   flex-shrink: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   background: var(--color-accent);
   color: #ffffff;
   font-size: 20px;
-  box-shadow: 0 0 0 5px rgba(var(--color-accent-rgb), 0.16), 0 8px 20px -8px rgba(var(--color-accent-rgb), 0.7);
 }
 
 .sms-dispatch__icon {
@@ -693,8 +726,6 @@
   justify-content: center;
   padding: 20px;
   background: var(--modal-backdrop-bg);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
 }
 
 .sms-pop-center {
@@ -707,8 +738,9 @@
   padding: 28px 24px 22px;
   border-radius: var(--radius-lg);
   background: var(--surface);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
-  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--color-primary);
+  box-shadow: var(--shadow-xl);
   text-align: center;
 }
 
@@ -744,10 +776,9 @@
 
 .sms-pop-center__ring-bar {
   fill: none;
-  stroke: var(--color-accent);
+  stroke: var(--color-primary);
   stroke-width: 8;
-  stroke-linecap: round;
-  filter: drop-shadow(0 0 8px rgba(var(--color-accent-rgb), 0.45));
+  stroke-linecap: butt;
 }
 
 .sms-pop-center__percent {
@@ -783,9 +814,9 @@
 .sms-pop-center__badge-ring {
   position: absolute;
   inset: 8px;
-  border-radius: var(--radius-lg);
-  background: rgba(var(--color-accent-rgb), 0.12);
-  box-shadow: inset 0 0 0 2px rgba(var(--color-accent-rgb), 0.28);
+  border-radius: var(--radius-sm);
+  background: var(--color-success-bg);
+  box-shadow: inset 0 0 0 1px rgba(var(--color-accent-rgb), 0.3);
 }
 
 .sms-pop-center__badge {
@@ -795,21 +826,18 @@
   justify-content: center;
   width: 84px;
   height: 84px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-dark));
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
   color: #ffffff;
   font-size: 44px;
-  box-shadow: 0 16px 34px -12px rgba(var(--color-accent-rgb), 0.7);
 }
 
 .sms-pop-center__badge.is-failed {
-  background: linear-gradient(150deg, var(--color-danger), rgba(var(--color-danger-rgb), 0.75));
-  box-shadow: 0 16px 34px -12px rgba(var(--color-danger-rgb), 0.6);
+  background: var(--color-danger);
 }
 
 .sms-pop-center__badge.is-neutral {
-  background: linear-gradient(150deg, var(--color-primary), rgba(var(--color-primary-rgb), 0.75));
-  box-shadow: 0 16px 34px -12px rgba(var(--color-primary-rgb), 0.5);
+  background: var(--color-primary);
 }
 
 .sms-pop-center__title {
@@ -878,14 +906,12 @@
 /* ==========================================================================
    SEGMENTED TABS — Hub / Rules switch on the Remittance page
    ========================================================================== */
+/* Underline tabs: the active tab takes the gold rule, like the step rail. */
 .seg-tabs {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
+  display: flex;
+  gap: 0;
   margin-bottom: 16px;
-  border-radius: var(--radius);
-  background: rgba(var(--color-primary-rgb), 0.06);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.09);
+  border-bottom: 1px solid var(--border);
   max-width: 100%;
   overflow-x: auto;
 }
@@ -894,14 +920,16 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 16px;
+  min-height: var(--touch-target);
+  padding: 8px 18px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
+  box-shadow: inset 0 -3px 0 transparent;
   background: transparent;
   color: var(--text-muted);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
@@ -912,9 +940,8 @@
 }
 
 .seg-tabs__tab.is-active {
-  background: var(--surface);
   color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 0 -3px 0 var(--color-gold);
 }
 
 .seg-tabs__tab:focus-visible {
@@ -932,21 +959,19 @@
   gap: 14px;
   padding: 16px 18px;
   margin-bottom: 16px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  border: 1px solid rgba(var(--color-accent-rgb), 0.28);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--color-primary);
   text-decoration: none;
   color: inherit;
-  transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium),
-    transform var(--motion-fast) var(--ease-premium);
+  transition: border-color var(--motion-fast) var(--ease-premium);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .report-link-card:hover {
-    border-color: var(--color-accent);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
+    border-color: var(--color-primary);
+    border-left-color: var(--color-gold);
   }
 }
 
@@ -963,8 +988,8 @@
   height: 38px;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
-  background: rgba(var(--color-accent-rgb), 0.14);
-  color: var(--color-accent);
+  background: var(--color-lavender-soft);
+  color: var(--color-primary);
   font-size: 18px;
 }
 
@@ -990,7 +1015,7 @@
 
 .report-link-card__arrow {
   flex-shrink: 0;
-  color: var(--color-accent);
+  color: var(--color-primary);
   font-size: 18px;
 }
 
@@ -1003,8 +1028,8 @@
   --meter-tint: var(--color-primary);
   --meter-tint-rgb: var(--color-primary-rgb);
   width: 100%;
-  height: 7px;
-  border-radius: var(--radius-sm);
+  height: 6px;
+  border-radius: 0;
   background: var(--color-gray-light);
   overflow: hidden;
 }
@@ -1012,7 +1037,7 @@
 .progress-meter__fill {
   display: block;
   height: 100%;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--meter-tint);
   /* Width is set inline from real data; the transition is what makes a
      value change glide rather than jump when a figure refreshes. */

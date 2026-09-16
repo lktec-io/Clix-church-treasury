@@ -375,7 +375,7 @@ export default function DashboardPage() {
           still uses PageHeader, so the dashboard reads as the destination
           rather than one more list screen. */}
       <motion.section
-        className="welcome-banner has-shimmer"
+        className="welcome-banner"
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -437,7 +437,7 @@ export default function DashboardPage() {
       ) : (
         <>
           <PermissionGate permission="reports.view">
-            <motion.div className="hero-card has-shimmer" custom={0} variants={cardEntrance} initial="initial" animate="animate">
+            <motion.div className="hero-card" custom={0} variants={cardEntrance} initial="initial" animate="animate">
               <div className="hero-card__top">
                 <div className="hero-card__label">{t('dashboard.totalBalance')}</div>
                 <span className="live-indicator">
@@ -445,19 +445,11 @@ export default function DashboardPage() {
                   {t('dashboard.live')}
                 </span>
               </div>
-              {/* Very shallow breathing loop on the headline balance — enough
-                  to read as "live", small enough not to distract someone
-                  reading the number. MotionConfig reducedMotion="user"
-                  (main.jsx) suppresses it entirely for anyone who has asked
-                  the OS to reduce motion. */}
-              <motion.div
-                className="hero-card__value tabular-nums"
-                animate={{ scale: [1, 1.012, 1], opacity: [1, 0.94, 1] }}
-                transition={{ duration: 4.5, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
-                style={{ transformOrigin: 'left center' }}
-              >
+              {/* A balance holds still: motion on a figure someone is reading
+                  reads as the number changing. */}
+              <div className="hero-card__value tabular-nums">
                 {summary ? formatCurrency(summary.closingBalance) : '—'}
-              </motion.div>
+              </div>
               <div className="hero-card__meta">{t(`dashboard.period.${range}`)}</div>
               <div className="hero-card__breakdown">
                 <div className="hero-card__breakdown-item">
@@ -563,7 +555,7 @@ export default function DashboardPage() {
 
           {insights && (
             <>
-              <CollectionsOverview collections={insights.collections} />
+              <CollectionsOverview collections={insights.collections} periodLabel={t(`dashboard.period.${range}`)} />
               <div className="insight-columns">
                 <DepartmentCollections departments={insights.departments} />
                 <MakatoOverviewCard makato={insights.makato} />

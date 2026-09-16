@@ -88,8 +88,28 @@ body {
 
   .topbar-btn,
   .app-topbar__menu-btn {
-    width: 44px;
-    height: 44px;
+    width: var(--touch-target);
+    height: var(--touch-target);
+  }
+
+  .profile-menu__trigger {
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    justify-content: center;
+  }
+
+  .seg-switch__opt,
+  .lang-switch__opt {
+    min-height: 40px;
+  }
+
+  /* 56px bar so the 48px controls keep a 4px margin top and bottom. */
+  :root {
+    --navbar-height: 56px;
+  }
+
+  .app-topbar__actions {
+    gap: 4px;
   }
 
   .app-sidebar__link {

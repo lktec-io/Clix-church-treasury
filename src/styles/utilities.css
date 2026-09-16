@@ -61,7 +61,7 @@
   cursor: pointer;
   padding: 2px;
   display: inline-flex;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
 }
 .toast__close:hover {
   background: var(--bg-muted);
@@ -161,22 +161,17 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  /* Layered mesh rather than a single radial: two off-screen colour pools
-     (navy top-left, green bottom-right) bleeding into the slate canvas.
-     This is what gives the page depth without any image asset. */
-  background:
-    radial-gradient(1100px 700px at 8% -10%, rgba(var(--color-primary-rgb), 0.14), transparent 60%),
-    radial-gradient(900px 600px at 105% 110%, rgba(var(--color-accent-rgb), 0.12), transparent 62%),
-    var(--bg);
+  /* The plain workspace ground — the card carries the brand. */
+  background: var(--bg);
 }
 
 .auth-card {
   width: 100%;
   max-width: 400px;
   background: var(--surface);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.08);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--color-primary);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
   padding: 32px;
 }
 
@@ -300,13 +295,12 @@
 }
 
 .auth-slides__dot.is-active {
-  background: var(--color-accent);
-  box-shadow: 0 0 12px 1px rgba(var(--color-accent-rgb), 0.75);
+  background: var(--color-gold);
 }
 
 .auth-slides__dot:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.45);
+  box-shadow: var(--ring-gold);
 }
 
 @media (min-width: 900px) {
@@ -316,13 +310,27 @@
   }
 }
 
-/* Soft green bloom over the navy so the panel isn't a flat wash. */
+/* A gold rule on the panel's edge where it meets the form: along the
+   bottom when the panel is stacked above it, down the right side when the
+   two sit side by side. */
 .auth-split__panel::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background: radial-gradient(680px 420px at 88% 8%, rgba(var(--color-accent-rgb), 0.3), transparent 62%);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--color-gold);
   pointer-events: none;
+}
+
+@media (min-width: 900px) {
+  .auth-split__panel::after {
+    left: auto;
+    top: 0;
+    width: 3px;
+    height: auto;
+  }
 }
 
 /* Lifts the PANEL CONTENT above the backdrop layers.
@@ -364,10 +372,9 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   font-size: 19px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--color-primary);
+  border: 1px solid rgba(var(--color-gold-rgb), 0.6);
+  color: var(--color-gold);
 }
 
 /* Reserves the tallest headline's height so swapping slides never shifts

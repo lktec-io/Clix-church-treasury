@@ -528,36 +528,38 @@ export default function PlatformTenantsPage() {
                       </span>
                     </td>
                     <td>{formatDate(tn.createdAt)}</td>
-                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button type="button" className="btn btn--secondary btn--sm" onClick={() => setEditingTenant(tn)}>
-                        <FiEdit2 aria-hidden="true" /> {t('common.edit')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn--secondary btn--sm"
-                        disabled={actioningId === tn.id}
-                        onClick={() => handleToggleStatus(tn)}
-                      >
-                        {tn.status === 'active' ? (
-                          <>
-                            <FiPauseCircle aria-hidden="true" /> {t('platform.tenants.deactivate')}
-                          </>
-                        ) : (
-                          <>
-                            <FiPlayCircle aria-hidden="true" /> {t('platform.tenants.activate')}
-                          </>
-                        )}
-                      </button>
-                      {/* Single-step deletion: available whatever the
-                          tenant's status. The typed-slug modal is the only
-                          confirmation, and the server re-checks that slug. */}
-                      <button
-                        type="button"
-                        className="btn btn--danger btn--sm"
-                        onClick={() => setDeletingTenant(tn)}
-                      >
-                        <FiTrash2 aria-hidden="true" /> {t('platform.tenants.delete')}
-                      </button>
+                    <td>
+                      <div className="row-actions">
+                        <button type="button" className="btn btn--secondary btn--sm" onClick={() => setEditingTenant(tn)}>
+                          <FiEdit2 aria-hidden="true" /> {t('common.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--secondary btn--sm"
+                          disabled={actioningId === tn.id}
+                          onClick={() => handleToggleStatus(tn)}
+                        >
+                          {tn.status === 'active' ? (
+                            <>
+                              <FiPauseCircle aria-hidden="true" /> {t('platform.tenants.deactivate')}
+                            </>
+                          ) : (
+                            <>
+                              <FiPlayCircle aria-hidden="true" /> {t('platform.tenants.activate')}
+                            </>
+                          )}
+                        </button>
+                        {/* Single-step deletion: available whatever the
+                            tenant's status. The typed-slug modal is the only
+                            confirmation, and the server re-checks that slug. */}
+                        <button
+                          type="button"
+                          className="btn btn--danger btn--sm"
+                          onClick={() => setDeletingTenant(tn)}
+                        >
+                          <FiTrash2 aria-hidden="true" /> {t('platform.tenants.delete')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
