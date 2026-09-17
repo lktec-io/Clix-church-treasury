@@ -13,30 +13,23 @@ import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import BulkImportPanel from '../components/ui/BulkImportPanel.jsx';
 import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
 import { useActivity } from '../context/ActivityContext.jsx';
-import MemberIdentityFields from '../components/ui/MemberIdentityFields.jsx';
-import { emptyIdentity, identityError, identityPayload } from '../utils/memberIdentityForm.js';
 import { formatDate } from '../utils/format.js';
 
+// Registration asks for exactly three things: who the member is, the number
+// on their church envelope / card, and a mobile number to reach them on.
 function emptyForm() {
-  return { fullName: '', phone: '', email: '', memberNumber: '', identity: emptyIdentity() };
+  return { fullName: '', memberNumber: '', phone: '' };
 }
 
-const COMPLIANCE_BADGE = {
+// Tithe status (server contributors.service.js#tithe_compliance) as the
+// treasurer reads it: paid this month, pending (last paid the month before),
+// lapsed. A member with no tithe on record is shown as such, not as lapsed.
+const PAYMENT_STATUS_BADGE = {
   current: 'badge--success',
   due: 'badge--warning',
   lapsed: 'badge--danger',
   none: 'badge--neutral',
 };
-
-// Never render a full identity number in a list that is shown on screens in
-// shared offices — the last four digits are enough to tell members apart.
-function maskedIdNumber(number) {
-  if (!number) return '';
-  return `•••• ${number.slice(-4)}`;
-}
-
-// Short document codes for the dense ID column.
-const ID_TYPE_CODE = { nida: 'NIDA', voter_id: 'VOTER', driving_licence: 'DL', none: '—' };
 
 export default function ContributorsPage() {
   const { t } = useLocale();
@@ -52,7 +45,6 @@ export default function ContributorsPage() {
   const [search, setSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [smsPop, setSmsPop] = useState(null);
-  const [showIdentityErrors, setShowIdentityErrors] = useState(false);
   const dispatchSeq = useRef(0);
 
   const load = useCallback(async () => {
@@ -76,18 +68,14 @@ export default function ContributorsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    // Blocks the request outright: the same rules run on the server, so
-    // sending an invalid number would only come back as a less specific error.
-    if (identityError(form.identity, t)) {
-      setShowIdentityErrors(true);
-      return;
-    }
     setSubmitting(true);
     try {
-      const { identity, ...member } = form;
-      await contributorsApi.create({ ...member, ...identityPayload(identity) });
+      await contributorsApi.create({
+        fullName: form.fullName.trim(),
+        memberNumber: form.memberNumber.trim(),
+        phone: form.phone.trim(),
+      });
       setForm(emptyForm());
-      setShowIdentityErrors(false);
       await load();
       toast.success(t('contributors.created'));
     } catch (err) {
@@ -99,16 +87,13 @@ export default function ContributorsPage() {
 
   // Both member SMS actions raise the same centred dispatch dialog the
   // contributions flow uses. `preview` arrives undefined for these two on
-  // purpose: their message body embeds the member's raw PIN, and
-  // enrollment.service.js#withoutPinPreview strips it before the response
-  // leaves the server so the PIN is never handed back over HTTP. The dialog
-  // renders the tick and outcome without a message preview in that case —
-  // see SmsPopCenter's `pinWithheld` note.
+  // purpose: the message embeds the member's PIN, which
+  // enrollment.service.js#withoutPinPreview strips before the response
+  // leaves the server.
   const showSmsPop = (sms) => {
     if (!sms) return;
-    // A monotonic counter, not Date.now(): the id only has to remount
-    // SmsPopCenter so its ticker replays, and two dispatches inside the same
-    // millisecond would collide on a timestamp and silently skip the replay.
+    // A monotonic counter, not Date.now(): two dispatches inside the same
+    // millisecond would collide and skip the dialog's replay.
     dispatchSeq.current += 1;
     setSmsPop({
       dispatchId: dispatchSeq.current,
@@ -144,12 +129,7 @@ export default function ContributorsPage() {
   };
 
   const handleResetPin = async (contributor) => {
-    // confirm() resolves to a BARE BOOLEAN unless `requireReason` is set —
-    // see ConfirmDialog.jsx. This branch used to read `result.confirmed`,
-    // which is `undefined` on a plain boolean, so the guard was always true
-    // and the reset silently returned without ever calling the API: the
-    // button did nothing at all. No reason is required here, so the boolean
-    // form is what must be tested.
+    // confirm() resolves to a bare boolean unless `requireReason` is set.
     const confirmed = await confirm({
       title: t('contributors.resetPin'),
       message: t('contributors.resetPinConfirm'),
@@ -189,21 +169,14 @@ export default function ContributorsPage() {
     <div>
       <PageHeader title={t('contributors.title')} subtitle={t('contributors.subtitle')} />
 
-      {/* Same centred dispatch dialog the contributions flow raises — one
-          component, so the confirmation a treasurer sees for a member SMS
-          is identical to the one they see for a contribution SMS. */}
       <AnimatePresence>
-        {smsPop && (
-          <SmsPopCenter key={smsPop.dispatchId} dispatch={smsPop} onClose={() => setSmsPop(null)} />
-        )}
+        {smsPop && <SmsPopCenter key={smsPop.dispatchId} dispatch={smsPop} onClose={() => setSmsPop(null)} />}
       </AnimatePresence>
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="contributors.manage">
-        {/* The import panel expands in place, directly above the single-add
-            form, rather than opening a modal — the two are alternative ways
-            of doing the same job, so keeping them on one surface lets a
-            clerk see both without losing their place. */}
+        {/* Bulk import expands in place above the single-add form: two ways
+            of doing the same job on one surface. */}
         <BulkImportPanel open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
 
         <div className="card form-card">
@@ -211,45 +184,51 @@ export default function ContributorsPage() {
             <h2 className="card__title-icon">
               <FiUserPlus aria-hidden="true" /> {t('contributors.addNew')}
             </h2>
-            {/* Secondary to the form's own primary "Save" — importing is the
-                bulk alternative to filling this form in. Hidden while the
-                panel is open, since it would then toggle something visible. */}
             {!importOpen && (
-              <button type="button" className="btn btn--secondary btn--sm" onClick={() => setImportOpen(true)}>
+              <button type="button" className="btn btn--ghost btn--sm" onClick={() => setImportOpen(true)}>
                 <FiUpload aria-hidden="true" /> {t('contributors.import.open')}
               </button>
             )}
           </div>
           <form onSubmit={handleSubmit}>
-            <div className="form-section">
-              <div className="form-section__title">{t('contributors.section.member')}</div>
-            </div>
             <div className="form-grid">
               <div className="field">
                 <label htmlFor="member-full-name">{t('contributors.fullName')}</label>
-                <input id="member-full-name" value={form.fullName} onChange={handleChange('fullName')} required />
+                <input
+                  id="member-full-name"
+                  autoComplete="name"
+                  value={form.fullName}
+                  onChange={handleChange('fullName')}
+                  required
+                />
               </div>
               <div className="field">
-                <label htmlFor="member-phone">{t('contributors.phone')}</label>
-                <input id="member-phone" type="tel" inputMode="tel" value={form.phone} onChange={handleChange('phone')} />
+                <label htmlFor="member-number">{t('contributors.cardNumber')}</label>
+                <input
+                  id="member-number"
+                  autoComplete="off"
+                  value={form.memberNumber}
+                  onChange={handleChange('memberNumber')}
+                  required
+                />
               </div>
               <div className="field">
-                <label htmlFor="member-email">{t('contributors.email')}</label>
-                <input id="member-email" type="email" value={form.email} onChange={handleChange('email')} />
-              </div>
-              <div className="field">
-                <label htmlFor="member-number">{t('contributors.memberNumber')}</label>
-                <input id="member-number" value={form.memberNumber} onChange={handleChange('memberNumber')} />
+                <label htmlFor="member-phone">{t('contributors.mobile')}</label>
+                <input
+                  id="member-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="07XX XXX XXX"
+                  value={form.phone}
+                  onChange={handleChange('phone')}
+                  required
+                />
               </div>
             </div>
-            <MemberIdentityFields
-              value={form.identity}
-              onChange={(identity) => setForm((f) => ({ ...f, identity }))}
-              showErrors={showIdentityErrors}
-            />
             <div className="form-actions">
               <button type="submit" className="btn btn--primary" disabled={submitting}>
-                {submitting ? t('common.loading') : t('common.save')}
+                {submitting ? t('common.loading') : t('contributors.save')}
               </button>
             </div>
           </form>
@@ -259,7 +238,7 @@ export default function ContributorsPage() {
       <div className="card ledger-card">
         <div className="ledger-toolbar">
           <div className="ledger-toolbar__title">
-            <h2>{t('contributors.title')}</h2>
+            <h2>{t('contributors.directory')}</h2>
             {!loading && (
               <span className="ledger-toolbar__count tabular-nums">
                 {t('contributors.count', { shown: filteredContributors.length, total: contributors.length })}
@@ -290,10 +269,10 @@ export default function ContributorsPage() {
             <table className="data-table data-table--dense">
               <thead>
                 <tr>
-                  <th>{t('contributors.column.member')}</th>
-                  <th>{t('contributors.column.contact')}</th>
-                  <th className="col-id">{t('memberId.column')}</th>
-                  <th>{t('compliance.column')}</th>
+                  <th>{t('contributors.fullName')}</th>
+                  <th>{t('contributors.cardNumber')}</th>
+                  <th>{t('contributors.mobile')}</th>
+                  <th>{t('contributors.paymentStatus')}</th>
                   <th>{t('contributors.portalAccess')}</th>
                   <PermissionGate permission="contributors.manage">
                     <th className="col-actions">{t('common.actions')}</th>
@@ -301,88 +280,68 @@ export default function ContributorsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredContributors.map((c) => (
-                  <tr key={c.id}>
-                    <td>
-                      <span className="cell-stack">
-                        <span className="cell-stack__primary">{c.full_name}</span>
-                        <span className="cell-stack__secondary is-mono">{c.member_number ?? '—'}</span>
-                      </span>
-                    </td>
-                    <td>
-                      <span className="cell-stack">
-                        <span className="cell-stack__primary is-mono">{c.phone ?? '—'}</span>
-                        {c.email && <span className="cell-stack__secondary">{c.email}</span>}
-                      </span>
-                    </td>
-                    <td className="col-id">
-                      {c.id_type ? (
-                        <span className="id-mask" title={t(`memberId.type.${c.id_type}`)}>
-                          <span className="id-mask__type">{ID_TYPE_CODE[c.id_type] ?? c.id_type}</span>
-                          <span className="id-mask__number">{c.id_number ? maskedIdNumber(c.id_number) : '—'}</span>
-                        </span>
-                      ) : (
-                        <span className="cell-muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {c.tithe_compliance ? (
-                        <span
-                          className={`badge badge--dot ${COMPLIANCE_BADGE[c.tithe_compliance.status] ?? 'badge--neutral'}`}
-                          title={
-                            c.tithe_compliance.last_tithe_date
-                              ? t('compliance.lastTithe', { date: formatDate(c.tithe_compliance.last_tithe_date) })
-                              : undefined
-                          }
-                        >
-                          {t(`compliance.status.${c.tithe_compliance.status}`)}
-                        </span>
-                      ) : (
-                        <span className="cell-muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`badge badge--dot ${c.portal_enabled_at ? 'badge--success' : 'badge--neutral'}`}>
-                        {c.portal_enabled_at ? t('contributors.portalEnabled') : t('contributors.portalNotEnabled')}
-                      </span>
-                    </td>
-                    <PermissionGate permission="contributors.manage">
-                      <td className="col-actions">
-                        {/* A wrapper, not display:flex on the <td>: a flex
-                            cell stops being a table cell and breaks the row. */}
-                        <div className="row-actions">
-                          {!c.portal_enabled_at ? (
-                            <button
-                              type="button"
-                              className="btn btn--secondary btn--sm"
-                              disabled={actioningId === c.id || !c.phone}
-                              title={!c.phone ? t('contributors.phoneRequiredHint') : undefined}
-                              onClick={() => handleEnablePortal(c)}
-                            >
-                              <FiKey aria-hidden="true" /> {t('contributors.enablePortal')}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn--secondary btn--sm"
-                              disabled={actioningId === c.id}
-                              onClick={() => handleResetPin(c)}
-                            >
-                              <FiRotateCcw aria-hidden="true" /> {t('contributors.resetPin')}
-                            </button>
-                          )}
-                        </div>
+                {filteredContributors.map((c) => {
+                  const status = c.tithe_compliance?.status;
+                  return (
+                    <tr key={c.id}>
+                      <td className="cell-strong">{c.full_name}</td>
+                      <td className="tabular-nums">{c.member_number ?? '—'}</td>
+                      <td className="tabular-nums">{c.phone ?? '—'}</td>
+                      <td>
+                        {status ? (
+                          <span
+                            className={`badge badge--dot ${PAYMENT_STATUS_BADGE[status] ?? 'badge--neutral'}`}
+                            title={
+                              c.tithe_compliance.last_tithe_date
+                                ? t('compliance.lastTithe', { date: formatDate(c.tithe_compliance.last_tithe_date) })
+                                : undefined
+                            }
+                          >
+                            {t(`compliance.status.${status}`)}
+                          </span>
+                        ) : (
+                          <span className="cell-muted">—</span>
+                        )}
                       </td>
-                    </PermissionGate>
-                  </tr>
-                ))}
+                      <td>
+                        <span className={`badge ${c.portal_enabled_at ? 'badge--success' : 'badge--neutral'}`}>
+                          {c.portal_enabled_at ? t('contributors.portalEnabled') : t('contributors.portalNotEnabled')}
+                        </span>
+                      </td>
+                      <PermissionGate permission="contributors.manage">
+                        <td className="col-actions">
+                          <div className="row-actions">
+                            {!c.portal_enabled_at ? (
+                              <button
+                                type="button"
+                                className="btn btn--secondary btn--sm"
+                                disabled={actioningId === c.id || !c.phone}
+                                title={!c.phone ? t('contributors.phoneRequiredHint') : undefined}
+                                onClick={() => handleEnablePortal(c)}
+                              >
+                                <FiKey aria-hidden="true" /> {t('contributors.enablePortal')}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                disabled={actioningId === c.id}
+                                onClick={() => handleResetPin(c)}
+                              >
+                                <FiRotateCcw aria-hidden="true" /> {t('contributors.resetPin')}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </PermissionGate>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
-        {!loading && filteredContributors.length > 0 && (
-          <p className="ledger-footnote">{t('compliance.legend')}</p>
-        )}
+        {!loading && filteredContributors.length > 0 && <p className="ledger-footnote">{t('compliance.legend')}</p>}
       </div>
     </div>
   );

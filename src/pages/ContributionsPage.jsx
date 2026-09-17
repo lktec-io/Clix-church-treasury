@@ -9,7 +9,6 @@ import {
   FiCheck,
   FiArrowLeft,
   FiArrowRight,
-  FiSmartphone,
   FiFileText,
   FiDownload,
   FiRotateCcw,
@@ -36,7 +35,7 @@ import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import SmsDispatchIndicator from '../components/ui/SmsDispatchIndicator.jsx';
 import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
 import { useActivity } from '../context/ActivityContext.jsx';
-import ChoiceTiles from '../components/ui/ChoiceTiles.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import { formatMoney, formatDate, formatTime, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -221,10 +220,13 @@ export default function ContributionsPage() {
   // What actually reaches the church account after the agent's Makato.
   const netCents = amountCents !== null && feeCents !== null && feeCents < amountCents ? amountCents - feeCents : null;
   const departmentName = departments.find((d) => String(d.id) === String(form.departmentId))?.name;
-  const accountName = accounts.find((a) => String(a.id) === String(form.accountId))?.name;
-  const fundName = funds.find((f) => String(f.id) === String(form.fundId))?.name;
-  const contributorName = contributors.find((c) => String(c.id) === String(form.contributorId))?.full_name;
   const money = (cents) => (cents === null ? '—' : `TZS ${formatMoney(centsToMoney(cents))}`);
+  const setField = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
+  // Live formula figures. Only mobile money carries an agent fee; for every
+  // other method the fee is zero and the net equals the gross. An invalid
+  // fee shows "—" rather than a wrong net.
+  const formulaFee = isMobileMoney ? (feeCents ?? (feeTyped || amountCents === null ? null : 0)) : amountCents === null ? null : 0;
+  const formulaNet = isMobileMoney ? (netCents ?? (feeTyped ? null : amountCents)) : amountCents;
 
   // Per-step gate. Returns null when the step is complete, otherwise the
   // translated reason — shown inline rather than letting the treasurer
@@ -467,7 +469,6 @@ export default function ContributionsPage() {
 
             {stepError && <div className="alert alert--warning">{stepError}</div>}
 
-            <div className="wizard-layout">
             <div ref={stepPanelRef}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={step} variants={stepVariants} initial="enter" animate="center" exit="exit">
@@ -478,7 +479,7 @@ export default function ContributionsPage() {
                       </div>
                       <div className="form-grid">
                         <div className="field field--full field--amount">
-                          <label htmlFor="contribution-amount">{t('common.amount')}</label>
+                          <label htmlFor="contribution-amount">{t('contributions.grossAmount')}</label>
                           <div className="currency-input">
                             <span className="currency-input__prefix">TZS</span>
                             <input
@@ -492,32 +493,31 @@ export default function ContributionsPage() {
                             />
                           </div>
                         </div>
-                        <div className="field field--full">
-                          <ChoiceTiles
-                            legend={t('contributions.paymentMethod')}
+                        <div className="field">
+                          <Dropdown
+                            id="contribution-method"
+                            label={t('contributions.paymentMethod')}
                             options={PAYMENT_METHODS.map((m) => ({ value: m, label: t(`paymentMethod.${m}`) }))}
                             value={form.paymentMethod}
-                            onChange={(paymentMethod) => setForm((f) => ({ ...f, paymentMethod }))}
+                            onChange={setField('paymentMethod')}
                           />
                         </div>
                         <div className="field">
                           <label htmlFor="contribution-date">{t('contributions.contributionDate')}</label>
                           <input id="contribution-date" type="date" value={form.contributionDate} onChange={handleChange('contributionDate')} />
                         </div>
-                      </div>
-                      {isMobileMoney && (
-                        <div className="makato-panel">
-                          <div className="makato-panel__title">
-                            <FiSmartphone aria-hidden="true" /> {t('contributions.makato.title')}
-                          </div>
-                          <div className="makato-panel__fields">
-                            <ChoiceTiles
-                              legend={t('contributions.makato.provider')}
-                              options={MOBILE_PROVIDERS.map((provider) => ({ value: provider, label: t(`mobileProvider.${provider}`) }))}
-                              value={form.mobileProvider}
-                              onChange={(mobileProvider) => setForm((f) => ({ ...f, mobileProvider }))}
-                            />
-                            <div className="field makato-panel__fee-field">
+                        {isMobileMoney && (
+                          <>
+                            <div className="field">
+                              <Dropdown
+                                id="contribution-provider"
+                                label={t('contributions.makato.provider')}
+                                options={MOBILE_PROVIDERS.map((provider) => ({ value: provider, label: t(`mobileProvider.${provider}`) }))}
+                                value={form.mobileProvider}
+                                onChange={setField('mobileProvider')}
+                              />
+                            </div>
+                            <div className="field">
                               <label htmlFor="contribution-fee">{t('contributions.makato.fee')}</label>
                               <div className="currency-input">
                                 <span className="currency-input__prefix">TZS</span>
@@ -532,30 +532,29 @@ export default function ContributionsPage() {
                                 />
                               </div>
                             </div>
-                          </div>
-                          {/* The live equation. aria-live so a screen-reader user
-                              hears the net figure settle as they type the fee. */}
-                          <div className="makato-equation" aria-live="polite">
-                            <div className="makato-equation__term">
-                              <span className="makato-equation__label">{t('contributions.makato.sent')}</span>
-                              <span className="makato-equation__value tabular-nums">{money(amountCents)}</span>
-                            </div>
-                            <span className="makato-equation__op" aria-label={t('contributions.makato.minus')}>−</span>
-                            <div className="makato-equation__term is-fee">
-                              <span className="makato-equation__label">{t('contributions.makato.feeShort')}</span>
-                              <span className="makato-equation__value tabular-nums">{money(feeCents ?? (feeTyped || amountCents === null ? null : 0))}</span>
-                            </div>
-                            <span className="makato-equation__op" aria-label={t('contributions.makato.equals')}>=</span>
-                            <div className="makato-equation__term is-net">
-                              <span className="makato-equation__label">{t('contributions.makato.net')}</span>
-                              <span className="makato-equation__value tabular-nums">
-                                {money(netCents ?? (feeTyped ? null : amountCents))}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="field-hint">{t('contributions.makato.hint')}</p>
+                          </>
+                        )}
+                      </div>
+
+                      {/* The reactive total. aria-live so a screen-reader user
+                          hears the net settle as the amount or fee changes. */}
+                      <div className="entry-total" aria-live="polite">
+                        <div className="entry-total__term">
+                          <span className="entry-total__label">{t('contributions.formula.gross')}</span>
+                          <span className="entry-total__value tabular-nums">{money(amountCents)}</span>
                         </div>
-                      )}
+                        <span className="entry-total__op" aria-label={t('contributions.makato.minus')}>−</span>
+                        <div className="entry-total__term is-fee">
+                          <span className="entry-total__label">{t('contributions.formula.fee')}</span>
+                          <span className="entry-total__value tabular-nums">{money(formulaFee)}</span>
+                        </div>
+                        <span className="entry-total__op" aria-label={t('contributions.makato.equals')}>=</span>
+                        <div className="entry-total__term is-net">
+                          <span className="entry-total__label">{t('contributions.formula.net')}</span>
+                          <span className="entry-total__value tabular-nums">{money(formulaNet)}</span>
+                        </div>
+                      </div>
+                      {isMobileMoney && <p className="entry-total__note">{t('contributions.makato.hint')}</p>}
                     </>
                   )}
 
@@ -566,43 +565,31 @@ export default function ContributionsPage() {
                       </div>
                       <div className="form-grid">
               <div className="field">
-                <label>{t('contributions.account')}</label>
-                <select value={form.accountId} onChange={handleChange('accountId')} required>
-                  <option value="" disabled>
-                    —
-                  </option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="contribution-account"
+                  label={t('contributions.account')}
+                  options={accounts.map((a) => ({ value: String(a.id), label: a.name }))}
+                  value={form.accountId}
+                  onChange={setField('accountId')}
+                />
               </div>
               <div className="field">
-                <label>{t('contributions.fund')}</label>
-                <select value={form.fundId} onChange={handleChange('fundId')} required>
-                  <option value="" disabled>
-                    —
-                  </option>
-                  {funds.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="contribution-fund"
+                  label={t('contributions.fund')}
+                  options={funds.map((f) => ({ value: String(f.id), label: f.name }))}
+                  value={form.fundId}
+                  onChange={setField('fundId')}
+                />
               </div>
               <div className="field">
-                <label>{t('contributions.category')}</label>
-                <select value={form.categoryId} onChange={handleChange('categoryId')} required>
-                  <option value="" disabled>
-                    —
-                  </option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="contribution-category"
+                  label={t('contributions.category')}
+                  options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
+                  value={form.categoryId}
+                  onChange={setField('categoryId')}
+                />
                 {categories.length === 0 && (
                   <span className="field-error">
                     {t('categories.emptyHint')} <Link to="/categories">{t('categories.title')}</Link>
@@ -610,51 +597,58 @@ export default function ContributionsPage() {
                 )}
               </div>
               {departments.length > 0 && (
-                <div className="field field--full">
-                  <ChoiceTiles
-                    legend={t('contributions.department')}
+                <div className="field">
+                  <Dropdown
+                    id="contribution-department"
+                    label={t('contributions.department')}
                     options={[
                       { value: '', label: t('contributions.department.none') },
                       ...departments.map((d) => ({ value: String(d.id), label: d.name })),
                     ]}
                     value={form.departmentId}
-                    onChange={(departmentId) => setForm((f) => ({ ...f, departmentId }))}
+                    onChange={setField('departmentId')}
                   />
                 </div>
               )}
               {contributors.length > 0 && (
                 <div className="field">
-                  <label>{t('contributions.contributor')}</label>
-                  <select value={form.contributorId} onChange={handleChange('contributorId')}>
-                    <option value="">—</option>
-                    {contributors.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.full_name}
-                      </option>
-                    ))}
-                  </select>
+                  <Dropdown
+                    id="contribution-contributor"
+                    label={t('contributions.contributor')}
+                    options={[
+                      { value: '', label: t('contributions.wizard.anonymous') },
+                      ...contributors.map((c) => ({ value: String(c.id), label: c.full_name, meta: c.member_number ?? undefined })),
+                    ]}
+                    value={form.contributorId}
+                    onChange={setField('contributorId')}
+                  />
                 </div>
               )}
               {pledges.length > 0 && (
                 <div className="field">
-                  <label>{t('pledges.title')}</label>
-                  <select value={form.pledgeId} onChange={handleChange('pledgeId')}>
-                    <option value="">—</option>
-                    {pledges.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {(p.contributor?.full_name ?? `#${p.pledge_number}`)} — {t('pledges.remaining')}: {p.remaining_amount}
-                      </option>
-                    ))}
-                  </select>
+                  <Dropdown
+                    id="contribution-pledge"
+                    label={t('pledges.title')}
+                    options={[
+                      { value: '', label: '—' },
+                      ...pledges.map((p) => ({
+                        value: String(p.id),
+                        label: p.contributor?.full_name ?? `#${p.pledge_number}`,
+                        meta: `${t('pledges.remaining')}: ${formatMoney(p.remaining_amount)}`,
+                      })),
+                    ]}
+                    value={form.pledgeId}
+                    onChange={setField('pledgeId')}
+                  />
                 </div>
               )}
               <div className="field">
-                <label>{t('common.reference')}</label>
-                <input value={form.reference} onChange={handleChange('reference')} />
+                <label htmlFor="contribution-reference">{t('common.reference')}</label>
+                <input id="contribution-reference" value={form.reference} onChange={handleChange('reference')} />
               </div>
               <div className="field field--full">
-                <label>{t('common.notes')}</label>
-                <textarea rows={2} value={form.notes} onChange={handleChange('notes')} />
+                <label htmlFor="contribution-notes">{t('common.notes')}</label>
+                <textarea id="contribution-notes" rows={2} value={form.notes} onChange={handleChange('notes')} />
               </div>
                       </div>
                     </>
@@ -815,64 +809,6 @@ export default function ContributionsPage() {
               </AnimatePresence>
             </div>
 
-            {/* The transfer slip fills in as each step is completed, so the
-                treasurer always sees exactly what will be posted. */}
-            <aside className="transfer-slip" aria-label={t('contributions.slip.title')}>
-              <div className="transfer-slip__head">{t('contributions.slip.title')}</div>
-              <div className="transfer-slip__amount">
-                <div className="transfer-slip__amount-label">{t('contributions.makato.sent')}</div>
-                <div className="transfer-slip__amount-value">{money(amountCents)}</div>
-              </div>
-              <dl className="transfer-slip__rows">
-                <div className="transfer-slip__row">
-                  <dt>{t('contributions.paymentMethod')}</dt>
-                  <dd>
-                    {t(`paymentMethod.${form.paymentMethod}`)}
-                    {isMobileMoney && form.mobileProvider ? ` · ${t(`mobileProvider.${form.mobileProvider}`)}` : ''}
-                  </dd>
-                </div>
-                {isMobileMoney && (
-                  <>
-                    <div className="transfer-slip__row">
-                      <dt>{t('contributions.makato.feeShort')}</dt>
-                      <dd className={feeCents === null ? 'is-pending' : 'is-fee tabular-nums'}>
-                        {feeCents === null ? '—' : `− ${money(feeCents)}`}
-                      </dd>
-                    </div>
-                    <div className="transfer-slip__row">
-                      <dt>{t('contributions.makato.net')}</dt>
-                      <dd className={netCents === null ? 'is-pending' : 'is-net tabular-nums'}>{money(netCents)}</dd>
-                    </div>
-                  </>
-                )}
-                <div className="transfer-slip__row">
-                  <dt>{t('contributions.contributionDate')}</dt>
-                  <dd>{formatDate(form.contributionDate)}</dd>
-                </div>
-                <div className="transfer-slip__row">
-                  <dt>{t('contributions.account')}</dt>
-                  <dd className={accountName ? undefined : 'is-pending'}>{accountName ?? '—'}</dd>
-                </div>
-                <div className="transfer-slip__row">
-                  <dt>{t('contributions.fund')}</dt>
-                  <dd className={fundName ? undefined : 'is-pending'}>{fundName ?? '—'}</dd>
-                </div>
-                <div className="transfer-slip__row">
-                  <dt>{t('contributions.department')}</dt>
-                  <dd className={departmentName ? undefined : 'is-pending'}>
-                    {departmentName ?? t('contributions.department.none')}
-                  </dd>
-                </div>
-                <div className="transfer-slip__row">
-                  <dt>{t('contributions.slip.from')}</dt>
-                  <dd className={contributorName ? undefined : 'is-pending'}>
-                    {contributorName ?? t('contributions.wizard.anonymous')}
-                  </dd>
-                </div>
-              </dl>
-            </aside>
-            </div>
-
             <div className="form-actions wizard-actions">
               {step > 1 && (
                 <button type="button" className="btn btn--secondary" onClick={goBack} disabled={submitting}>
@@ -927,11 +863,11 @@ export default function ContributionsPage() {
                   return (
                     <tr key={c.id} className={reversed ? 'is-reversed' : undefined}>
                       <td>
-                        <span className="cell-stack">
-                          <span className="cell-stack__primary">{formatDate(c.contribution_date)}</span>
-                          {c.created_at && (
-                            <span className="cell-stack__secondary is-mono">{formatTime(c.created_at)}</span>
-                          )}
+                        {/* Contribution date (the day the money was received) over
+                            the local time it was entered. */}
+                        <span className="ledger-stamp">
+                          <span className="ledger-stamp__date">{formatDate(c.contribution_date)}</span>
+                          {c.created_at && <span className="ledger-stamp__time">{formatTime(c.created_at)}</span>}
                         </span>
                       </td>
                       <td>
@@ -939,7 +875,7 @@ export default function ContributionsPage() {
                           <span className="cell-stack__primary">
                             {c.contributor?.full_name ?? t('contributions.wizard.anonymous')}
                           </span>
-                          {c.reference && <span className="cell-stack__secondary is-mono">{c.reference}</span>}
+                          {c.reference && <span className="cell-stack__secondary is-ref">{c.reference}</span>}
                         </span>
                       </td>
                       <td>

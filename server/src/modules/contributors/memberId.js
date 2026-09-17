@@ -1,11 +1,10 @@
 // Member identity-document validation. Pure: no I/O, no env, so it is unit
 // testable on its own and callable from any validator.
 //
-// A byte-identical copy lives at src/utils/memberId.js for instant inline
-// feedback in the registration form. THIS copy is the authoritative one —
-// client-side checks are a convenience a request can simply skip, so the
-// server enforces the same rules again on every write. If you change a rule
-// here, change it there too; tests/phase19/treasuryFeatures.test.js pins both.
+// The web app no longer collects identity documents, so this runs only when
+// an API caller supplies the optional id fields (the contributors columns
+// from migration 0038 are kept). tests/phase19/treasuryFeatures.test.js
+// covers the rules.
 //
 // ── WHAT THIS CAN AND CANNOT PROVE ─────────────────────────────────────────
 // It rejects numbers that are STRUCTURALLY impossible: wrong length,

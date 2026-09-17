@@ -9,8 +9,8 @@
    inside itself, never the page.
 
    Banking-grid conventions: a tinted uppercase header band, hairline row
-   rules, tabular figures right-aligned on the decimal, identifiers in
-   monospace, and no zebra — alignment and rules carry the eye.
+   rules, tabular figures right-aligned on the decimal, and no zebra —
+   alignment and rules carry the eye. Nunito throughout.
    ========================================================================== */
 
 .table-wrap {
@@ -133,50 +133,20 @@ table.data-table {
   color: var(--text-muted);
 }
 
-.is-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+/* Reference / voucher numbers: Nunito with tabular figures, slightly
+   tracked so a run of digits is easy to read back. */
+.is-ref {
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
-.cell-stack__primary.is-mono {
-  font-weight: 600;
+.cell-strong {
+  font-weight: 700;
+  color: var(--text-heading);
 }
 
 .cell-muted {
   color: var(--text-muted);
-}
-
-/* Masked identity number: a fixed-width type code and a fixed-width
-   monospace mask, so every "•••• 0112" in the column lines up exactly. */
-.data-table .col-id {
-  width: 1%;
-}
-
-.id-mask {
-  display: inline-grid;
-  grid-template-columns: 4.5em 8.5ch;
-  align-items: center;
-  gap: 8px;
-}
-
-.id-mask__type {
-  justify-self: start;
-  padding: 2px 5px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--color-gray-light);
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.id-mask__number {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  color: var(--text-heading);
 }
 
 .data-table .col-actions {
@@ -370,7 +340,6 @@ table.data-table {
   flex-shrink: 0;
 }
 
-
 /* ==========================================================================
    EXPENSE APPROVAL GATEWAY — dashboard pending-request rows
    A row list rather than a <table>: each entry is a decision with two
@@ -554,7 +523,6 @@ table.data-table {
   color: var(--color-accent) !important;
 }
 
-
 /* ==========================================================================
    TRIAL BALANCE TABLE + INTEGRITY STRIP
    ========================================================================== */
@@ -663,135 +631,6 @@ table.data-table {
   overflow-wrap: anywhere;
 }
 
-
-
-/* ==========================================================================
-   MOBILE MONEY (Makato) CAPTURE — contribution wizard, step 1
-   ========================================================================== */
-.makato-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 20px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--color-gold);
-  border-radius: var(--radius-sm);
-  background: var(--color-gray-light);
-}
-
-.makato-panel__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--color-primary);
-}
-
-.makato-panel__fields {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.makato-panel__fee-field {
-  max-width: 320px;
-}
-
-.makato-panel .choice-tile {
-  background: var(--surface);
-}
-
-/* "Amount sent − Makato = Net received", live. Three statement cells with
-   the operators between them; stacks to a column on a phone. */
-.makato-equation {
-  display: flex;
-  align-items: stretch;
-  flex-wrap: wrap;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-
-.makato-equation__term {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1 1 140px;
-  min-width: 0;
-  padding: 11px 14px;
-}
-
-.makato-equation__label {
-  font-size: 10.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-}
-
-.makato-equation__value {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--text-heading);
-  overflow-wrap: anywhere;
-}
-
-.makato-equation__term.is-fee .makato-equation__value {
-  color: var(--color-danger);
-}
-
-.makato-equation__term.is-net {
-  background: var(--color-success-bg);
-}
-
-.makato-equation__term.is-net .makato-equation__value {
-  color: var(--color-success);
-}
-
-.makato-equation__op {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 34px;
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text-muted);
-}
-
-.makato-equation--compact {
-  margin-top: 14px;
-}
-
-.makato-equation--compact .makato-equation__value {
-  font-size: 15px;
-}
-
-@media (max-width: 519px) {
-  .makato-equation {
-    flex-direction: column;
-  }
-  .makato-equation__term {
-    flex-basis: auto;
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .makato-equation__op {
-    flex-basis: 22px;
-    border: none;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    font-size: 14px;
-  }
-}
-
 /* Optional breakdown toggle. */
 .check-row {
   display: flex;
@@ -861,15 +700,15 @@ table.data-table {
 }
 
 .ledger-stamp__date {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-heading);
   white-space: nowrap;
 }
 
 .ledger-stamp__time {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -881,31 +720,6 @@ table.data-table {
 .data-table tr.is-reversed td.is-amount {
   text-decoration: line-through;
   color: var(--text-muted);
-}
-
-/* A pledge behind schedule gets a crimson edge on its row. */
-.data-table tr.is-behind td:first-child {
-  box-shadow: inset 3px 0 0 var(--color-danger);
-}
-
-.amortization-progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 130px;
-}
-
-.amortization-progress .progress-meter {
-  flex: 1 1 auto;
-}
-
-.amortization-progress__value {
-  flex-shrink: 0;
-  min-width: 3ch;
-  text-align: right;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--text-heading);
 }
 
 .ledger-note {
@@ -921,4 +735,104 @@ table.data-table {
   justify-content: center;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
+}
+
+/* ==========================================================================
+   INCOME ENTRY TOTAL — "Gross sent − Fee = Net banked", live
+   ========================================================================== */
+.entry-total {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.entry-total__term {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 150px;
+  min-width: 0;
+  padding: 14px 16px;
+}
+
+.entry-total__label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.entry-total__value {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.entry-total__term.is-fee .entry-total__value {
+  color: var(--color-danger);
+}
+
+/* The result cell carries the brand: solid emerald, white figure. */
+.entry-total__term.is-net {
+  background: var(--color-primary);
+}
+
+.entry-total__term.is-net .entry-total__label {
+  color: var(--color-gold);
+}
+
+.entry-total__term.is-net .entry-total__value {
+  color: #ffffff;
+}
+
+.entry-total__op {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.entry-total__note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Phones: the formula reads top to bottom, label left, figure right. */
+@media (max-width: 519px) {
+  .entry-total {
+    flex-direction: column;
+  }
+  .entry-total__term {
+    flex: none;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .entry-total__value {
+    font-size: 20px;
+    text-align: right;
+  }
+  .entry-total__op {
+    flex: none;
+    height: 24px;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+  }
 }

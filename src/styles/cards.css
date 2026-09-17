@@ -1,6 +1,6 @@
 /* ==========================================================================
-   CARDS — surfaces: cards, stat tiles, the hero card, quick actions,
-   badges, alerts, empty states, skeletons, the member-history timeline.
+   CARDS — surfaces: cards, stat tiles, the hero card, badges, alerts,
+   empty states, skeletons, the member-history timeline.
    Grouped together because they're all "content surfaces" built from the
    same card-like visual language, unlike layout.css's structural chrome.
    ========================================================================== */
@@ -28,13 +28,8 @@
   }
 }
 
-/* (hover: hover) so a tap on a touchscreen never leaves a card "stuck"
-   looking hovered until the next tap elsewhere — real mice/trackpads get
-   the effect, touch devices don't fake it. */
-/* No hover elevation: a flat panel that lifts on hover is the exact
-   "heavy shadow" language the brief drops. Interactive cards (.fund-tile,
-   .report-link-card) still respond — they are links, and their feedback is
-   a border tint rather than a drop shadow. */
+/* No hover elevation on cards. Link cards (.report-link-card) respond with
+   a border tint instead of a drop shadow. */
 
 .card + .card {
   margin-top: 16px;
@@ -85,8 +80,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  /* Roomier than before: the reference's metric blocks are generous, and
-     the circular icon enclosure needs air above the figure. */
   padding: 18px;
   box-shadow: none;
   display: flex;
@@ -96,14 +89,8 @@
   transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
 }
 
-/* CIRCULAR tinted enclosure, not the old rounded square (brief §2B: "a
-   small, dedicated circular icon enclosure tinted dynamically according to
-   the fund category"). The default tint is brand purple; the --income /
-   --savings / --expense modifiers below re-tint both the bed and the glyph
-   from a single custom property, so a caller sets one class and the pair
-   stays in step. */
-.stat-tile__icon,
-.metric-icon {
+/* Tinted square icon enclosure above a stat figure. */
+.stat-tile__icon {
   --metric-tint: var(--color-primary);
   --metric-tint-rgb: var(--color-primary-rgb);
   display: inline-flex;
@@ -117,52 +104,6 @@
   color: var(--metric-tint);
   font-size: 16px;
   margin-bottom: 14px;
-}
-
-/* Category tints. Purple = expenses/general (the default), green =
-   income, orange = savings/projects, blue = transfers — the four-colour set
-   the reference uses across its status blocks and allocation bars.
-   
-   Each modifier is declared once for all three components that accept a
-   tint (.metric-icon, .stat-tile__icon, .fund-tile__icon) so a hue has ONE
-   definition; the components differ only in which custom property they
-   read. --meter-tint is set alongside --metric-tint because .fund-tile__icon
-   and .progress-meter are tinted from the same suffix by the same caller. */
-.metric-icon.metric-icon--income,
-.stat-tile__icon.stat-tile__icon--income,
-.fund-tile__icon.fund-tile__icon--income,
-.progress-meter.progress-meter--income {
-  --metric-tint: var(--color-accent);
-  --metric-tint-rgb: var(--color-accent-rgb);
-  --meter-tint: var(--color-accent);
-  --meter-tint-rgb: var(--color-accent-rgb);
-}
-.metric-icon.metric-icon--savings,
-.stat-tile__icon.stat-tile__icon--savings,
-.fund-tile__icon.fund-tile__icon--savings,
-.progress-meter.progress-meter--savings {
-  --metric-tint: var(--color-gold-ink);
-  --metric-tint-rgb: var(--color-gold-rgb);
-  --meter-tint: var(--color-gold);
-  --meter-tint-rgb: var(--color-gold-rgb);
-}
-.metric-icon.metric-icon--info,
-.stat-tile__icon.stat-tile__icon--info,
-.fund-tile__icon.fund-tile__icon--info,
-.progress-meter.progress-meter--info {
-  --metric-tint: var(--color-blue);
-  --metric-tint-rgb: 47, 95, 138;
-  --meter-tint: var(--color-blue);
-  --meter-tint-rgb: 47, 95, 138;
-}
-.metric-icon.metric-icon--danger,
-.stat-tile__icon.stat-tile__icon--danger,
-.fund-tile__icon.fund-tile__icon--danger,
-.progress-meter.progress-meter--danger {
-  --metric-tint: var(--color-danger);
-  --metric-tint-rgb: var(--color-danger-rgb);
-  --meter-tint: var(--color-danger);
-  --meter-tint-rgb: var(--color-danger-rgb);
 }
 
 .stat-tile__label {
@@ -193,30 +134,14 @@
   color: var(--color-danger);
 }
 
-.stat-tile__trend {
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.stat-tile__trend.is-up {
-  color: var(--color-success);
-}
-.stat-tile__trend.is-down {
-  color: var(--color-danger);
-}
-
 /* Featured hero financial card — one per page, the single most important
    figure. Uses --gradient-hero (a dedicated, deliberately rich/dark navy
    gradient) rather than a flat primary fill, which is what keeps the white
    figure text legible across the whole card. Kept deliberately compact
    (not a giant block) — "premium means restrained," not oversized. */
-/* Net treasury balance — the charcoal statement card beside the emerald
-   banner, so the two headline surfaces never merge into one block. */
+/* Headline balance card: the one solid emerald surface on a white page. */
 .hero-card {
-  background: var(--color-sidebar-bg);
+  background: var(--color-primary);
   color: #ffffff;
   border-radius: var(--radius-sm);
   border-top: 3px solid var(--color-gold);
@@ -334,74 +259,6 @@
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: #ffffff;
-  overflow-wrap: anywhere;
-}
-
-/* ---------- Quick actions ---------- */
-.quick-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.quick-action {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-  min-width: 0;
-  min-height: 88px;
-  transition: border-color var(--motion-fast) var(--ease-premium), box-shadow var(--motion-fast) var(--ease-premium);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .quick-action:hover {
-    border-color: var(--color-primary);
-    box-shadow: inset 0 -2px 0 var(--color-gold);
-  }
-}
-
-.quick-action:focus-visible {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: var(--ring-accent-strong);
-}
-
-.quick-action__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  font-size: 18px;
-}
-
-.quick-action--primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #ffffff;
-}
-.quick-action--primary .quick-action__icon {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-gold);
-}
-
-.quick-action__label {
-  font-size: 13.5px;
-  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -666,7 +523,7 @@
   border-radius: var(--radius-sm);
   background: rgba(var(--color-primary-rgb), 0.04);
   border: 1px solid rgba(var(--color-primary-rgb), 0.08);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   line-height: 1.55;
   color: var(--text);
@@ -677,16 +534,6 @@
 }
 
 /* ---------- Skeletons ---------- */
-/* The loading hero mirrors the real hero card's plane rather than sitting
-   in a flat grey box, so the swap to loaded content doesn't visibly jump.
-   Replaces an inline `background: var(--bg-muted)`. */
-.card.skeleton-hero {
-  margin-bottom: 16px;
-  background: rgba(var(--color-primary-rgb), 0.03);
-  border-color: rgba(var(--color-primary-rgb), 0.06);
-  box-shadow: var(--shadow-sm);
-}
-
 .skeleton {
   position: relative;
   overflow: hidden;
@@ -877,7 +724,7 @@
   border-radius: var(--radius-sm);
   background: rgba(var(--color-primary-rgb), 0.05);
   border: 1px solid rgba(var(--color-primary-rgb), 0.1);
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-variant-numeric: tabular-nums;
   font-size: 12.5px;
   line-height: 1.6;
   color: var(--text);
@@ -1019,33 +866,3 @@
   font-size: 18px;
 }
 
-/* ==========================================================================
-   PROGRESS METER — fluid allocation/budget bars (brief §3)
-   Rounded caps, a soft track, and a fill tinted per category so a column of
-   department rows reads as the reference's multi-coloured sliders.
-   ========================================================================== */
-.progress-meter {
-  --meter-tint: var(--color-primary);
-  --meter-tint-rgb: var(--color-primary-rgb);
-  width: 100%;
-  height: 6px;
-  border-radius: 0;
-  background: var(--color-gray-light);
-  overflow: hidden;
-}
-
-.progress-meter__fill {
-  display: block;
-  height: 100%;
-  border-radius: 0;
-  background: var(--meter-tint);
-  /* Width is set inline from real data; the transition is what makes a
-     value change glide rather than jump when a figure refreshes. */
-  transition: width var(--motion-slow) var(--ease-premium);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .progress-meter__fill {
-    transition: none;
-  }
-}

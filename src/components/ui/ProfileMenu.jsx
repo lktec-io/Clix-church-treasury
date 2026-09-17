@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiChevronDown, FiLogOut, FiGlobe } from 'react-icons/fi';
+import { FiChevronDown, FiLogOut, FiGlobe, FiSun } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 
 // Logged-in treasurer's profile control in the global header: identity,
@@ -22,6 +23,7 @@ const panelVariants = {
 export default function ProfileMenu() {
   const { session, logout } = useAuth();
   const { t, locale, setLocale } = useLocale();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -99,6 +101,29 @@ export default function ProfileMenu() {
                     aria-pressed={locale === code}
                   >
                     {code.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* White is the default; dark is an explicit, remembered choice. */}
+            <div className="profile-menu__row">
+              <span className="profile-menu__row-label">
+                <FiSun aria-hidden="true" /> {t('profile.theme')}
+              </span>
+              <div className="seg-switch" role="group" aria-label={t('profile.theme')}>
+                {[
+                  { dark: false, label: t('profile.theme.light') },
+                  { dark: true, label: t('profile.theme.dark') },
+                ].map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    className={`seg-switch__opt${isDark === option.dark ? ' is-active' : ''}`}
+                    onClick={() => isDark !== option.dark && toggleTheme()}
+                    aria-pressed={isDark === option.dark}
+                  >
+                    {option.label}
                   </button>
                 ))}
               </div>

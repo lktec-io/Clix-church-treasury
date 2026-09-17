@@ -1,26 +1,11 @@
 // Pure-unit coverage for the member-identity, pledge-schedule and
 // tithe-compliance rules. No DB, no network, fixed clocks.
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { validateNida, validateMemberIdentity } from '../../src/modules/contributors/memberId.js';
 import { computePledgeSchedule } from '../../src/modules/pledges/pledgeSchedule.js';
 import { titheComplianceStatus } from '../../src/modules/contributors/titheCompliance.js';
 
 const TODAY = new Date(Date.UTC(2026, 8, 16)); // 16 Sep 2026
-
-// The registration form validates NIDA instantly with a copy of the server
-// validator. If the copies drift, the form would accept a number the server
-// rejects (or block one it accepts) — so they must stay byte-identical.
-describe('member identity validator — client/server parity', () => {
-  it('src/utils/memberId.js is byte-identical to the server copy', () => {
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    const server = fs.readFileSync(path.join(here, '..', '..', 'src', 'modules', 'contributors', 'memberId.js'), 'utf8');
-    const client = fs.readFileSync(path.join(here, '..', '..', '..', 'src', 'utils', 'memberId.js'), 'utf8');
-    expect(client).toBe(server);
-  });
-});
 
 describe('validateNida', () => {
   it.each([

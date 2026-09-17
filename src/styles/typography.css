@@ -83,11 +83,3 @@ textarea {
   color: var(--text-muted);
 }
 
-/* Same size, but keeps the parent's own color (dimmed) instead of
-   switching to --text-muted — for caption text sitting inside a tinted
-   surface (e.g. inside .alert--warning), where --text-muted's neutral
-   gray would fight the alert's own contextual color. */
-.text-caption--inherit {
-  font-size: 12px;
-  opacity: 0.85;
-}

@@ -28,9 +28,8 @@ export default function BottomNav({ items }) {
         >
           {({ isActive }) => (
             <>
-              {/* Shared layoutId: the green pill physically travels between
-                  tabs rather than cross-fading, which is what makes the
-                  switch feel like one object moving. */}
+              {/* Shared layoutId: the gold indicator travels between tabs
+                  rather than cross-fading. */}
               {isActive && (
                 <motion.span
                   className="bottom-nav__pill"

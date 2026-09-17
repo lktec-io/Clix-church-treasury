@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiHome,
@@ -16,100 +16,59 @@ import {
   FiSend,
   FiMenu,
   FiX,
-  FiLogOut,
   FiUserCheck,
   FiUpload,
   FiBookOpen,
   FiChevronsLeft,
   FiChevronsRight,
+  FiChevronDown,
+  FiSettings,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useMediaQuery } from '../hooks/useMediaQuery.js';
 import PageTransition from './ui/PageTransition.jsx';
-import ThemeToggle from './ui/ThemeToggle.jsx';
 import NotificationsMenu from './ui/NotificationsMenu.jsx';
 import SystemStatus from './ui/SystemStatus.jsx';
 import ProfileMenu from './ui/ProfileMenu.jsx';
 import BottomNav from './ui/BottomNav.jsx';
 
-// Grouped to match the product's real workflow shape (docs/MASTER_TODO.md
-// Phase 10 §10.5), adapted to what actually exists: Income and
-// Contributions are one page (contributions.repository already covers
-// both), there's no standalone Receipts destination (receipts are
-// downloaded from the contribution they belong to — "one receipt
-// architecture", not a document library), and Administration only lists
-// Users since Roles-editing and Church Settings have no backend module to
-// point at yet (building either now would be a screen with nothing real
-// behind it, not a genuine feature).
+// The five things a church treasurer does every week sit at the top level.
+// Everything else (accounts, funds, periods, reports, users …) still exists
+// and is still needed occasionally — recording income requires an open
+// financial period and a category — so it lives in one collapsible
+// "Treasury setup" group instead of being deleted.
 //
 // `permission: null` means "always visible to any authenticated user."
 // Every other item is hidden unless the caller holds the same permission
 // that already gates that page's own API calls — a nav link to a page
 // you'd immediately get a 403 from is worse than no link at all.
-const NAV_GROUPS = [
-  { items: [{ to: '/', icon: FiHome, labelKey: 'nav.dashboard', end: true, permission: null }] },
-  {
-    labelKey: 'nav.group.transactions',
-    items: [
-      { to: '/contributions', icon: FiDollarSign, labelKey: 'nav.contributions', permission: 'income.view' },
-      { to: '/contributors', icon: FiUsers, labelKey: 'nav.contributors', permission: 'contributors.view' },
-      { to: '/expenses', icon: FiCreditCard, labelKey: 'nav.expenses', permission: 'expense.view' },
-      { to: '/transfers', icon: FiRepeat, labelKey: 'nav.transfers', permission: 'accounts.view' },
-    ],
-  },
-  {
-    labelKey: 'nav.group.finance',
-    items: [
-      { to: '/accounts', icon: FiFolder, labelKey: 'nav.accounts', permission: 'accounts.view' },
-      { to: '/funds', icon: FiFolder, labelKey: 'nav.funds', permission: 'funds.view' },
-      // dashboard.view (not a dedicated categories.view) — matches
-      // categories.routes.js's own GET permission exactly, which every
-      // role holds; categories are reference data every role needs to see
-      // in order to use the contribution/expense forms at all.
-      { to: '/categories', icon: FiTag, labelKey: 'nav.categories', permission: 'dashboard.view' },
-      { to: '/budgets', icon: FiClipboard, labelKey: 'nav.budgets', permission: 'budget.view' },
-      { to: '/financial-periods', icon: FiCalendar, labelKey: 'nav.financialPeriods', permission: 'financial_period.view' },
-      // Gated on remittance.view: a church with no higher body configured
-      // still sees the page (it explains itself when empty), but a role
-      // without the permission never gets a link to a 403.
-      { to: '/treasury/remittance', icon: FiUpload, labelKey: 'nav.remittance', permission: 'remittance.view' },
-    ],
-  },
-  {
-    labelKey: 'nav.group.pledgesReports',
-    items: [
-      { to: '/pledges', icon: FiTarget, labelKey: 'nav.pledges', permission: 'pledges.view' },
-      { to: '/reports', icon: FiBarChart2, labelKey: 'nav.reports', permission: 'reports.view' },
-      // The general-ledger trial balance. Its own destination rather than an
-      // entry in the Reports runner: the integrity strip is the report's
-      // conclusion and the generic table renderer has nowhere to put it.
-      { to: '/reports/trial-balance', icon: FiBookOpen, labelKey: 'nav.trialBalance', permission: 'reports.view' },
-      { to: '/member-statements', icon: FiSend, labelKey: 'nav.memberStatements', permission: 'contributors.view' },
-    ],
-  },
-  {
-    labelKey: 'nav.group.administration',
-    items: [{ to: '/users', icon: FiUserCheck, labelKey: 'nav.users', permission: 'users.view' }],
-  },
-];
-
-// The four things a treasurer does on a phone. Deliberately NOT a subset of
-// NAV_GROUPS' 14 links — a dock with more than four targets stops being a
-// shortcut. /contributions is the Sadaka/Zaka wizard, the single most-used
-// action in the product.
-//
-// The fourth slot is Users, not "Settings": there is no settings page in
-// this product (Layout's own NAV_GROUPS comment explains why — Roles-editing
-// and Church Settings have no backend module behind them yet). A gear icon
-// leading to user management would be a mislabelled shortcut, so this uses
-// the same FiUserCheck the sidebar already uses for that destination.
-const QUICK_NAV = [
+const PRIMARY_NAV = [
   { to: '/', icon: FiHome, labelKey: 'nav.dashboard', end: true, permission: null },
   { to: '/contributions', icon: FiDollarSign, labelKey: 'nav.contributions', permission: 'income.view' },
+  { to: '/expenses', icon: FiCreditCard, labelKey: 'nav.expenses', permission: 'expense.view' },
+  { to: '/pledges', icon: FiTarget, labelKey: 'nav.pledges', permission: 'pledges.view' },
+  { to: '/contributors', icon: FiUsers, labelKey: 'nav.contributors', permission: 'contributors.view' },
+];
+
+const SETUP_NAV = [
+  { to: '/transfers', icon: FiRepeat, labelKey: 'nav.transfers', permission: 'accounts.view' },
+  { to: '/accounts', icon: FiFolder, labelKey: 'nav.accounts', permission: 'accounts.view' },
+  { to: '/funds', icon: FiFolder, labelKey: 'nav.funds', permission: 'funds.view' },
+  // dashboard.view matches categories.routes.js's own GET permission, which
+  // every role holds: the income and expense forms need categories.
+  { to: '/categories', icon: FiTag, labelKey: 'nav.categories', permission: 'dashboard.view' },
+  { to: '/budgets', icon: FiClipboard, labelKey: 'nav.budgets', permission: 'budget.view' },
+  { to: '/financial-periods', icon: FiCalendar, labelKey: 'nav.financialPeriods', permission: 'financial_period.view' },
+  { to: '/treasury/remittance', icon: FiUpload, labelKey: 'nav.remittance', permission: 'remittance.view' },
   { to: '/reports', icon: FiBarChart2, labelKey: 'nav.reports', permission: 'reports.view' },
+  { to: '/reports/trial-balance', icon: FiBookOpen, labelKey: 'nav.trialBalance', permission: 'reports.view' },
+  { to: '/member-statements', icon: FiSend, labelKey: 'nav.memberStatements', permission: 'contributors.view' },
   { to: '/users', icon: FiUserCheck, labelKey: 'nav.users', permission: 'users.view' },
 ];
+
+// Mobile dock: the same five destinations as the sidebar's top level.
+const QUICK_NAV = PRIMARY_NAV;
 
 const SIDEBAR_WIDTH = 240;
 const SIDEBAR_WIDTH_COLLAPSED = 76;
@@ -155,10 +114,18 @@ export default function Layout() {
       return false;
     }
   });
-  const { session, logout, hasPermission } = useAuth();
-  const { t, locale, setLocale } = useLocale();
-  const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const { t } = useLocale();
+  const location = useLocation();
   const isDesktop = useMediaQuery('(min-width: 900px)');
+  const canSee = (item) => item.permission === null || hasPermission(item.permission);
+  const primaryItems = PRIMARY_NAV.filter(canSee);
+  const setupItems = SETUP_NAV.filter(canSee);
+  // The setup group opens itself when you are on one of its pages, so the
+  // active link is never hidden inside a closed group.
+  const onSetupPage = setupItems.some((item) => location.pathname.startsWith(item.to));
+  const [setupOpen, setSetupOpen] = useState(onSetupPage);
+  const setupExpanded = setupOpen || onSetupPage;
 
   // Mobile slide-in sidebar must not let the page scroll underneath it
   // (docs/MASTER_TODO.md Phase 10 §10.6: "body scroll lock").
@@ -191,17 +158,22 @@ export default function Layout() {
     });
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login', { replace: true });
-  };
-
-  const visibleGroups = NAV_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => item.permission === null || hasPermission(item.permission)),
-  })).filter((group) => group.items.length > 0);
-
   const isCollapsedDesktop = isDesktop && collapsed;
+
+  const renderLink = ({ to, icon: Icon, labelKey, end }, nested = false) => (
+    <motion.div key={to} variants={navItemVariants}>
+      <NavLink
+        to={to}
+        end={end}
+        title={isCollapsedDesktop ? t(labelKey) : undefined}
+        onClick={() => setSidebarOpen(false)}
+        className={({ isActive }) => `app-sidebar__link${nested ? ' app-sidebar__link--nested' : ''}${isActive ? ' is-active' : ''}`}
+      >
+        <Icon aria-hidden="true" />
+        <span>{t(labelKey)}</span>
+      </NavLink>
+    </motion.div>
+  );
 
   const sidebarContent = (
     <>
@@ -236,76 +208,28 @@ export default function Layout() {
         initial="navHidden"
         animate="navVisible"
       >
-        {visibleGroups.map((group, i) => (
-          <div className="app-sidebar__group" key={i}>
-            {group.labelKey && (
-              <motion.div className="app-sidebar__group-label" variants={navItemVariants}>
-                {t(group.labelKey)}
-              </motion.div>
-            )}
-            {group.items.map(({ to, icon: Icon, labelKey, end }) => (
-              <motion.div key={to} variants={navItemVariants}>
-                <NavLink
-                  to={to}
-                  end={end}
-                  title={isCollapsedDesktop ? t(labelKey) : undefined}
-                  onClick={() => setSidebarOpen(false)}
-                  className={({ isActive }) => `app-sidebar__link${isActive ? ' is-active' : ''}`}
-                >
-                  <Icon aria-hidden="true" />
-                  <span>{t(labelKey)}</span>
-                </NavLink>
-              </motion.div>
-            ))}
-          </div>
-        ))}
-      </motion.div>
-      <div className="app-sidebar__footer">
-        <div className="app-sidebar__footer-details">
-          <div className="app-sidebar__user">
-            <span className="app-sidebar__avatar" aria-hidden="true">
-              {(session?.user?.full_name ?? '?').trim().charAt(0).toUpperCase()}
-            </span>
-            <span className="app-sidebar__user-name">{session?.user?.full_name}</span>
-          </div>
-          {/* Language and logout share one row at the base of the panel.
-              Stacked, the two controls made the footer tall enough that
-              logout fell under the fixed bottom dock on a short phone; the
-              dock/drawer z-index inversion that let it be painted over is
-              fixed in layout.css alongside this. */}
-          <div className="app-sidebar__footer-row">
-            {/* Language as a segmented control rather than a native <select>:
-                two options never justified a dropdown, and the native widget
-                was the last unstyled chrome element in the sidebar. */}
-            <div className="lang-switch" role="group" aria-label={t('nav.language')}>
-              {['en', 'sw'].map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  className={`lang-switch__opt${locale === code ? ' is-active' : ''}`}
-                  onClick={() => setLocale(code)}
-                  aria-pressed={locale === code}
-                >
-                  {code.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <button type="button" className="sidebar-ghost-btn" onClick={handleLogout}>
-              <FiLogOut aria-hidden="true" /> <span>{t('nav.logout')}</span>
-            </button>
-          </div>
+        <div className="app-sidebar__group">
+          {primaryItems.map((item) => renderLink(item))}
         </div>
-        {isCollapsedDesktop && (
-          <button
-            type="button"
-            className="sidebar-ghost-btn sidebar-ghost-btn--icon"
-            onClick={handleLogout}
-            aria-label={t('nav.logout')}
-          >
-            <FiLogOut aria-hidden="true" />
-          </button>
+        {setupItems.length > 0 && (
+          <div className="app-sidebar__group">
+            <motion.div variants={navItemVariants}>
+              <button
+                type="button"
+                className={`app-sidebar__group-toggle${setupExpanded ? ' is-open' : ''}`}
+                onClick={() => setSetupOpen((v) => !v)}
+                aria-expanded={setupExpanded}
+                title={isCollapsedDesktop ? t('nav.group.setup') : undefined}
+              >
+                <FiSettings aria-hidden="true" />
+                <span>{t('nav.group.setup')}</span>
+                <FiChevronDown className="app-sidebar__group-caret" aria-hidden="true" />
+              </button>
+            </motion.div>
+            {setupExpanded && setupItems.map((item) => renderLink(item, true))}
+          </div>
         )}
-      </div>
+      </motion.div>
     </>
   );
 
@@ -358,7 +282,6 @@ export default function Layout() {
                 pressing Save whether the entry can reach the server. */}
             <SystemStatus />
             <NotificationsMenu />
-            <ThemeToggle />
             <ProfileMenu />
             <button
               type="button"

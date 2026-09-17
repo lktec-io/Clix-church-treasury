@@ -1,25 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  FiCalendar,
-  FiArrowUpRight,
-  FiArrowDownRight,
-  FiTarget,
-  FiClock,
-  FiInfo,
-  FiPlus,
-  FiUserPlus,
-  FiFileText,
-  FiBarChart2,
-  FiActivity,
-  FiSend,
-  FiDollarSign,
-  FiGift,
-  FiHome,
-  FiTool,
-  FiPieChart,
-} from 'react-icons/fi';
+import { FiCalendar, FiClock, FiInfo } from 'react-icons/fi';
 import { reportsApi, financialPeriodsApi, expensesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -30,161 +12,67 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
-import { SkeletonHero, SkeletonStatGrid, SkeletonTable } from '../components/ui/Skeleton.jsx';
-import FundDonut from '../components/ui/FundDonut.jsx';
-import TrendChart from '../components/ui/TrendChart.jsx';
+import { SkeletonStatGrid, SkeletonTable } from '../components/ui/Skeleton.jsx';
 import {
   ActivityTimeline,
-  CollectionsOverview,
-  DepartmentCollections,
-  MakatoOverviewCard,
-  TargetsTracker,
+  BalanceTile,
+  DepartmentAccounts,
+  MakatoWidget,
 } from '../components/dashboard/TreasuryInsights.jsx';
-import { formatMoney, formatCurrency, sumMoneyStrings } from '../utils/format.js';
+import { formatMoney, sumMoneyStrings } from '../utils/format.js';
 
-// Every figure here is read from the existing Financial Engine / Phase 9
-// report services — nothing on this page runs its own SQL or does its own
-// arithmetic over raw rows (docs/FINANCIAL_ARCHITECTURE.md §6: "reporting
-// must not recompute"). The period selector only changes which dateFrom/
-// dateTo is sent to the Income/Expense reports; it is calendar math
-// (computing "the 1st of this month"), never financial math.
-const RANGE_OPTIONS = ['month', 'quarter', 'year', 'custom'];
-
-// Fund-allocation tiles are driven by the tenant's OWN funds
-// (financialSummary's fundSummaries: real per-fund balances for the open
-// period), not a hardcoded list — a church that has created Zaka, Sadaka,
-// Mfuko wa Kanisa and Miradi ya Ujenzi sees exactly those four, and a
-// church that organises its money differently sees its own. This only
-// picks a fitting icon when a fund's name is recognisable, in either
-// language, and falls back to a neutral one otherwise. Matching is a
-// display concern only — nothing financial keys off it.
-const FUND_ICON_RULES = [
-  { icon: FiDollarSign, match: /zaka|tithe|fungu la kumi/i },
-  { icon: FiGift, match: /sadaka|offering|collection/i },
-  { icon: FiTool, match: /ujenzi|build|construction|project|mradi|miradi/i },
-  { icon: FiHome, match: /kanisa|church|local|budget|bajeti/i },
-];
-
-function fundIconFor(name = '') {
-  return FUND_ICON_RULES.find((rule) => rule.match.test(name))?.icon ?? FiPieChart;
-}
-
-// Category colour for a fund, matched on the same names as the icon rules
-// above so the two never disagree. Returns a bare SUFFIX ('income',
-// 'info', …) rather than a full class, because the same category has to
-// tint two different components — the icon enclosure and the progress
-// meter — whose modifier prefixes differ. The actual hues live in cards.css
-// with the rest of the palette.
-// Purely presentational: no financial figure keys off this.
-function fundTintFor(name = '') {
-  if (/zaka|tithe|fungu la kumi/i.test(name)) return 'income';
-  if (/sadaka|offering|collection/i.test(name)) return 'info';
-  if (/ujenzi|build|construction|project|mradi|miradi/i.test(name)) return 'savings';
-  return '';
-}
-
-// Composes a modifier class from a prefix and a tint suffix, collapsing to
-// the base class when the fund has no recognised category.
-const tintClass = (base, tint) => (tint ? `${base} ${base}--${tint}` : base);
-
-// Staggered scroll-reveal used by the fund grid. `once` so tiles settle
-// permanently instead of re-animating every time they re-enter view.
-const revealContainer = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07 } },
-};
-const revealItem = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
-};
+// Every figure here is read from the existing report services — nothing on
+// this page runs its own SQL or recomputes over raw rows
+// (docs/FINANCIAL_ARCHITECTURE.md §6). The period selector only changes which
+// dateFrom/dateTo is sent; it is calendar math, never financial math.
+const RANGE_OPTIONS = ['month', 'quarter', 'year'];
 
 // Local calendar date as YYYY-MM-DD. NOT toISOString(): local midnight on the
 // 1st is still the previous day in UTC for any zone east of Greenwich, so in
-// Tanzania (UTC+3) "this month" used to start on the last day of the month
-// before, and "this year" on 31 December.
+// Tanzania (UTC+3) "this month" would start on the last day of the month
+// before.
 function isoDate(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function todayIso() {
-  return isoDate(new Date());
-}
-
-function computeRange(kind, customFrom, customTo) {
+function computeRange(kind) {
   const now = new Date();
-  if (kind === 'month') {
-    return { dateFrom: isoDate(new Date(now.getFullYear(), now.getMonth(), 1)), dateTo: todayIso() };
-  }
+  const dateTo = isoDate(now);
   if (kind === 'quarter') {
-    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
-    return { dateFrom: isoDate(new Date(now.getFullYear(), quarterStartMonth, 1)), dateTo: todayIso() };
+    return { dateFrom: isoDate(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)), dateTo };
   }
   if (kind === 'year') {
-    return { dateFrom: isoDate(new Date(now.getFullYear(), 0, 1)), dateTo: todayIso() };
+    return { dateFrom: isoDate(new Date(now.getFullYear(), 0, 1)), dateTo };
   }
-  return { dateFrom: customFrom, dateTo: customTo };
+  return { dateFrom: isoDate(new Date(now.getFullYear(), now.getMonth(), 1)), dateTo };
 }
-
-const cardEntrance = {
-  initial: { opacity: 0, y: 10 },
-  animate: (i) => ({ opacity: 1, y: 0, transition: { duration: 0.28, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] } }),
-};
 
 export default function DashboardPage() {
   const { session, hasPermission } = useAuth();
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const toast = useToast();
   const confirm = useConfirm();
   const { recordActivity } = useActivity();
   const [openPeriod, setOpenPeriod] = useState(undefined); // undefined = loading, null = none exists
   const [range, setRange] = useState('month');
-  const [customFrom, setCustomFrom] = useState(todayIso());
-  const [customTo, setCustomTo] = useState(todayIso());
   const [summary, setSummary] = useState(null);
   const [incomeTotal, setIncomeTotal] = useState(null);
   const [expenseTotal, setExpenseTotal] = useState(null);
-  const [pledgeTotals, setPledgeTotals] = useState(null);
-  const [budgetRows, setBudgetRows] = useState([]);
   // Zaka/Sadaka split, department collections and Makato for the range.
   const [insights, setInsights] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
-  const [trends, setTrends] = useState(null);
-  // The submitted-expense ROWS, not just their count. The dashboard already
-  // fetched this list and threw everything but `.length` away, which is why
-  // it could say "1 pending approval" and offer nothing to act on.
   const [pendingExpenses, setPendingExpenses] = useState([]);
   const [actioningExpenseId, setActioningExpenseId] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const pendingCount = pendingExpenses.length;
 
-  const { dateFrom, dateTo } = useMemo(() => computeRange(range, customFrom, customTo), [range, customFrom, customTo]);
-
-  const loadPeriodScoped = useCallback(async (periodId) => {
-    const requests = [];
-    if (hasPermission('reports.view')) {
-      requests.push(
-        reportsApi.run('financialSummary', { financialPeriodId: periodId }).then(setSummary).catch(() => setSummary(null))
-      );
-    }
-    if (hasPermission('budget.view')) {
-      requests.push(
-        reportsApi
-          .run('budgetVsActual', { financialPeriodId: periodId })
-          .then((data) => setBudgetRows(data.rows ?? []))
-          .catch(() => setBudgetRows([]))
-      );
-    }
-    await Promise.all(requests);
-  }, [hasPermission]);
+  const { dateFrom, dateTo } = useMemo(() => computeRange(range), [range]);
 
   const loadRangeScoped = useCallback(async () => {
     const requests = [];
     if (hasPermission('income.view')) {
       requests.push(
-        reportsApi.run('income', { dateFrom, dateTo }).then((data) => setIncomeTotal(data.totals.amount)).catch(() => setIncomeTotal(null))
-      );
-      requests.push(
+        reportsApi.run('income', { dateFrom, dateTo }).then((data) => setIncomeTotal(data.totals.amount)).catch(() => setIncomeTotal(null)),
         reportsApi.run('dashboardInsights', { dateFrom, dateTo }).then(setInsights).catch(() => setInsights(null))
       );
     }
@@ -200,11 +88,8 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      // Gated like every other fetch below it. This one was unconditional,
-      // which meant a session without financial_period.view (a platform
-      // admin holds ONLY platform.manage) fired a guaranteed 403 — and
-      // because it sits outside the gates but inside this try, that 403 also
-      // painted an error banner across a dashboard that was working fine.
+      // Gated: a session without financial_period.view (a platform admin)
+      // would otherwise fire a guaranteed 403 and paint an error banner.
       let current = null;
       if (hasPermission('financial_period.view')) {
         const periods = await financialPeriodsApi.list();
@@ -213,30 +98,18 @@ export default function DashboardPage() {
       setOpenPeriod(current);
 
       const requests = [];
-      if (hasPermission('pledges.view')) {
-        requests.push(
-          reportsApi.run('pledges', { status: 'active' }).then((data) => setPledgeTotals({ ...data.totals, count: data.rows.length })).catch(() => setPledgeTotals(null))
-        );
-      }
       if (hasPermission('reports.view')) {
         requests.push(
           reportsApi.run('transactionJournal', {}).then((data) => setRecentTransactions(data.rows.slice(0, 8))).catch(() => setRecentTransactions([]))
         );
-        // Rolling 12-month series. One GROUP BY on the server rather than
-        // twelve range queries from here — see reports.service.js
-        // #getMonthlyTrends for why deriving this client-side from the
-        // income report would have been wrong (its rows cap at 1000).
-        requests.push(
-          reportsApi.run('monthlyTrends', { months: 12 }).then(setTrends).catch(() => setTrends(null))
-        );
+        if (current) {
+          requests.push(
+            reportsApi.run('financialSummary', { financialPeriodId: current.id }).then(setSummary).catch(() => setSummary(null))
+          );
+        }
       }
       if (hasPermission('expense.approve')) {
-        requests.push(
-          expensesApi.list({ status: 'submitted' }).then(setPendingExpenses).catch(() => setPendingExpenses([]))
-        );
-      }
-      if (current) {
-        requests.push(loadPeriodScoped(current.id));
+        requests.push(expensesApi.list({ status: 'submitted' }).then(setPendingExpenses).catch(() => setPendingExpenses([])));
       }
       await Promise.all(requests);
     } catch (err) {
@@ -244,7 +117,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [hasPermission, loadPeriodScoped]);
+  }, [hasPermission]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -257,17 +130,13 @@ export default function DashboardPage() {
   }, [openPeriod, loadRangeScoped]);
 
   // --- Expense approval gateway -------------------------------------------
-  // Every action here is additionally enforced server-side: the routes sit
-  // behind requirePermission('expense.approve' / 'expense.reject' /
-  // 'expense.pay'), and approveExpense() independently re-checks that the
-  // approver is not the requester. The gates below decide what is worth
-  // SHOWING; none of them is the control.
+  // Enforced server-side too (requirePermission + approveExpense re-checks
+  // the approver is not the requester); these gates only decide what to show.
   const refreshPending = useCallback(async () => {
     try {
       setPendingExpenses(await expensesApi.list({ status: 'submitted' }));
     } catch {
-      // Non-fatal: the action itself already succeeded and reported. Leaving
-      // the stale list up is better than replacing the page with an error.
+      // Non-fatal: the action already succeeded and reported.
     }
   }, []);
 
@@ -276,19 +145,10 @@ export default function DashboardPage() {
     setError(null);
     try {
       await action();
-      // Drop the row from local state FIRST so <AnimatePresence> can play
-      // its exit transition on the way out. Re-fetching straight away would
-      // replace the array wholesale and the row would vanish on a frame
-      // boundary with no animation at all. The decision is already
-      // committed server-side at this point, so removing it locally is
-      // reporting what happened, not an optimistic guess.
+      // Drop the row locally first so <AnimatePresence> can play its exit.
       setPendingExpenses((rows) => rows.filter((row) => row.id !== expense.id));
       toast.success(t(successKey));
-      // Feeds the navbar's live counter. Names the payee: "Expense
-      // approved" alone is ambiguous when several requests are queued.
       recordActivity({ kind: 'expense', message: `${t(successKey)} — ${expense.payee}` });
-      // Reconcile against the server afterwards, so a request approved by
-      // someone else in the meantime also leaves the list.
       await refreshPending();
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -312,56 +172,26 @@ export default function DashboardPage() {
     await runExpenseAction(expense, () => expensesApi.reject(expense.id, result.reason), 'expenses.rejectedToast');
   };
 
-
-  // Split into parts so the banner can stack them (big day numeral over
-  // weekday/month) instead of printing one run-on string.
-  const dateParts = useMemo(() => {
-    const now = new Date();
-    const tag = locale === 'sw' ? 'sw-TZ' : undefined;
-    return {
-      day: now.toLocaleDateString(tag, { day: 'numeric' }),
-      weekday: now.toLocaleDateString(tag, { weekday: 'long' }),
-      month: now.toLocaleDateString(tag, { month: 'long', year: 'numeric' }),
-    };
-  }, [locale]);
   const firstName = session?.user?.full_name?.split(' ')[0];
+  const collections = insights?.collections;
+  // Display aggregation only (integer cents in sumMoneyStrings).
+  const tithesAndOfferings = collections ? sumMoneyStrings([collections.tithe, collections.offering]) : null;
 
-  // Denominator for each tile's share-of-total badge. Only positive
-  // balances count — a fund sitting negative shouldn't shrink the
-  // percentages of the others or push the total toward zero. Presentation
-  // only: no financial figure on this page is derived from it.
-  const fundAllocationTotal = useMemo(
-    () =>
-      (summary?.fundSummaries ?? []).reduce((sum, fund) => {
-        const balance = Number(fund.balance);
-        return Number.isFinite(balance) && balance > 0 ? sum + balance : sum;
-      }, 0),
-    [summary]
+  const periodSelect = (
+    <label className="period-select">
+      <span className="period-select__label">{t('dashboard.periodFilter')}</span>
+      <select value={range} onChange={(e) => setRange(e.target.value)}>
+        {RANGE_OPTIONS.map((opt) => (
+          <option key={opt} value={opt}>{t(`dashboard.period.${opt}`)}</option>
+        ))}
+      </select>
+    </label>
   );
-
-  // Display aggregation only (utils/format.js#sumMoneyStrings is integer-cents):
-  // income less expenses over the selected range.
-  const netForRange =
-    incomeTotal !== null && expenseTotal !== null ? sumMoneyStrings([incomeTotal, `-${expenseTotal}`]) : null;
-
-  const fundNameById = useMemo(
-    () => new Map((summary?.fundSummaries ?? []).map((fund) => [fund.fundId, fund.name])),
-    [summary]
-  );
-
-  const quickActions = [
-    { to: '/contributions', icon: FiPlus, labelKey: 'dashboard.quickActions.recordContribution', permission: 'income.create', primary: true },
-    { to: '/contributors', icon: FiUserPlus, labelKey: 'dashboard.quickActions.addContributor', permission: 'contributors.manage' },
-    { to: '/expenses', icon: FiFileText, labelKey: 'dashboard.quickActions.addExpense', permission: 'expense.create' },
-    { to: '/member-statements', icon: FiSend, labelKey: 'dashboard.quickActions.generateStatement', permission: 'contributors.view' },
-    { to: '/reports', icon: FiBarChart2, labelKey: 'dashboard.quickActions.viewReports', permission: 'reports.view' },
-  ].filter((a) => hasPermission(a.permission));
 
   if (loading) {
     return (
       <div>
         <PageHeader title={t('dashboard.title')} />
-        <SkeletonHero />
         <SkeletonStatGrid />
         <SkeletonTable rows={4} columns={3} />
       </div>
@@ -370,56 +200,19 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Welcome banner — the navy anchor the rest of the page hangs off.
-          Replaces the plain PageHeader on this one page; every other page
-          still uses PageHeader, so the dashboard reads as the destination
-          rather than one more list screen. */}
-      <motion.section
-        className="welcome-banner"
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <div className="welcome-banner__body">
-          <motion.h1
-            className="welcome-banner__title"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          >
+      <header className="dash-header">
+        <div className="dash-header__text">
+          <h1 className="dash-header__title">
             {firstName ? t('dashboard.greeting', { name: firstName }) : t('dashboard.welcomeFallback')}
-          </motion.h1>
-          <motion.p
-            className="welcome-banner__subtitle"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {t('dashboard.summarySubtitle')}
-          </motion.p>
+          </h1>
+          <p className="dash-header__subtitle">{t('dashboard.summarySubtitle')}</p>
         </div>
-        {/* Structured date block: day numeral stacked over weekday and
-            month, rather than one run-on sentence. */}
-        <motion.div
-          className="welcome-banner__date"
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.45, delay: 0.26, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <span className="welcome-banner__date-day">{dateParts.day}</span>
-          <span className="welcome-banner__date-rest">
-            <span className="welcome-banner__date-weekday">{dateParts.weekday}</span>
-            <span className="welcome-banner__date-month">{dateParts.month}</span>
-          </span>
-        </motion.div>
-      </motion.section>
+        {periodSelect}
+      </header>
       {error && <div className="alert alert--error">{error}</div>}
 
-      {/* "No open period — create one" is only true if we actually looked.
-          A session without financial_period.view never fetched the list, so
-          its openPeriod is null for a different reason entirely; showing
-          that empty state there would be telling the user something false
-          about their church's books. */}
+      {/* "No open period" is only true if we actually looked: a session
+          without financial_period.view never fetched the list. */}
       {hasPermission('financial_period.view') && openPeriod === null ? (
         <div className="card">
           <EmptyState
@@ -427,7 +220,7 @@ export default function DashboardPage() {
             title={t('dashboard.noOpenPeriod')}
             action={
               <PermissionGate permission="financial_period.manage">
-                <Link to="/financial-periods" className="btn btn--primary" style={{ marginTop: 4 }}>
+                <Link to="/financial-periods" className="btn btn--primary">
                   {t('financialPeriods.new')}
                 </Link>
               </PermissionGate>
@@ -436,364 +229,128 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <PermissionGate permission="reports.view">
-            <motion.div className="hero-card" custom={0} variants={cardEntrance} initial="initial" animate="animate">
-              <div className="hero-card__top">
-                <div className="hero-card__label">{t('dashboard.totalBalance')}</div>
-                <span className="live-indicator">
-                  <span className="live-indicator__dot" aria-hidden="true" />
-                  {t('dashboard.live')}
-                </span>
-              </div>
-              {/* A balance holds still: motion on a figure someone is reading
-                  reads as the number changing. */}
-              <div className="hero-card__value tabular-nums">
-                {summary ? formatCurrency(summary.closingBalance) : '—'}
-              </div>
-              <div className="hero-card__meta">{t(`dashboard.period.${range}`)}</div>
-              <div className="hero-card__breakdown">
-                <div className="hero-card__breakdown-item">
-                  <span className="hero-card__breakdown-label">{t('dashboard.income')}</span>
-                  <span className="hero-card__breakdown-value tabular-nums">{incomeTotal !== null ? formatMoney(incomeTotal) : '—'}</span>
-                </div>
-                <div className="hero-card__breakdown-item">
-                  <span className="hero-card__breakdown-label">{t('dashboard.expenses')}</span>
-                  <span className="hero-card__breakdown-value tabular-nums">{expenseTotal !== null ? formatMoney(expenseTotal) : '—'}</span>
-                </div>
-                <div className="hero-card__breakdown-item">
-                  <span className="hero-card__breakdown-label">{t('dashboard.transfers')}</span>
-                  <span className="hero-card__breakdown-value tabular-nums">{summary ? formatMoney(summary.transferVolume) : '—'}</span>
-                </div>
-              </div>
-            </motion.div>
-          </PermissionGate>
-
-          {quickActions.length > 0 && (
-            <motion.div className="quick-actions" custom={1} variants={cardEntrance} initial="initial" animate="animate">
-              {quickActions.map((action, i) => (
-                <Link
-                  key={action.to}
-                  to={action.to}
-                  className={`quick-action${i === 0 ? ' quick-action--primary' : ''}`}
-                >
-                  <span className="quick-action__icon">
-                    <action.icon aria-hidden="true" />
-                  </span>
-                  <span className="quick-action__label">{t(action.labelKey)}</span>
-                </Link>
-              ))}
-            </motion.div>
-          )}
-
-          <div className="card">
-            <div className="card__header">
-              <h2>{t('dashboard.periodFilter')}</h2>
-            </div>
-            <div className="form-grid">
-              <div className="field">
-                <label>{t('dashboard.periodFilter')}</label>
-                <select value={range} onChange={(e) => setRange(e.target.value)}>
-                  {RANGE_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{t(`dashboard.period.${opt}`)}</option>
-                  ))}
-                </select>
-              </div>
-              {range === 'custom' && (
-                <>
-                  <div className="field">
-                    <label>{t('reports.dateFrom')}</label>
-                    <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label>{t('reports.dateTo')}</label>
-                    <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
-                  </div>
-                </>
-              )}
-            </div>
+          <div className="balance-grid">
+            <PermissionGate permission="income.view">
+              <BalanceTile
+                label={t('dashboard.tiles.tithesOfferings')}
+                value={tithesAndOfferings}
+                caption={t(`dashboard.period.${range}`)}
+                lines={
+                  collections
+                    ? [
+                        { label: t('insights.collections.tithe'), value: collections.tithe },
+                        { label: t('insights.collections.offering'), value: collections.offering },
+                      ]
+                    : []
+                }
+              />
+            </PermissionGate>
+            <PermissionGate permission="reports.view">
+              <BalanceTile
+                emphasis
+                label={t('dashboard.tiles.netTreasury')}
+                value={summary?.closingBalance ?? null}
+                caption={openPeriod?.label ?? t('dashboard.tiles.openPeriod')}
+                lines={[
+                  { label: t('dashboard.income'), value: incomeTotal, tone: 'in' },
+                  { label: t('dashboard.expenses'), value: expenseTotal, tone: 'out' },
+                ]}
+              />
+            </PermissionGate>
           </div>
 
-          <motion.div className="stat-grid" custom={2} variants={cardEntrance} initial="initial" animate="animate">
-            <PermissionGate permission="income.view">
-              <div className="stat-tile">
-                <span className="stat-tile__icon"><FiArrowUpRight aria-hidden="true" /></span>
-                <div className="stat-tile__label">{t('dashboard.income')}</div>
-                <div className="stat-tile__value is-positive tabular-nums">{incomeTotal !== null ? formatMoney(incomeTotal) : '—'}</div>
-              </div>
-            </PermissionGate>
-            <PermissionGate permission="expense.view">
-              <div className="stat-tile">
-                <span className="stat-tile__icon"><FiArrowDownRight aria-hidden="true" /></span>
-                <div className="stat-tile__label">{t('dashboard.expenses')}</div>
-                <div className="stat-tile__value is-negative tabular-nums">{expenseTotal !== null ? formatMoney(expenseTotal) : '—'}</div>
-              </div>
-            </PermissionGate>
-            {netForRange !== null && (
-              <div className="stat-tile">
-                <span className="stat-tile__icon"><FiActivity aria-hidden="true" /></span>
-                <div className="stat-tile__label">{t('insights.netForRange')}</div>
-                <div className={`stat-tile__value tabular-nums ${netForRange.startsWith('-') ? 'is-negative' : 'is-positive'}`}>
-                  {formatMoney(netForRange)}
-                </div>
-              </div>
-            )}
-            <PermissionGate permission="pledges.view">
-              <div className="stat-tile">
-                <span className="stat-tile__icon"><FiTarget aria-hidden="true" /></span>
-                <div className="stat-tile__label">{t('dashboard.activePledges')}</div>
-                <div className="stat-tile__value">{pledgeTotals ? pledgeTotals.count : '—'}</div>
-              </div>
-            </PermissionGate>
-            <PermissionGate permission="pledges.view">
-              <div className="stat-tile">
-                <span className="stat-tile__icon"><FiTarget aria-hidden="true" /></span>
-                <div className="stat-tile__label">{t('dashboard.outstandingPledges')}</div>
-                <div className="stat-tile__value tabular-nums">{pledgeTotals ? formatMoney(pledgeTotals.remaining_amount) : '—'}</div>
-              </div>
-            </PermissionGate>
-          </motion.div>
-
           {insights && (
-            <>
-              <CollectionsOverview collections={insights.collections} periodLabel={t(`dashboard.period.${range}`)} />
-              <div className="insight-columns">
-                <DepartmentCollections departments={insights.departments} />
-                <MakatoOverviewCard makato={insights.makato} />
-              </div>
-            </>
+            <div className="dash-columns">
+              <DepartmentAccounts departments={insights.departments} />
+              <MakatoWidget makato={insights.makato} />
+            </div>
           )}
 
-          {/* Fund allocation — where the money actually sits right now,
-              one tile per fund the church has defined. Reveals on scroll
-              rather than on mount, since it usually sits below the fold. */}
-          <PermissionGate permission="reports.view">
-            {summary?.fundSummaries?.length > 0 && (
-              <div className="card">
-                <div className="card__header">
-                  <h2>{t('dashboard.fundAllocation')}</h2>
-                  <Link to="/funds" className="btn btn--secondary btn--sm">{t('dashboard.viewAll')}</Link>
-                </div>
-                <FundDonut funds={summary.fundSummaries} total={fundAllocationTotal} />
-                <motion.div
-                  className="fund-grid"
-                  variants={revealContainer}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, amount: 0.1 }}
-                >
-                  {summary.fundSummaries.map((fund) => {
-                    const Icon = fundIconFor(fund.name);
-                    const tint = fundTintFor(fund.name);
-                    const share = fundAllocationTotal > 0
-                      ? Math.round((Number(fund.balance) / fundAllocationTotal) * 100)
-                      : null;
-                    return (
-                      <motion.div className="fund-tile" key={fund.fundId} variants={revealItem}>
-                        <div className="fund-tile__head">
-                          {/* Category tint, chosen by the same name-matching
-                              that already picks the icon — so a fund's colour
-                              and its glyph always agree. Display only; nothing
-                              financial keys off it. */}
-                          <span className={tintClass('fund-tile__icon', tint)}>
-                            <Icon aria-hidden="true" />
-                          </span>
-                          {share !== null && <span className="fund-tile__share">{share}%</span>}
-                        </div>
-                        <div className="fund-tile__name">{fund.name}</div>
-                        <div className="fund-tile__value tabular-nums">{formatMoney(fund.balance)}</div>
-                        {/* Share-of-total as a bar as well as a figure — the
-                            reference pairs every metric with a proportion
-                            tracker, and a bar is read at a glance where a
-                            percentage has to be compared tile by tile. */}
-                        {share !== null && (
-                          <div
-                            className={tintClass('progress-meter', tint)}
-                            style={{ marginTop: 10 }}
-                            role="img"
-                            aria-label={`${share}%`}
-                          >
-                            <span className="progress-meter__fill" style={{ width: `${Math.min(share, 100)}%` }} />
-                          </div>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              </div>
-            )}
-          </PermissionGate>
-
-          {/* Income trends — sits directly under the fund allocation grid,
-              sharing its padding and type scale (.analytics-canvas in
-              cards.css). Rendered only when the series actually contains
-              recorded money: an empty 12-month timeline is a flat line at
-              zero, which looks like a broken chart rather than a new
-              tenant. */}
-          <PermissionGate permission="reports.view">
-            {trends?.series?.some((point) => Number(point.income) > 0) && (
-              <motion.section
-                className="analytics-canvas"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.1 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="analytics-canvas__head">
-                  <div>
-                    <h2 className="analytics-canvas__title">{t('dashboard.trends.title')}</h2>
-                    <p className="analytics-canvas__subtitle">{t('dashboard.trends.subtitle')}</p>
-                  </div>
-                  <div className="analytics-canvas__legend">
-                    <span className="analytics-canvas__legend-item">
-                      <span className="analytics-canvas__swatch" aria-hidden="true" />
-                      {t('dashboard.trends.legend.actual')}
-                    </span>
-                    {trends.forecast && (
-                      <span className="analytics-canvas__legend-item">
-                        <span className="analytics-canvas__swatch analytics-canvas__swatch--forecast" aria-hidden="true" />
-                        {t('dashboard.trends.legend.forecast')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <TrendChart series={trends.series} forecast={trends.forecast} />
-
-                {/* States plainly that the dashed segment is an estimate and
-                    what it was calculated from — a projected figure sitting
-                    unlabelled next to recorded income would be read as money
-                    the church actually has. */}
-                {trends.forecast && (
-                  <p className="analytics-canvas__note">
-                    {t('dashboard.trends.forecastNote', { months: trends.forecast.basisMonths })}
-                  </p>
-                )}
-              </motion.section>
-            )}
-          </PermissionGate>
-
-          {/* THE APPROVAL GATEWAY.
-              This used to be a bare count — "1 pending approval" with nothing
-              to act on and no indication of where to go. It now lists the
-              actual requests with their details and the decision buttons.
-
-              Worth being precise about the money, because the buttons imply
-              it: approving does NOT move any funds. The ledger is touched at
-              exactly one transition, "Mark paid"
-              (expenses.service.js#payExpense), which requires status
-              'approved' and posts through the shared financial engine inside
-              one DB transaction. Approve is the authorisation gate that makes
-              payment possible; Pay is the disbursement. Keeping them separate
-              is the segregation of duties the whole workflow exists for, so
-              the approve button deliberately does not deduct. */}
+          {/* Approval gateway. Approving does NOT move money: the ledger is
+              touched only at "Mark paid" (expenses.service.js#payExpense). */}
           <PermissionGate permission="expense.approve">
-            <div className="card">
-              <div className="card__header">
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <section className="dash-section">
+              <header className="dash-section__head">
+                <h2 className="dash-section__title">
                   <FiClock aria-hidden="true" /> {t('dashboard.pendingApprovals')}
-                  {pendingCount > 0 && (
-                    <span className="badge badge--warning" style={{ marginLeft: 2 }}>{pendingCount}</span>
-                  )}
+                  {pendingExpenses.length > 0 && <span className="badge badge--warning tabular-nums">{pendingExpenses.length}</span>}
                 </h2>
-                <Link to="/expenses" className="btn btn--secondary btn--sm">{t('dashboard.viewAll')}</Link>
-              </div>
-
-              {loading ? (
-                <SkeletonTable rows={2} columns={3} />
-              ) : pendingCount === 0 ? (
-                <EmptyState icon={FiClock} message={t('expenses.noPending')} />
+                <Link to="/expenses" className="btn btn--ghost btn--sm">{t('dashboard.viewAll')}</Link>
+              </header>
+              {pendingExpenses.length === 0 ? (
+                <p className="dash-section__empty">{t('expenses.noPending')}</p>
               ) : (
                 <>
-                  {/* States the workflow separation explicitly at the top
-                      of the grid, because the two-stage design is the thing
-                      most likely to be misread: an administrator who
-                      believes "Idhinisha" releases the money will not go on
-                      to the Expenses page to actually pay it, and the
-                      disbursement silently never happens. */}
                   <p className="approval-note">
                     <FiInfo aria-hidden="true" />
                     <span>{t('expenses.approveStageNote')}</span>
                   </p>
                   <div className="approval-list">
                     <AnimatePresence initial={false}>
-                    {pendingExpenses.map((expense) => {
-                      const busy = actioningExpenseId === expense.id;
-                      // Segregation of duties: an approver cannot approve
-                      // their own request. The server enforces this
-                      // independently (approveExpense re-checks it); hiding
-                      // the button only avoids offering a guaranteed 403.
-                      const isOwn = expense.requested_by_user_id === session?.user?.id;
-                      return (
-                        <motion.div
-                          className="approval-row"
-                          key={expense.id}
-                          layout
-                          initial={{ opacity: 0, y: -6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          // Collapses its own height as it fades so the rows
-                          // beneath rise into the gap instead of jumping.
-                          exit={{ opacity: 0, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
-                          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                        >
-                          <div className="approval-row__detail">
-                            <div className="approval-row__payee">{expense.payee}</div>
-                            <div className="approval-row__meta">
-                              {expense.expense_number}
-                              {expense.description ? ` · ${expense.description}` : ''}
+                      {pendingExpenses.map((expense) => {
+                        const busy = actioningExpenseId === expense.id;
+                        // An approver cannot approve their own request (also enforced server-side).
+                        const isOwn = expense.requested_by_user_id === session?.user?.id;
+                        return (
+                          <motion.div
+                            className="approval-row"
+                            key={expense.id}
+                            layout
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+                            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                          >
+                            <div className="approval-row__detail">
+                              <div className="approval-row__payee">{expense.payee}</div>
+                              <div className="approval-row__meta">
+                                {expense.expense_number}
+                                {expense.description ? ` · ${expense.description}` : ''}
+                              </div>
                             </div>
-                          </div>
-                          <div className="approval-row__amount tabular-nums">{formatMoney(expense.amount)}</div>
-                          <div className="approval-row__actions">
-                            {!isOwn && (
-                              <button
-                                type="button"
-                                className="btn btn--success btn--sm"
-                                disabled={busy}
-                                // Native tooltip rather than a custom
-                                // popover: it is supplementary detail to
-                                // the sub-label already printed above the
-                                // list, and it reaches keyboard focus and
-                                // screen readers for free.
-                                title={t('expenses.approveOnlyTooltip')}
-                                onClick={() => handleApproveExpense(expense)}
-                              >
-                                {busy ? t('common.loading') : t('expenses.approve')}
-                              </button>
-                            )}
-                            <PermissionGate permission="expense.reject">
-                              <button
-                                type="button"
-                                className="btn btn--danger btn--sm"
-                                disabled={busy}
-                                title={t('expenses.rejectTooltip')}
-                                onClick={() => handleRejectExpense(expense)}
-                              >
-                                {t('expenses.reject')}
-                              </button>
-                            </PermissionGate>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+                            <div className="approval-row__amount tabular-nums">{formatMoney(expense.amount)}</div>
+                            <div className="approval-row__actions">
+                              {!isOwn && (
+                                <button
+                                  type="button"
+                                  className="btn btn--success btn--sm"
+                                  disabled={busy}
+                                  title={t('expenses.approveOnlyTooltip')}
+                                  onClick={() => handleApproveExpense(expense)}
+                                >
+                                  {busy ? t('common.loading') : t('expenses.approve')}
+                                </button>
+                              )}
+                              <PermissionGate permission="expense.reject">
+                                <button
+                                  type="button"
+                                  className="btn btn--danger btn--sm"
+                                  disabled={busy}
+                                  title={t('expenses.rejectTooltip')}
+                                  onClick={() => handleRejectExpense(expense)}
+                                >
+                                  {t('expenses.reject')}
+                                </button>
+                              </PermissionGate>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </AnimatePresence>
                   </div>
                 </>
               )}
-            </div>
-          </PermissionGate>
-
-          <PermissionGate permission="budget.view">
-            <TargetsTracker rows={budgetRows} fundNameById={fundNameById} />
+            </section>
           </PermissionGate>
 
           <PermissionGate permission="reports.view">
-            <div className="card">
-              <div className="card__header">
-                <h2>{t('insights.timeline.title')}</h2>
-                <Link to="/reports" className="btn btn--secondary btn--sm">{t('dashboard.viewAll')}</Link>
-              </div>
+            <section className="dash-section">
+              <header className="dash-section__head">
+                <h2 className="dash-section__title">{t('insights.timeline.title')}</h2>
+                <Link to="/reports" className="btn btn--ghost btn--sm">{t('dashboard.viewAll')}</Link>
+              </header>
               <ActivityTimeline transactions={recentTransactions} />
-            </div>
+            </section>
           </PermissionGate>
         </>
       )}

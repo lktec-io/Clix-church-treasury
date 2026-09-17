@@ -17,9 +17,9 @@
   flex-shrink: 0;
   order: 1;
   overflow: hidden;
-  /* Flat, opaque deep-charcoal structure panel (--color-sidebar-bg). No
-     blur, gradient or elevation on desktop — a single hairline separates it
-     from the workspace. */
+  /* Flat, opaque soft-slate column (--color-sidebar-bg). No blur, gradient
+     or elevation on desktop — a single hairline separates it from the
+     white workspace. */
   background: var(--color-sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
   display: flex;
@@ -191,17 +191,6 @@
   }
 }
 
-.app-sidebar__group-label {
-  padding: 6px 16px 6px;
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-text-on-sidebar);
-  opacity: 0.6;
-  white-space: nowrap;
-}
-
 .app-sidebar__nav {
   flex: 1;
   overflow-y: auto;
@@ -226,6 +215,65 @@
 .app-sidebar__group:first-child {
   padding-top: 0;
   border-top: none;
+}
+
+/* "Treasury setup" disclosure: styled as a quiet link row with a caret. */
+.app-sidebar__group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-on-sidebar);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-sidebar__group-toggle svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.app-sidebar__group-toggle span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-sidebar__group-caret {
+  transition: transform var(--motion-base) var(--ease-premium);
+}
+
+.app-sidebar__group-toggle.is-open .app-sidebar__group-caret {
+  transform: rotate(180deg);
+}
+
+.app-sidebar__group-toggle:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-hover-text);
+}
+
+.app-sidebar__group-toggle:focus-visible {
+  outline: none;
+  box-shadow: inset var(--ring-accent-strong);
+}
+
+.app-sidebar.is-collapsed .app-sidebar__group-toggle {
+  justify-content: center;
+}
+
+.app-sidebar.is-collapsed .app-sidebar__group-toggle span,
+.app-sidebar.is-collapsed .app-sidebar__group-caret {
+  display: none;
 }
 
 .app-sidebar__link {
@@ -278,7 +326,17 @@
 
 .app-sidebar__link:focus-visible {
   outline: none;
-  box-shadow: inset var(--ring-gold);
+  box-shadow: inset var(--ring-accent-strong);
+}
+
+.app-sidebar__link--nested {
+  font-size: 13.5px;
+  font-weight: 600;
+  min-height: 38px;
+}
+
+.app-sidebar.is-collapsed .app-sidebar__link--nested {
+  min-height: 42px;
 }
 
 /* ACTIVE = gold indicator rule on the left edge, gold label, and a whisper
@@ -300,7 +358,6 @@
 
 /* Collapsed = icon rail only. JS toggles this class (Layout.jsx); the
    width itself is animated by Framer Motion so it can't jump. */
-.app-sidebar.is-collapsed .app-sidebar__group-label,
 .app-sidebar.is-collapsed .app-sidebar__link span,
 .app-sidebar.is-collapsed .app-sidebar__brand > span:not(.app-sidebar__brand-mark),
 .app-sidebar.is-collapsed .app-sidebar__footer-details {
@@ -383,9 +440,9 @@
   height: 32px;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
-  background: rgba(var(--color-gold-rgb), 0.12);
-  border: 1px solid rgba(var(--color-gold-rgb), 0.35);
-  color: var(--color-gold);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: #ffffff;
   font-size: 13px;
   font-weight: 700;
 }
@@ -480,14 +537,6 @@
   box-shadow: var(--ring-accent-strong);
 }
 
-.sidebar-ghost-btn--icon {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  margin: 0 auto;
-  font-size: 16px;
-}
-
 /* ---------- Main column / topbar ---------- */
 .app-main {
   flex: 1;
@@ -496,7 +545,7 @@
   min-width: 0;
 }
 
-/* Fixed full-width glass navbar. Because it now spans the viewport (not
+/* Fixed full-width navbar. Because it now spans the viewport (not
    just the main column) it also covers the sidebar's top edge — so
    .app-shell carries a matching padding-top and the sidebar starts at
    --navbar-height rather than 0. Those three values move together; changing
@@ -910,25 +959,20 @@
   }
 }
 
-
 /* ==========================================================================
    GLOBAL HEADER — live system status, profile menu
    ========================================================================== */
 
 /* ---------- Live system status ---------- */
+/* Flat text indicator: a small dot and a word, no chip. */
 .system-status {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 11px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--color-gray-light);
-  font-size: 11px;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -948,8 +992,6 @@
 }
 .system-status.is-online {
   color: var(--color-success);
-  background: var(--color-success-bg);
-  border-color: rgba(var(--color-accent-rgb), 0.25);
 }
 
 .system-status.is-degraded .status-dot {
@@ -957,8 +999,6 @@
 }
 .system-status.is-degraded {
   color: var(--color-warning);
-  background: var(--color-warning-bg);
-  border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
 }
 
 .system-status.is-offline .status-dot {
@@ -966,8 +1006,6 @@
 }
 .system-status.is-offline {
   color: var(--color-danger);
-  border-color: rgba(var(--color-danger-rgb), 0.35);
-  background: var(--color-danger-bg);
 }
 
 /* On a phone the dot carries the state alone; the word would crowd out the
@@ -975,7 +1013,8 @@
    and to screen readers via role="status". */
 @media (max-width: 599px) {
   .system-status {
-    width: 32px;
+    width: var(--touch-target);
+    min-height: var(--touch-target);
     padding: 0;
     justify-content: center;
   }

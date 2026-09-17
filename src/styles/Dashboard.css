@@ -1,939 +1,373 @@
 /* ==========================================================================
-   DASHBOARD — the financial cockpit: welcome banner, fund donut, trends
-   canvas and fund allocation tiles. Only rules used by DashboardPage live here.
+   DASHBOARD — the treasurer's overview. Only rules used by DashboardPage and
+   components/dashboard/TreasuryInsights.jsx live here.
+
+   White on white: sections are separated by hairlines and whitespace, never
+   by shadows or tinted panels. Emerald marks headings and the one emphasised
+   balance; crimson and green mark money out and in.
    ========================================================================== */
 
-/* ==========================================================================
-   WELCOME BANNER — the emerald statement header of the cockpit. Flat fill,
-   a gold rule on the left edge, the date set like a statement date.
-   ========================================================================== */
-.welcome-banner {
+/* ---------- Page header ---------- */
+.dash-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 18px;
-  padding: 22px 22px 22px 26px;
-  margin-bottom: 16px;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
-  border-left: 4px solid var(--color-gold);
-  color: #ffffff;
-}
-
-.welcome-banner__body {
-  min-width: 0;
-}
-
-.welcome-banner__title {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.2;
-  font-weight: var(--font-weight-heavy);
-  letter-spacing: -0.02em;
-  color: #ffffff;
-  overflow-wrap: anywhere;
-}
-
-.welcome-banner__subtitle {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.welcome-banner__date {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-.welcome-banner__date-day {
-  font-size: 30px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-gold);
-}
-
-.welcome-banner__date-rest {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.welcome-banner__date-weekday {
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffffff;
-  white-space: nowrap;
-}
-
-.welcome-banner__date-month {
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.7);
-  white-space: nowrap;
-}
-
-@media (min-width: 700px) {
-  .welcome-banner {
-    padding: 26px 28px 26px 32px;
-  }
-  .welcome-banner__title {
-    font-size: 28px;
-  }
-}
-
-/* ==========================================================================
-   FUND ALLOCATION DONUT
-   ========================================================================== */
-.fund-donut {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 22px;
+  gap: 14px 24px;
+  padding-bottom: 18px;
   margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
 }
 
-.fund-donut__chart {
-  position: relative;
-  width: 190px;
-  height: 190px;
-  flex-shrink: 0;
-  margin-inline: auto;
+.dash-header__text {
+  min-width: 0;
 }
 
-.fund-donut__chart svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.fund-donut__chart circle {
-  cursor: pointer;
-}
-
-.fund-donut__center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  text-align: center;
-  /* The ring underneath owns the hover — without this, moving onto the
-     centre readout would count as leaving the segment and reset it. */
-  pointer-events: none;
-  padding: 0 34px;
-}
-
-.fund-donut__center-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
-  line-height: 1.3;
-}
-
-.fund-donut__center-value {
-  font-size: 17px;
-  font-weight: 700;
+.dash-header__title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--text-heading);
-}
-
-.fund-donut__center-share {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-accent);
-}
-
-.fund-donut__legend {
-  flex: 1 1 220px;
-  min-width: 0;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.fund-donut__legend-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 7px 9px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-premium);
-}
-
-.fund-donut__legend-item:hover,
-.fund-donut__legend-item.is-active {
-  background: var(--color-lavender-soft);
-  box-shadow: inset 3px 0 0 var(--color-gold);
-}
-
-.fund-donut__legend-item:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-accent);
-}
-
-.fund-donut__swatch {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-}
-
-.fund-donut__legend-name {
-  /* Wraps rather than truncating: this carries data or a translated label,
-     and a Swahili string cut to "Mapato na Mi…" is unreadable. */
+  color: var(--color-primary);
   overflow-wrap: anywhere;
-  flex: 1;
-  min-width: 0;
 }
 
-.fund-donut__legend-share {
-  flex-shrink: 0;
-  font-weight: 700;
-  color: var(--text-heading);
-}
-
-.fund-donut__empty {
-  padding: 22px 0;
-  color: var(--text-muted);
-  font-size: 13px;
-  text-align: center;
-}
-
-/* ==========================================================================
-   ANALYTICS CANVAS — income trends & forecast
-   Shares .fund-tile's padding/typography scale so the two stacked panels
-   read as one system rather than two components that happen to be adjacent.
-   ========================================================================== */
-.analytics-canvas {
-  padding: 20px;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  /* min-width:0 lets this shrink inside a grid/flex parent; without it a
-     wide SVG child sets the floor and pushes the page into horizontal
-     scroll on a 320px viewport. width/max-width pin it to the column it is
-     given rather than to its content, so nothing inside — the SVG, the
-     legend, or a long fund name in the tooltip — can widen the panel. */
-  min-width: 0;
-  width: 100%;
-  max-width: 100%;
-  /* Deliberately NOT `overflow: hidden` any more. That clipped the hover
-     tooltip — which is a floating box anchored to a data point and can
-     legitimately sit slightly proud of the panel — in half at the first and
-     last month of the series. It cannot be `overflow-x: hidden` with a
-     visible y either: CSS computes the visible axis to `auto` when the other
-     is clipped, which would hang a scrollbar off the panel.
-     What actually prevents a sideways page break is the pair above (this
-     panel can never exceed the column it is given), the edge-aware tooltip
-     anchoring in TrendChart.jsx, and #root's own
-     `max-width: 100vw; overflow-x: hidden` backstop in layout.css. */
-  overflow: visible;
-}
-
-@media (min-width: 640px) {
-  .analytics-canvas {
-    padding: 26px 28px;
-  }
-}
-
-.analytics-canvas__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  margin-bottom: 18px;
-}
-
-.analytics-canvas__title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--text-heading);
-}
-
-/* The English half of the bilingual title, one step down the hierarchy so
-   the pair reads as one heading rather than two competing ones. */
-.analytics-canvas__subtitle {
-  margin: 3px 0 0;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.dash-header__subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
-.analytics-canvas__legend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.analytics-canvas__legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  white-space: nowrap;
-}
-
-.analytics-canvas__swatch {
-  width: 16px;
-  height: 3px;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-}
-
-.analytics-canvas__swatch--forecast {
-  background: repeating-linear-gradient(
-    90deg,
-    var(--color-accent) 0 4px,
-    transparent 4px 7px
-  );
-}
-
-.analytics-canvas__note {
-  margin: 14px 0 0;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-/* ---------- The chart itself ---------- */
-.trend-chart {
-  position: relative;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
-/* The SVG is fluid by construction: a fixed viewBox plus width:100% and
-   height:auto means the browser rescales all geometry to whatever width the
-   panel hands it, at any viewport, with no JS measurement and no fixed
-   pixel width anywhere in the chart. max-width pins it to the container so
-   the aspect-ratio box can never round up past its parent. */
-.trend-chart svg {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-.trend-chart rect:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-/* Navy glass tooltip. The `transform` that anchors it against the node is
-   set INLINE by TrendChart.jsx (tooltipPlacement), because the anchor has to
-   change near the panel edges — a fixed translate(-50%, -120%) here would be
-   overridden anyway and is left out so there is exactly one source of truth
-   for the placement. pointer-events:none so it can never sit between the
-   cursor and the hit-area column underneath, which would make it flicker. */
-.trend-chart__tooltip {
-  position: absolute;
-  /* Never wider than the panel it is clipped by — on a 360px phone the
-     150px floor plus padding would otherwise reach the edge regardless of
-     which way it is anchored. */
-  max-width: 100%;
-  min-width: 150px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--color-sidebar-bg);
-  border: 1px solid rgba(var(--color-gold-rgb), 0.35);
-  border-top: 2px solid var(--color-gold);
-  box-shadow: var(--shadow-xl);
-  color: #ffffff;
-  pointer-events: none;
-  z-index: 3;
-}
-
-/* Anchored below its node instead of above (top of the plot). The shadow is
-   thrown the other way so the box still reads as lifted off the panel rather
-   than pressed into it. */
-.trend-chart__tooltip.is-flipped {
-  border-top: 1px solid rgba(var(--color-gold-rgb), 0.35);
-  border-bottom: 2px solid var(--color-gold);
-}
-
-.trend-chart__tooltip-month {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-gold);
-  margin-bottom: 6px;
-}
-
-.trend-chart__tooltip-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-  font-size: 12.5px;
-}
-
-.trend-chart__tooltip-key {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.trend-chart__tooltip-value {
-  font-weight: 700;
-  color: #ffffff;
-}
-
-
-/* ---------- Fund allocation tiles (DashboardPage) ---------- */
-/* One tile per fund the church has defined. Same surface language as
-   .stat-tile but with a heavier accent treatment, since this is the
-   "where the money sits" block rather than a plain metric. */
-.fund-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-  gap: 14px;
-}
-
-.fund-tile {
+.period-select {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 0;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: none;
-  transition: border-color var(--motion-fast) var(--ease-premium);
 }
 
-/* Feedback is a border tint, not a lift — see the note on .card. */
-@media (hover: hover) and (pointer: fine) {
-  .fund-tile:hover {
-    border-color: var(--color-primary);
-  }
-}
-
-.fund-tile__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-/* Circular tinted enclosure, same system as .metric-icon — a fund tile
-   accepts the --income/--savings/--info modifiers so each fund carries its
-   own category colour (brief §2B). */
-.fund-tile__icon {
-  --metric-tint: var(--color-primary);
-  --metric-tint-rgb: var(--color-primary-rgb);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-lg);
-  background: rgba(var(--metric-tint-rgb), 0.12);
-  color: var(--metric-tint);
-  font-size: 17px;
-}
-
-/* Share-of-total badge — the premium green accent, used here because it
-   genuinely encodes something (proportion of funds held), not decoration. */
-.fund-tile__share {
-  flex-shrink: 0;
-  padding: 3px 9px;
-  border-radius: var(--radius-sm);
-  /* Neutral, not success green: a proportion of the total is neither good
-     nor bad news. */
-  background: var(--color-gray-light);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.fund-tile__name {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
-}
-
-.fund-tile__value {
-  font-size: 21px;
+.period-select__label {
+  font-size: 11px;
   font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.period-select select {
+  min-height: 42px;
+  min-width: 180px;
+  padding: 8px 36px 8px 12px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.period-select select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--ring-accent);
+}
+
+/* ---------- Balance tiles ---------- */
+.balance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.balance-tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+/* The net treasury balance: the one solid emerald surface on the page. */
+.balance-tile--emphasis {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.balance-tile__label {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+}
+
+.balance-tile--emphasis .balance-tile__label {
+  color: var(--color-gold);
+}
+
+.balance-tile__value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
   color: var(--text-heading);
   overflow-wrap: anywhere;
 }
 
+.balance-tile--emphasis .balance-tile__value {
+  color: #ffffff;
+}
 
-/* ==========================================================================
-   TREASURY INSIGHTS — account blocks, departments, Makato leakage, targets,
-   activity timeline (components/dashboard/TreasuryInsights.jsx)
-   ========================================================================== */
-.section-heading {
-  margin: 0;
-  font-size: 12px;
+.balance-tile__currency {
+  font-size: 13px;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-primary);
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
 }
 
-.insight-card .card__header h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.balance-tile--emphasis .balance-tile__currency,
+.balance-tile--emphasis .balance-tile__caption {
+  color: rgba(255, 255, 255, 0.72);
 }
 
-.insight-card__note {
+.balance-tile__caption {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.balance-tile__lines {
   margin: 16px 0 0;
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
-/* Two cards side by side on wide screens, stacked on phones and tablets. */
-.insight-columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
-  gap: var(--space-md);
-  align-items: start;
-  margin-bottom: var(--space-md);
+.balance-tile--emphasis .balance-tile__lines {
+  border-top-color: rgba(255, 255, 255, 0.18);
 }
 
-.insight-columns > .card {
-  margin: 0;
-}
-
-/* ---------- Account balance blocks (Zaka / Sadaka / other) ---------- */
-.account-blocks {
-  margin-bottom: var(--space-md);
-}
-
-.account-blocks__head {
+.balance-tile__line {
   display: flex;
-  align-items: flex-end;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  margin-bottom: 10px;
-}
-
-.account-blocks__total {
-  display: flex;
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 14px;
 }
 
-.account-blocks__total-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.balance-tile__line dt {
   color: var(--text-muted);
 }
 
-.account-blocks__total-value {
-  font-size: 17px;
+.balance-tile--emphasis .balance-tile__line dt {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.balance-tile__line dd {
+  margin: 0;
   font-weight: 800;
   color: var(--text-heading);
 }
 
-.account-blocks__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 12px;
+.balance-tile__line dd.is-in {
+  color: var(--color-success);
 }
 
-.account-block {
-  display: flex;
-  flex-direction: column;
+.balance-tile__line dd.is-out {
+  color: var(--color-danger);
+}
+
+.balance-tile--emphasis .balance-tile__line dd {
+  color: #ffffff;
+}
+
+/* ---------- Sections ---------- */
+.dash-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.dash-section {
   min-width: 0;
-  padding: 16px 18px 18px;
+  padding: 18px 20px;
   border: 1px solid var(--border);
-  border-top: 3px solid var(--color-primary);
   border-radius: var(--radius-sm);
   background: var(--surface);
 }
 
-/* Tithe is the anchor account: emerald statement block with gold detail. */
-.account-block--tithe {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  border-top-color: var(--color-gold);
-  color: #ffffff;
+.dash-section + .dash-section {
+  margin-top: 14px;
 }
 
-.account-block__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
+.dash-columns > .dash-section + .dash-section {
+  margin-top: 0;
 }
 
-.account-block__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
-  background: var(--color-lavender-soft);
-  color: var(--color-primary);
-  font-size: 15px;
-}
-
-.account-block--tithe .account-block__icon {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--color-gold);
-}
-
-.account-block__name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  overflow-wrap: anywhere;
-}
-
-.account-block__share {
-  flex-shrink: 0;
-  padding: 2px 7px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 11.5px;
-  font-weight: 800;
-  color: var(--text-muted);
-}
-
-.account-block--tithe .account-block__share {
-  border-color: rgba(var(--color-gold-rgb), 0.55);
-  color: var(--color-gold);
-}
-
-.account-block__label {
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-}
-
-.account-block--tithe .account-block__label {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.account-block__balance {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 4px 0 16px;
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text-heading);
-  overflow-wrap: anywhere;
-}
-
-.account-block--tithe .account-block__balance {
-  color: #ffffff;
-}
-
-.account-block__currency {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
-.account-block--tithe .account-block__currency {
-  color: var(--color-gold);
-}
-
-.account-block--tithe .progress-meter {
-  background: rgba(255, 255, 255, 0.14);
-  --meter-tint: var(--color-gold);
-}
-
-/* ---------- Department collections / targets (shared row shape) ---------- */
-.department-list,
-.target-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.department-row,
-.target-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.department-row__head,
-.target-row__head {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 4px 12px;
-}
-
-.department-row__name,
-.target-row__name {
-  font-weight: 700;
-  color: var(--text-heading);
-  overflow-wrap: anywhere;
-}
-
-.department-row__value,
-.target-row__figures {
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.targets-columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  gap: 20px 28px;
-}
-
-.targets-columns__title {
-  margin: 0 0 12px;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-}
-
-.field-hint.is-overdue {
-  color: var(--color-danger);
-  font-weight: 700;
-}
-
-/* ---------- Makato leakage widget ---------- */
-.card.leakage {
-  border-top: 3px solid var(--color-danger);
-}
-
-.leakage__head {
+.dash-section__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 6px 12px;
   margin-bottom: 14px;
 }
 
-.leakage__title {
+.dash-section__title {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
-}
-
-.leakage__rate {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 9px;
-  border-radius: var(--radius-sm);
-  background: var(--color-danger-bg);
-  border: 1px solid rgba(var(--color-danger-rgb), 0.35);
-  color: var(--color-danger);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
+  color: var(--color-primary);
 }
 
-.leakage__headline {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 14px;
-}
-
-.leakage__headline-label {
-  font-size: 10.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-}
-
-.leakage__headline-value {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--color-danger);
-  overflow-wrap: anywhere;
-}
-
-.leakage__headline-meta {
+.dash-section__hint {
   font-size: 12.5px;
   color: var(--text-muted);
 }
 
-.leakage__flow {
-  display: flex;
-  height: 12px;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: var(--color-gray-light);
+.dash-section__empty {
+  margin: 0;
+  padding: 18px 0;
+  font-size: 14px;
+  color: var(--text-muted);
 }
 
-.leakage__flow-net {
+.dash-section__note {
+  margin: 14px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ---------- Inline CSS bar ---------- */
+.fin-bar {
+  display: block;
+  width: 100%;
+  height: 6px;
+  background: var(--color-gray-light);
+  overflow: hidden;
+}
+
+.fin-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  transition: width var(--motion-slow) var(--ease-premium);
+}
+
+.fin-bar--in .fin-bar__fill {
   background: var(--color-success);
 }
 
-.leakage__flow-fee {
+.fin-bar--out .fin-bar__fill {
   background: var(--color-danger);
 }
 
-.leakage__flow-net,
-.leakage__flow-fee {
-  display: block;
-  height: 100%;
-  transition: width var(--motion-slow) var(--ease-premium);
+@media (prefers-reduced-motion: reduce) {
+  .fin-bar__fill {
+    transition: none;
+  }
 }
 
-.leakage__providers {
-  width: 100%;
-  margin-top: 18px;
-  border-collapse: collapse;
-  font-size: 13px;
+/* ---------- Department sub-accounts ---------- */
+.subaccount-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
 }
 
-.leakage__providers-caption {
-  padding-bottom: 8px;
-  text-align: left;
-  font-size: 10.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-}
-
-.leakage__providers th,
-.leakage__providers td {
-  padding: 9px 0;
+.subaccount {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  text-align: left;
-  vertical-align: middle;
 }
 
-.leakage__providers thead th {
-  padding-top: 0;
-  border-bottom-color: var(--color-input-border);
-  font-size: 10.5px;
+.subaccount__name {
+  font-size: 13px;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.subaccount__value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.subaccount__meta {
+  font-size: 12px;
   color: var(--text-muted);
 }
 
-.leakage__providers tbody tr:last-child th,
-.leakage__providers tbody tr:last-child td {
+/* ---------- Makato widget ---------- */
+.makato-widget__rows {
+  margin: 0;
+}
+
+.makato-widget__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.makato-widget__row:last-child {
   border-bottom: none;
 }
 
-.leakage__providers tbody th {
-  font-weight: inherit;
-  padding-right: 12px;
+.makato-widget__row dt {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.leakage__providers .is-num {
-  text-align: right;
-  white-space: nowrap;
-  padding-right: 14px;
-}
-
-.leakage__fee {
+.makato-widget__row dd {
+  margin: 0;
+  font-size: 18px;
   font-weight: 800;
+  color: var(--text-heading);
+  white-space: nowrap;
+}
+
+.makato-widget__row .fin-bar {
+  grid-column: 1 / -1;
+}
+
+.makato-widget__row.is-out dd {
   color: var(--color-danger);
 }
 
-.leakage__rate-col {
-  width: 38%;
+.makato-widget__row.is-in dd {
+  color: var(--color-success);
 }
 
-.leakage__rate-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.leakage__rate-track {
-  flex: 1 1 auto;
-  height: 6px;
-  background: var(--color-gray-light);
-}
-
-.leakage__rate-fill {
-  display: block;
-  height: 100%;
-  background: var(--color-danger);
-  transition: width var(--motion-slow) var(--ease-premium);
-}
-
-.leakage__rate-value {
-  flex-shrink: 0;
-  min-width: 4.2em;
-  text-align: right;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--text-heading);
-}
-
-/* ---------- Activity timeline: fixed stamp column on a vertical axis ---------- */
+/* ---------- Recent activity ---------- */
 .activity-timeline {
-  --stamp-width: 92px;
-  --node-size: 26px;
+  --node-size: 30px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -942,22 +376,21 @@
 .activity-timeline__item {
   position: relative;
   display: grid;
-  grid-template-columns: var(--stamp-width) var(--node-size) minmax(0, 1fr) auto;
+  grid-template-columns: var(--node-size) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0 14px;
-  padding: 12px 0;
+  gap: 4px 12px;
+  padding: 11px 0;
 }
 
-/* The axis: a 1px rule through the node column, continuous from item to
-   item, trimmed at the first and last node. */
+/* A 1px axis through the node column, trimmed at the first and last item. */
 .activity-timeline__item::before {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc(var(--stamp-width) + 14px + var(--node-size) / 2);
+  left: calc(var(--node-size) / 2);
   width: 1px;
-  background: var(--color-input-border);
+  background: var(--border);
 }
 
 .activity-timeline__item:first-child::before {
@@ -972,72 +405,41 @@
   display: none;
 }
 
-.activity-timeline__stamp {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
-}
-
-.activity-timeline__date {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-heading);
-  white-space: nowrap;
-}
-
-.activity-timeline__time {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-}
-
 .activity-timeline__node {
-  position: relative; /* above the axis */
+  position: relative;
   display: grid;
   place-items: center;
   width: var(--node-size);
   height: var(--node-size);
   border-radius: var(--radius-sm);
-  font-size: 13px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 14px;
 }
 
 .activity-timeline__item.is-in .activity-timeline__node {
-  background: var(--color-success-bg);
-  border-color: rgba(var(--color-accent-rgb), 0.35);
   color: var(--color-success);
 }
 
 .activity-timeline__item.is-out .activity-timeline__node {
-  background: var(--color-danger-bg);
-  border-color: rgba(var(--color-danger-rgb), 0.35);
   color: var(--color-danger);
 }
 
 .activity-timeline__title {
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-heading);
   overflow-wrap: anywhere;
 }
 
 .activity-timeline__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
-}
-
-.activity-timeline__type {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 10.5px;
-  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .activity-timeline__amount {
+  font-size: 15px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -1050,34 +452,26 @@
   color: var(--color-danger);
 }
 
-/* Phones: stamp and amount share the top line, the entry sits under it,
-   and the axis runs down the node column on the left. */
-@media (max-width: 559px) {
+/* Phones: the amount drops under the entry instead of squeezing it. */
+@media (max-width: 480px) {
+  .dash-header__title {
+    font-size: 22px;
+  }
+  .period-select,
+  .period-select select {
+    width: 100%;
+  }
+  .period-select select {
+    min-height: var(--touch-target);
+    font-size: 16px;
+  }
+  .balance-tile__value {
+    font-size: 28px;
+  }
   .activity-timeline__item {
-    grid-template-columns: var(--node-size) minmax(0, 1fr) auto;
-    grid-template-areas:
-      'node stamp amount'
-      'node body body';
-    align-items: start;
-    gap: 2px 12px;
-  }
-  .activity-timeline__item::before {
-    left: calc(var(--node-size) / 2);
-  }
-  .activity-timeline__node {
-    grid-area: node;
-  }
-  .activity-timeline__stamp {
-    grid-area: stamp;
-    flex-direction: row;
-    gap: 8px;
-    align-items: baseline;
-    text-align: left;
-  }
-  .activity-timeline__body {
-    grid-area: body;
+    grid-template-columns: var(--node-size) minmax(0, 1fr);
   }
   .activity-timeline__amount {
-    grid-area: amount;
+    grid-column: 2;
   }
 }

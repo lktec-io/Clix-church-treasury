@@ -9,19 +9,9 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
-import { formatDate, formatMoney, formatTime, sanitizeAmountInput } from '../utils/format.js';
-
-// Recorded timestamp as a padded two-line stamp: local date over local
-// hour:minute. Both are derived from the same UTC value, so the date line
-// is the Tanzanian calendar date even for entries made after 21:00 UTC.
-function RecordedStamp({ value }) {
-  return (
-    <span className="ledger-stamp">
-      <span className="ledger-stamp__date">{formatDate(value)}</span>
-      <span className="ledger-stamp__time">{formatTime(value)}</span>
-    </span>
-  );
-}
+import Dropdown from '../components/ui/Dropdown.jsx';
+import RecordedStamp from '../components/ui/RecordedStamp.jsx';
+import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
 const PAGE_SIZE = 50;
@@ -115,9 +105,16 @@ export default function ExpensesPage() {
 
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
+  const setField = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    // The dropdowns are not native <select required>; check before sending.
+    if (!form.accountId || !form.fundId || !form.categoryId) {
+      setError(t('expenses.error.required'));
+      return;
+    }
     setSubmitting(true);
     try {
       await expensesApi.create({
@@ -214,50 +211,62 @@ export default function ExpensesPage() {
 
   return (
     <div>
-      <PageHeader title={t('expenses.title')} />
+      <PageHeader title={t('expenses.title')} subtitle={t('expenses.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <PermissionGate permission="expense.create">
-        <div className="card">
+        <div className="card form-card">
           <div className="card__header">
             <h2>{t('expenses.requestNew')}</h2>
           </div>
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
               <div className="field">
-                <label>{t('common.amount')}</label>
-                <input type="text" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={handleChange('amount')} required />
+                <label htmlFor="expense-amount">{t('common.amount')}</label>
+                <div className="currency-input">
+                  <span className="currency-input__prefix">TZS</span>
+                  <input
+                    id="expense-amount"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    placeholder="0.00"
+                    value={form.amount}
+                    onChange={handleChange('amount')}
+                    required
+                  />
+                </div>
               </div>
               <div className="field">
-                <label>{t('expenses.payee')}</label>
-                <input value={form.payee} onChange={handleChange('payee')} required />
+                <label htmlFor="expense-payee">{t('expenses.payee')}</label>
+                <input id="expense-payee" value={form.payee} onChange={handleChange('payee')} required />
               </div>
               <div className="field">
-                <label>{t('contributions.account')}</label>
-                <select value={form.accountId} onChange={handleChange('accountId')} required>
-                  <option value="" disabled>—</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="expense-account"
+                  label={t('contributions.account')}
+                  options={accounts.map((a) => ({ value: String(a.id), label: a.name }))}
+                  value={form.accountId}
+                  onChange={setField('accountId')}
+                />
               </div>
               <div className="field">
-                <label>{t('contributions.fund')}</label>
-                <select value={form.fundId} onChange={handleChange('fundId')} required>
-                  <option value="" disabled>—</option>
-                  {funds.map((f) => (
-                    <option key={f.id} value={f.id}>{f.name}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="expense-fund"
+                  label={t('contributions.fund')}
+                  options={funds.map((f) => ({ value: String(f.id), label: f.name }))}
+                  value={form.fundId}
+                  onChange={setField('fundId')}
+                />
               </div>
               <div className="field">
-                <label>{t('contributions.category')}</label>
-                <select value={form.categoryId} onChange={handleChange('categoryId')} required>
-                  <option value="" disabled>—</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="expense-category"
+                  label={t('contributions.category')}
+                  options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
+                  value={form.categoryId}
+                  onChange={setField('categoryId')}
+                />
                 {categories.length === 0 && (
                   <span className="field-error">
                     {t('categories.emptyHint')} <Link to="/categories">{t('categories.title')}</Link>
@@ -265,20 +274,21 @@ export default function ExpensesPage() {
                 )}
               </div>
               <div className="field">
-                <label>{t('contributions.paymentMethod')}</label>
-                <select value={form.paymentMethod} onChange={handleChange('paymentMethod')} required>
-                  {PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m}>{t(`paymentMethod.${m}`)}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="expense-method"
+                  label={t('contributions.paymentMethod')}
+                  options={PAYMENT_METHODS.map((m) => ({ value: m, label: t(`paymentMethod.${m}`) }))}
+                  value={form.paymentMethod}
+                  onChange={setField('paymentMethod')}
+                />
               </div>
               <div className="field">
-                <label>{t('common.reference')}</label>
-                <input value={form.reference} onChange={handleChange('reference')} />
+                <label htmlFor="expense-reference">{t('common.reference')}</label>
+                <input id="expense-reference" value={form.reference} onChange={handleChange('reference')} />
               </div>
               <div className="field field--full">
-                <label>{t('expenses.description')}</label>
-                <textarea rows={2} value={form.description} onChange={handleChange('description')} />
+                <label htmlFor="expense-description">{t('expenses.description')}</label>
+                <textarea id="expense-description" rows={2} value={form.description} onChange={handleChange('description')} />
               </div>
             </div>
             <div className="form-actions">
@@ -334,7 +344,7 @@ export default function ExpensesPage() {
                       <td>
                         <RecordedStamp value={expense.created_at} />
                       </td>
-                      <td className="is-mono">{expense.expense_number ?? '—'}</td>
+                      <td className="is-ref">{expense.expense_number ?? '—'}</td>
                       <td>
                         <span className="cell-stack">
                           <span className="cell-stack__primary">{expense.payee}</span>
@@ -396,7 +406,7 @@ export default function ExpensesPage() {
                     <td>
                       <RecordedStamp value={expense.created_at} />
                     </td>
-                    <td className="is-mono">{expense.expense_number ?? '—'}</td>
+                    <td className="is-ref">{expense.expense_number ?? '—'}</td>
                     <td>
                       <span className="cell-stack">
                         <span className="cell-stack__primary">{expense.payee}</span>

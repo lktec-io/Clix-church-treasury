@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-// Light/dark switching for the single navy+green palette. themes.css holds
+// Light/dark switching for the emerald palette. themes.css holds
 // the two token sets (:root and :root[data-theme='dark']); this context does
 // nothing but decide which one is active and remember the choice.
 //
@@ -12,18 +12,16 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 const STORAGE_KEY = 'clix.theme';
 const ThemeContext = createContext(null);
 
+// White is the default for everyone. Dark is only ever an explicit choice
+// the user made in the profile menu — the OS preference is deliberately not
+// consulted, so a treasurer on a dark-mode phone still gets the white ledger.
 function readStoredTheme() {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'dark' || stored === 'light') return stored;
+    if (localStorage.getItem(STORAGE_KEY) === 'dark') return 'dark';
   } catch {
-    // Private mode / storage disabled — fall through to the OS preference.
+    // Private mode / storage disabled — default below.
   }
-  try {
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  } catch {
-    return 'light';
-  }
+  return 'light';
 }
 
 export function ThemeProvider({ children }) {

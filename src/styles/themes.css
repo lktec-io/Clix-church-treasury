@@ -1,12 +1,12 @@
 /* ==========================================================================
    PALETTE — the single authoritative colour set for the whole product.
 
-   DEEP ROYAL EMERALD & MUTED GOLD. A private-banking palette: deep emerald
-   (#0F5132) carries the brand, headers and every committing action; muted
-   gold (#D4AF37) marks "you are here" — the active navigation item, the
-   current step, the selected option. Structure is near-black charcoal
-   (#111418) for the sidebar and drawer, set against a #F8F9FA workspace
-   with pure white panels divided by #EAEAEA hairlines.
+   DEFAULT WHITE. A high-contrast white workspace (#FFFFFF) — canvas, cards
+   and forms alike — divided only by #EAEAEA hairlines. Deep emerald
+   (#0F5132) carries headers, primary actions and text markers. Muted gold
+   (#D4AF37) is reserved for the active sidebar link and a few highlighted
+   states. The sidebar is a very soft slate tint so it reads as a column
+   without a heavy dark panel.
 
    This file is the ONLY place raw colour values live. Every other stylesheet
    consumes these by name and colors.css maps the semantic aliases (--text,
@@ -14,11 +14,11 @@
 
    ── DIVISION OF LABOUR (keep it when editing) ─────────────────────────────
    --color-primary   EMERALD — brand, headers, primary buttons, focus rings.
-   --color-gold      GOLD — active/selected state only. Never body text on
-                     white: #D4AF37 on #FFFFFF is ~2.1:1 and fails WCAG. Gold
-                     is used as a fill (with charcoal text on it), as an
-                     indicator rule, or as text on the dark sidebar, where it
-                     is ~8.6:1. --color-gold-ink is the text-safe variant.
+   --color-gold      GOLD — active sidebar link and highlights only. Never
+                     text on a light surface: #D4AF37 on white is ~2.1:1 and
+                     fails WCAG. Gold is an indicator rule, a soft bed, or a
+                     fill with dark text on it. --color-gold-ink is the
+                     text-safe variant.
    --color-accent    SUCCESS GREEN — money in, approved, balanced. Brighter
                      than the brand emerald so a confirmed result and a
                      brand surface are never the same colour.
@@ -51,8 +51,8 @@
   --color-accent-rgb: 26, 127, 78;
   --color-blue: #2f5f8a;
 
-  /* Neutrals — crisp workspace, pure white panels, hairline borders */
-  --color-background: #f8f9fa;
+  /* Neutrals — white workspace, white panels, hairline borders */
+  --color-background: #ffffff;
   --color-border: #eaeaea;
   /* Form-control outline. #EAEAEA is right for panel hairlines but far too
      faint to show where a text field is (WCAG 1.4.11 wants 3:1). */
@@ -80,25 +80,25 @@
   --glass-panel-bg: #ffffff;
   --modal-backdrop-bg: rgba(17, 20, 24, 0.55);
 
-  /* Sidebar — near-black charcoal with a gold active state */
-  --color-sidebar-bg: #111418;
+  /* Sidebar — soft slate tint, separated from the canvas by one hairline */
+  --color-sidebar-bg: #f7f9f8;
   --gradient-sidebar: none;
 
   /* Text — near-black ink rather than pure black */
   --color-text-primary: #111418;
   --color-text-secondary: #5f6670;
-  --color-text-on-sidebar: #a4abb4;
+  --color-text-on-sidebar: #4a525b;
 
-  /* Sidebar chrome. Controls inside the charcoal panel read these rather
-     than the page-surface tokens, so they stay legible on the dark panel. */
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.05);
-  --sidebar-hover-text: #ffffff;
-  --sidebar-active-bg: rgba(212, 175, 55, 0.1);
-  --sidebar-active-text: #d4af37;
-  --sidebar-text-strong: #f4f5f6;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-control-bg: rgba(255, 255, 255, 0.04);
-  --sidebar-control-border: rgba(255, 255, 255, 0.1);
+  /* Sidebar chrome. The active link is a gold rule and gold bed with emerald
+     text — gold itself cannot be the text colour on a light panel. */
+  --sidebar-hover-bg: #eef1f0;
+  --sidebar-hover-text: #111418;
+  --sidebar-active-bg: #faf5e4;
+  --sidebar-active-text: #0f5132;
+  --sidebar-text-strong: #111418;
+  --sidebar-border: #eaeaea;
+  --sidebar-control-bg: #ffffff;
+  --sidebar-control-border: #d9dde1;
 
   /* Soft emerald beds — selected rows, tinted enclosures, tracks. (The
      token names predate this palette; renaming them would touch every
@@ -115,7 +115,8 @@
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-lg: none;
-  --shadow-xl: 0 12px 32px -12px rgba(17, 20, 24, 0.28);
+  /* On an all-white page a floating menu needs a whisper of separation. */
+  --shadow-xl: 0 10px 28px -12px rgba(17, 20, 24, 0.22);
   --shadow-glow: none;
 
   /* Focus rings — emerald on light surfaces (gold would fail contrast). */
@@ -186,9 +187,14 @@
   --color-text-secondary: #99a0a8;
   --color-text-on-sidebar: #99a0a8;
 
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.05);
+  --sidebar-hover-text: #ffffff;
   --sidebar-active-bg: rgba(223, 189, 79, 0.1);
   --sidebar-active-text: #dfbd4f;
+  --sidebar-text-strong: #f4f5f6;
   --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-control-bg: rgba(255, 255, 255, 0.04);
+  --sidebar-control-border: rgba(255, 255, 255, 0.1);
 
   --color-lavender: rgba(58, 160, 111, 0.2);
   --color-lavender-soft: rgba(58, 160, 111, 0.09);

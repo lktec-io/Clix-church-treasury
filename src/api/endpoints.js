@@ -231,7 +231,6 @@ const REPORT_PATHS = {
   budgetVsActual: () => '/reports/budget-vs-actual',
   pledges: () => '/reports/pledges',
   financialSummary: () => '/reports/financial-summary',
-  monthlyTrends: () => '/reports/monthly-trends',
   // The general-ledger trial balance (Ulinganisho wa Hesabu). Reads the
   // journal, not the cash subsidiary ledger — see migration 0037.
   trialBalance: () => '/reports/trial-balance',
