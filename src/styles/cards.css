@@ -183,7 +183,7 @@
 
 .hero-card__meta {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.65);
+  color: #ffffff;
   margin-top: 4px;
 }
 
@@ -194,9 +194,9 @@
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.7);
+  color: #ffffff;
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -235,7 +235,7 @@
   gap: 12px;
   margin-top: 18px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
   position: relative;
 }
 
@@ -250,7 +250,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
   font-weight: 700;
 }
 
@@ -901,4 +901,23 @@
   align-items: center;
   gap: 3px;
   color: var(--color-success);
+}
+
+/* Hard delete. Crimson at rest, not only on hover: this is the one control
+   in a row that destroys a record, and it should look like it before the
+   pointer arrives. */
+.icon-btn.icon-btn--danger {
+  border-color: rgba(var(--color-danger-rgb), 0.45);
+  color: var(--color-danger);
+}
+
+.icon-btn.icon-btn--danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #ffffff;
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

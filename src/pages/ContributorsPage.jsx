@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { FiSearch, FiUsers, FiUserPlus, FiKey, FiRotateCcw, FiUpload } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiUserPlus, FiKey, FiRotateCcw, FiTrash2, FiUpload } from 'react-icons/fi';
 import { contributorsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -147,6 +147,30 @@ export default function ContributorsPage() {
         message: t('contributors.activity.pinReset', { name: contributor.full_name }),
       });
       toast.success(t('contributors.pinResetToast'));
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  // Permanent removal, refused by the server (409) for a member who has
+  // giving or a pledge on record — their receipts and statements point at
+  // this row.
+  const handleHardDelete = async (contributor) => {
+    const ok = await confirm({
+      title: t('common.deletePermanently'),
+      message: `${t('common.deleteConfirm')} — ${contributor.full_name}`,
+      tone: 'danger',
+      confirmLabel: t('common.deletePermanently'),
+    });
+    if (!ok) return;
+    setActioningId(contributor.id);
+    setError(null);
+    try {
+      await contributorsApi.remove(contributor.id);
+      await load();
+      toast.success(t('contributors.deletedToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     } finally {
@@ -331,6 +355,16 @@ export default function ContributorsPage() {
                                 <FiRotateCcw aria-hidden="true" /> {t('contributors.resetPin')}
                               </button>
                             )}
+                            <button
+                              type="button"
+                              className="icon-btn icon-btn--danger"
+                              disabled={actioningId === c.id}
+                              aria-label={t('common.deletePermanently')}
+                              title={t('common.deletePermanently')}
+                              onClick={() => handleHardDelete(c)}
+                            >
+                              <FiTrash2 aria-hidden="true" />
+                            </button>
                           </div>
                         </td>
                       </PermissionGate>

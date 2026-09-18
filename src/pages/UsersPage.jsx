@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
-import { FiEdit2, FiSlash, FiUserPlus, FiX, FiInfo } from 'react-icons/fi';
+import { FiEdit2, FiSlash, FiTrash2, FiUserPlus, FiX, FiInfo } from 'react-icons/fi';
 import { usersApi, rolesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -129,6 +129,27 @@ export default function UsersPage() {
       await usersApi.disable(user.id);
       await load();
       toast.success(t('users.disabledToast'));
+    } catch (err) {
+      setError(unwrapApiError(err).message);
+    }
+  };
+
+  // Permanent removal. The server refuses (409) for an account that has
+  // recorded or approved anything, and that refusal is shown as-is: it
+  // explains why, and "Disable" is the action that always works.
+  const handleHardDelete = async (user) => {
+    const ok = await confirm({
+      title: t('common.deletePermanently'),
+      message: `${t('common.deleteConfirm')} — ${user.full_name} (${user.email})`,
+      tone: 'danger',
+      confirmLabel: t('common.deletePermanently'),
+    });
+    if (!ok) return;
+    setError(null);
+    try {
+      await usersApi.remove(user.id);
+      await load();
+      toast.success(t('users.deletedToast'));
     } catch (err) {
       setError(unwrapApiError(err).message);
     }
@@ -293,6 +314,17 @@ export default function UsersPage() {
                                     onClick={() => handleDisable(u)}
                                   >
                                     <FiSlash aria-hidden="true" />
+                                  </button>
+                                )}
+                                {!isSelf(u) && (
+                                  <button
+                                    type="button"
+                                    className="icon-btn icon-btn--danger"
+                                    aria-label={t('common.deletePermanently')}
+                                    title={t('common.deletePermanently')}
+                                    onClick={() => handleHardDelete(u)}
+                                  >
+                                    <FiTrash2 aria-hidden="true" />
                                   </button>
                                 )}
                               </div>

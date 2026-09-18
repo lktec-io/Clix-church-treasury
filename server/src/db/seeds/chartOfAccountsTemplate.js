@@ -64,6 +64,16 @@ export const CHART_OF_ACCOUNTS_TEMPLATE = [
   { code: '5000', name: 'General Expenses', nameSw: 'Matumizi ya Jumla', accountType: 'expense', systemRole: 'general_expense' },
   { code: '5100', name: 'Utilities', nameSw: 'Huduma (Umeme/Maji)', accountType: 'expense', systemRole: null },
   { code: '5200', name: 'Building and Maintenance', nameSw: 'Ujenzi na Matengenezo', accountType: 'expense', systemRole: null },
+  // Mobile-money agent fees (Makato). Its own account, not General
+  // Expenses: a church that loses 1.5% of every mobile gift to agent
+  // charges needs to see that figure on its own line.
+  {
+    code: '5300',
+    name: 'Mobile Money Fees (Makato)',
+    nameSw: 'Makato ya Pesa kwa Simu',
+    accountType: 'expense',
+    systemRole: 'mobile_money_fees',
+  },
   {
     code: '5900',
     name: 'Higher-Body Remittance',

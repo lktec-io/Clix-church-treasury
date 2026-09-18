@@ -3,9 +3,11 @@ import { withTransaction } from '../../config/db.js';
 import { contributorsRepository } from './contributors.repository.js';
 import { normalizeTzPhone } from '../sms/phoneNumber.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
+import { hardDelete, refuseDelete } from '../../db/deleteGuards.js';
 import { parseContributorImport } from './bulkImport.js';
 import { titheComplianceStatus } from './titheCompliance.js';
 import { contributionsRepository } from '../contributions/contributions.repository.js';
+import { pledgesRepository } from '../pledges/pledges.repository.js';
 import { withSchemaFallback } from '../../db/schemaGuard.js';
 
 export async function listContributors(tenantId) {
@@ -226,5 +228,59 @@ async function runImport(tenantId, rows, actorUserId) {
     );
 
     return { imported: imported.length, skipped, totalRows: rows.length, contributors: imported };
+  });
+}
+
+/**
+ * PERMANENT DELETE of a member record.
+ *
+ * Allowed only while the member has no financial history. A member with
+ * contributions has receipts, statements and ledger rows pointing at them;
+ * deleting the person would leave money in the books that nobody gave.
+ * Pledges are checked the same way.
+ *
+ * The check is explicit rather than left to the foreign keys so the refusal
+ * can say WHICH history is in the way, and how much of it.
+ */
+export async function hardDeleteContributor(tenantId, contributorId, actorUserId) {
+  const contributor = await contributorsRepository.findById(tenantId, contributorId);
+  if (!contributor) throw notFound('Contributor not found');
+
+  const [contributions, pledges] = await Promise.all([
+    contributionsRepository.search(tenantId, { contributorId, limit: 1 }),
+    pledgesRepository.search(tenantId, { contributorId, limit: 1 }),
+  ]);
+  if (contributions.length > 0) {
+    refuseDelete(
+      'This member has recorded giving, so their record cannot be deleted — their contributions, receipts and statements all refer to it.'
+    );
+  }
+  if (pledges.length > 0) {
+    refuseDelete('This member has a pledge on record, so their record cannot be deleted. Cancel the pledge first.');
+  }
+
+  return withTransaction(async (connection) => {
+    await recordAuditLog(
+      {
+        tenantId,
+        actorUserId,
+        action: 'contributor.deleted',
+        entityType: 'contributors',
+        entityId: contributorId,
+        before: {
+          fullName: contributor.full_name,
+          memberNumber: contributor.member_number,
+          phone: contributor.phone,
+        },
+      },
+      connection
+    );
+
+    await hardDelete(
+      'This member is still referenced by church records, so the row cannot be deleted.',
+      () => contributorsRepository.deleteById(tenantId, contributorId, connection)
+    );
+
+    return { id: contributorId, deleted: true };
   });
 }

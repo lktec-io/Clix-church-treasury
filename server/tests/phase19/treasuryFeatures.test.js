@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { validateNida, validateMemberIdentity } from '../../src/modules/contributors/memberId.js';
 import { computePledgeSchedule } from '../../src/modules/pledges/pledgeSchedule.js';
 import { titheComplianceStatus } from '../../src/modules/contributors/titheCompliance.js';
+import { hardDelete, refuseDelete } from '../../src/db/deleteGuards.js';
 
 const TODAY = new Date(Date.UTC(2026, 8, 16)); // 16 Sep 2026
 
@@ -135,5 +136,40 @@ describe('titheComplianceStatus', () => {
   it('uses the Tanzanian calendar month, not the UTC one', () => {
     const lateOnTheLastDayUtc = new Date(Date.UTC(2026, 8, 30, 22, 0));
     expect(titheComplianceStatus('2026-09-10', lateOnTheLastDayUtc)).toBe('due');
+  });
+});
+
+// The hard-delete guard. Pure: no database, just the error mapping that
+// decides whether a refused delete reaches the user as an explanation or as
+// a crash.
+describe('hardDelete guard', () => {
+  const fkError = () => Object.assign(new Error('FK constraint'), { code: 'ER_ROW_IS_REFERENCED_2' });
+
+  it('returns the result when the delete succeeds', async () => {
+    await expect(hardDelete('unused message', async () => true)).resolves.toBe(true);
+  });
+
+  // The row is still referenced by financial history — a 409 that says so,
+  // never a 500.
+  it('turns the database FK refusal into an explained 409', async () => {
+    await expect(
+      hardDelete('This member has recorded giving.', async () => {
+        throw fkError();
+      })
+    ).rejects.toMatchObject({ status: 409, message: 'This member has recorded giving.' });
+  });
+
+  // A dropped connection is not a conflict: masking it as 409 would tell the
+  // user their record is protected when in fact nothing was checked.
+  it('lets unrelated errors through untouched', async () => {
+    await expect(
+      hardDelete('unused message', async () => {
+        throw Object.assign(new Error('connection lost'), { code: 'PROTOCOL_CONNECTION_LOST' });
+      })
+    ).rejects.toMatchObject({ code: 'PROTOCOL_CONNECTION_LOST' });
+  });
+
+  it('refuseDelete states the domain reason as a 409', () => {
+    expect(() => refuseDelete('This expense has been paid.')).toThrowError(/paid/i);
   });
 });

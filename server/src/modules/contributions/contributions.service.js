@@ -75,6 +75,51 @@ async function sendContributionConfirmationSms(tenantId, contribution) {
   });
 }
 
+// The expense category every mobile-money agent fee posts against. Created
+// on first use for churches whose database predates migration 0039 (which
+// seeds it), so posting never depends on a treasurer having created a
+// category by hand. Matched on the exact seeded name, which is also what the
+// migration inserts, so the two can never diverge into duplicates.
+const MAKATO_CATEGORY_NAME = 'Makato (Mobile Money Fees)';
+
+async function resolveMakatoCategory(tenantId, connection) {
+  const existing = await categoriesRepository.findByTypeAndName(tenantId, 'expense', MAKATO_CATEGORY_NAME, connection);
+  if (existing) return existing;
+  return categoriesRepository.create(tenantId, { type: 'expense', name: MAKATO_CATEGORY_NAME }, connection);
+}
+
+/**
+ * Posts the agent fee as its own expense transaction, inside the caller's
+ * DB transaction, and returns it.
+ *
+ * WHY A SECOND TRANSACTION RATHER THAN A SMALLER INCOME ONE: the member gave
+ * the full amount and their statement must say so, while the church's
+ * account only ever received the remainder. Two entries state both facts and
+ * leave the account balance correct:
+ *
+ *   income  10,000  DR Cash/Bank         CR Contributions Revenue
+ *   expense    500  DR Mobile Money Fees CR Cash/Bank
+ *
+ * Same account, same fund and same open period as the contribution, so the
+ * pair can never straddle two periods.
+ */
+async function postMakatoFee(connection, tenantId, { data, openPeriod, actorUserId }) {
+  const category = await resolveMakatoCategory(tenantId, connection);
+  return postLedgerEntry(connection, tenantId, {
+    type: 'expense',
+    direction: 'out',
+    accountId: data.accountId,
+    fundId: data.fundId,
+    categoryId: category.id,
+    financialPeriodId: openPeriod.id,
+    amount: data.transferFee,
+    paymentMethod: data.paymentMethod,
+    referenceType: 'contributions',
+    description: `Makato — ${data.mobileProvider ?? 'mobile money'}`,
+    createdByUserId: actorUserId,
+  });
+}
+
 // Records a contribution AND posts its ledger entry atomically — one DB
 // transaction, so there is never a contribution row with no matching
 // posted transaction, nor a ledger row with no domain record explaining it.
@@ -194,7 +239,23 @@ export async function recordContribution(tenantId, data, actorUserId) {
     if (data.mobileProvider) contributionRow.mobile_provider = data.mobileProvider;
     if (data.transferFee !== null && data.transferFee !== undefined) contributionRow.transfer_fee = data.transferFee;
 
+    // MAKATO. A fee greater than zero posts its own expense entry (migration
+    // 0039) so the account balance reflects what actually arrived. A zero or
+    // absent fee posts nothing at all — an empty expense row would clutter
+    // every ledger and report for no information.
+    const feeTransaction =
+      data.transferFee && compareMoney(data.transferFee, '0.00') > 0
+        ? await postMakatoFee(connection, tenantId, { data, openPeriod, actorUserId })
+        : null;
+    if (feeTransaction) contributionRow.fee_transaction_id = feeTransaction.id;
+
     const contribution = await contributionsRepository.insert(tenantId, contributionRow, connection);
+
+    // The fee line points back at the contribution it was charged on, the
+    // same post-insert linkage the income row gets below.
+    if (feeTransaction) {
+      await transactionsRepository.update(tenantId, feeTransaction.id, { reference_id: contribution.id }, connection);
+    }
 
     // Ledger row's reference_id points back at the domain row it belongs to
     // — the one sanctioned post-insert linkage mutation (see financialEngine
@@ -223,12 +284,19 @@ export async function recordContribution(tenantId, data, actorUserId) {
         action: 'contribution.recorded',
         entityType: 'contributions',
         entityId: contribution.id,
-        after: { amount: data.amount, fundId: data.fundId, transactionId: transaction.id, pledgeId: data.pledgeId },
+        after: {
+          amount: data.amount,
+          fundId: data.fundId,
+          transactionId: transaction.id,
+          pledgeId: data.pledgeId,
+          transferFee: data.transferFee ?? null,
+          feeTransactionId: feeTransaction?.id ?? null,
+        },
       },
       connection
     );
 
-    return { ...contribution, transaction, receipt, items };
+    return { ...contribution, transaction, feeTransaction, receipt, items };
     });
   } catch (error) {
     // Backstop for the narrow race window the pre-check above can't close
@@ -252,11 +320,32 @@ export async function recordContribution(tenantId, data, actorUserId) {
   }
 
   // SMS confirmation happens strictly after the transaction above has
-  // committed — a slow or failed SMS must never be able to roll back a
-  // valid, already-posted contribution (sendSms() itself also never
-  // throws, as defense in depth). Returns null (not an error) when the
-  // contribution has no contributor or the contributor has no phone.
-  const sms = await sendContributionConfirmationSms(tenantId, result);
+  // committed, and CANNOT fail the request.
+  //
+  // This is the 500 that was breaking POST /contributions. sendSms() itself
+  // swallows provider errors, but everything around it still touches the
+  // database — the sms_log insert (migration 0030, reason_code added in
+  // 0033) and the contributor/tenant/category lookups. On a server whose
+  // database is behind on migrations those throw, and because the throw
+  // happened AFTER the commit the money was already in the ledger while the
+  // caller got a 500 and no receipt: the worst possible outcome, since a
+  // treasurer who retries then posts the gift twice.
+  //
+  // The contribution is committed and correct by this point, so the only
+  // honest response is 201 with the SMS reported as failed.
+  let sms = null;
+  try {
+    sms = await sendContributionConfirmationSms(tenantId, result);
+  } catch (error) {
+    console.error(
+      `[contributions] contribution ${result.id} committed, but its confirmation SMS failed: ${error.message}`
+    );
+    sms = {
+      status: 'failed',
+      reasonCode: 'unexpected_error',
+      errorMessage: error.message,
+    };
+  }
   return { ...result, sms };
 }
 

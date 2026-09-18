@@ -19,6 +19,8 @@ import {
   BalanceTile,
   DepartmentAccounts,
   MakatoWidget,
+  NetComparison,
+  VarianceTracker,
 } from '../components/dashboard/TreasuryInsights.jsx';
 import { formatMoney, sumMoneyStrings } from '../utils/format.js';
 
@@ -62,6 +64,8 @@ export default function DashboardPage() {
   // Zaka/Sadaka split, department collections and Makato for the range.
   const [insights, setInsights] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
+  // Budget lines of the open period, for the variance tracker.
+  const [budgetRows, setBudgetRows] = useState([]);
   const [pendingExpenses, setPendingExpenses] = useState([]);
   const [actioningExpenseId, setActioningExpenseId] = useState(null);
   const [error, setError] = useState(null);
@@ -108,6 +112,14 @@ export default function DashboardPage() {
             reportsApi.run('financialSummary', { financialPeriodId: current.id }).then(setSummary).catch(() => setSummary(null))
           );
         }
+      }
+      if (current && hasPermission('budget.view')) {
+        requests.push(
+          reportsApi
+            .run('budgetVsActual', { financialPeriodId: current.id })
+            .then((data) => setBudgetRows(data.rows ?? []))
+            .catch(() => setBudgetRows([]))
+        );
       }
       if (hasPermission('expense.approve')) {
         requests.push(expensesApi.list({ status: 'submitted' }).then(setPendingExpenses).catch(() => setPendingExpenses([])));
@@ -175,6 +187,11 @@ export default function DashboardPage() {
 
   const firstName = session?.user?.full_name?.split(' ')[0];
   const collections = insights?.collections;
+  // Display aggregation only (utils/format.js#sumMoneyStrings works in
+  // integer cents): income less expenses over the selected range.
+  const netForRange =
+    incomeTotal !== null && expenseTotal !== null ? sumMoneyStrings([incomeTotal, `-${expenseTotal}`]) : null;
+  const fundNameById = new Map((summary?.fundSummaries ?? []).map((fund) => [fund.fundId, fund.name]));
   // Display aggregation only (integer cents in sumMoneyStrings).
   const tithesAndOfferings = collections ? sumMoneyStrings([collections.tithe, collections.offering]) : null;
 
@@ -258,6 +275,18 @@ export default function DashboardPage() {
                   { label: t('dashboard.expenses'), value: expenseTotal, tone: 'out' },
                 ]}
               />
+            </PermissionGate>
+          </div>
+
+          <div className="dash-columns">
+            <NetComparison
+              income={incomeTotal}
+              expenses={expenseTotal}
+              net={netForRange}
+              periodLabel={t(`dashboard.period.${range}`)}
+            />
+            <PermissionGate permission="budget.view">
+              <VarianceTracker rows={budgetRows} fundNameById={fundNameById} />
             </PermissionGate>
           </div>
 

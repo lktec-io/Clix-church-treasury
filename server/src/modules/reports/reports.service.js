@@ -294,9 +294,16 @@ export async function getDashboardInsights(tenantId, { dateFrom, dateTo }) {
     transactionCount: Number(row.transaction_count),
     totalSent: normalizeMoney(String(row.total_sent)),
     totalFees: normalizeMoney(String(row.total_fees)),
+    postedFees: normalizeMoney(String(row.posted_fees ?? '0')),
   }));
   const totalSent = sumMoney(providers.map((p) => p.totalSent));
   const totalFees = sumMoney(providers.map((p) => p.totalFees));
+  // What the ledger holds as posted Makato expense, and what is still only
+  // recorded beside the contribution (everything charged before migration
+  // 0039). Reported separately: merging them would claim the books contain
+  // entries they do not.
+  const postedFees = sumMoney(providers.map((p) => p.postedFees));
+  const unpostedFees = subtractMoney(totalFees, postedFees);
   const transactionCount = providers.reduce((sum, p) => sum + p.transactionCount, 0);
 
   // Fee as a share of what was sent, in basis points computed from integer
@@ -322,6 +329,10 @@ export async function getDashboardInsights(tenantId, { dateFrom, dateTo }) {
       available: feeRows !== null,
       totalSent,
       totalFees,
+      // Materialised from the ledger: the fee expense transactions linked to
+      // these contributions (migration 0039).
+      postedFees,
+      unpostedFees,
       // What actually reached the church after agents took their cut.
       netReceived: subtractMoney(totalSent, totalFees),
       transactionCount,

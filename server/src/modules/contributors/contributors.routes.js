@@ -15,6 +15,9 @@ export function contributorsRoutes() {
     contributorsController.bulkImportTemplate
   );
   router.post('/bulk-import', requirePermission('contributors.manage'), contributorsController.bulkImport);
+  // Permanent removal. Refused for a member who has giving or a pledge on
+  // record (contributors.service.js#hardDeleteContributor).
+  router.delete('/:id', requirePermission('contributors.manage'), contributorsController.remove);
   router.get('/:id', requirePermission('contributors.view'), contributorsController.get);
   router.get('/:id/statement', requirePermission('contributors.view'), contributorsController.statement);
   router.get('/:id/statement/pdf', requirePermission('contributors.view'), contributorsController.statementPdf);

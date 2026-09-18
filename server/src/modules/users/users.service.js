@@ -11,6 +11,7 @@ import { refreshTokensRepository } from '../auth/refreshTokens.repository.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
 import { generateRefreshToken, hashToken } from '../auth/tokens.js';
 import { PLATFORM_ONLY_ROLES, SUPER_ADMIN_ROLE } from '../../db/seeds/permissionCatalog.js';
+import { hardDelete } from '../../db/deleteGuards.js';
 
 function toPublicUser(user) {
   // eslint-disable-next-line no-unused-vars
@@ -234,4 +235,58 @@ export async function disableUser(tenantId, userId, actorUserId) {
   });
 
   return toPublicUser(user);
+}
+
+/**
+ * PERMANENT DELETE of a user account.
+ *
+ * Distinct from disableUser: that keeps the row (and everything it is
+ * attributed to) and only revokes access. This removes the account itself,
+ * for the genuine mistakes — an invitation sent to a mistyped address, a
+ * test account, a person who never started.
+ *
+ * What it will NOT do is erase someone who has already acted in the books.
+ * Every ledger row, expense and audit entry records WHO did it, with foreign
+ * keys that refuse to be orphaned; a user with history therefore cannot be
+ * deleted, and the caller is told to disable them instead. That is not a
+ * limitation to work around — an audit trail that can be edited by deleting
+ * its actors is not an audit trail.
+ *
+ * The account's own subordinate rows (role grants, refresh tokens, unused
+ * invite tokens) belong to the account and go with it.
+ */
+export async function hardDeleteUser(tenantId, userId, actorUserId) {
+  if (userId === actorUserId) {
+    throw forbidden('You cannot delete your own account');
+  }
+  const target = await usersRepository.findById(tenantId, userId);
+  if (!target) throw notFound('User not found');
+  await assertNotSuperAdministrator(userId, 'deleted');
+
+  return withTransaction(async (connection) => {
+    // Snapshot BEFORE the delete: once the row is gone this is the only
+    // remaining record of who was removed.
+    await recordAuditLog(
+      {
+        tenantId,
+        actorUserId,
+        action: 'user.deleted',
+        entityType: 'users',
+        entityId: userId,
+        before: { email: target.email, fullName: target.full_name, status: target.status },
+      },
+      connection
+    );
+
+    await userRolesRepository.removeAllForUser(userId, connection);
+    await refreshTokensRepository.deleteAllForUser(userId, connection);
+    await passwordResetTokensRepository.deleteAllForUser(userId, connection);
+
+    await hardDelete(
+      'This user has already recorded or approved financial records, so the account cannot be deleted. Disable it instead — the history stays attributed to them.',
+      () => usersRepository.deleteById(tenantId, userId, connection)
+    );
+
+    return { id: userId, deleted: true };
+  });
 }

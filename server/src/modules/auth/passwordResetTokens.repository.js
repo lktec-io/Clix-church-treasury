@@ -23,6 +23,11 @@ class PasswordResetTokensRepository {
     return rows[0] ?? null;
   }
 
+  // An unused invite/reset token belongs to the account it was issued for.
+  async deleteAllForUser(userId, connection) {
+    await this.runner(connection).query('DELETE FROM password_reset_tokens WHERE user_id = ?', [userId]);
+  }
+
   async markUsed(id, connection) {
     await this.runner(connection).query('UPDATE password_reset_tokens SET used_at = ? WHERE id = ?', [
       nowSql(),

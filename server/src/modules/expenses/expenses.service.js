@@ -6,6 +6,7 @@ import { generateExpenseNumber } from './expenseNumber.js';
 import { postLedgerEntry } from '../financial/financialEngine.service.js';
 import { getOpenPeriod } from '../financial/financialPeriods.service.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
+import { hardDelete, refuseDelete } from '../../db/deleteGuards.js';
 
 const MAX_NUMBER_ATTEMPTS = 5;
 
@@ -224,5 +225,55 @@ export async function payExpense(tenantId, id, actorUserId) {
     );
 
     return { ...updated, transaction };
+  });
+}
+
+/**
+ * PERMANENT DELETE of an expense request.
+ *
+ * Refused once the expense has been PAID: paying is the moment money leaves
+ * an account and a balanced ledger entry is written
+ * (payExpense above), and the ledger is append-only. A paid expense that was
+ * wrong is corrected by reversing the transaction, never by deleting the
+ * record of it.
+ *
+ * Draft, submitted, approved and rejected requests have no financial effect
+ * at all — no balance moved, no journal line exists — so a mistaken or
+ * abandoned request can simply go.
+ */
+export async function hardDeleteExpense(tenantId, expenseId, actorUserId) {
+  const expense = await expensesRepository.findById(tenantId, expenseId);
+  if (!expense) throw notFound('Expense not found');
+
+  if (expense.status === 'paid' || expense.transaction_id) {
+    refuseDelete(
+      'This expense has been paid and posted to the ledger, so it cannot be deleted. Reverse the transaction instead — the ledger is append-only.'
+    );
+  }
+
+  return withTransaction(async (connection) => {
+    await recordAuditLog(
+      {
+        tenantId,
+        actorUserId,
+        action: 'expense.deleted',
+        entityType: 'expenses',
+        entityId: expenseId,
+        before: {
+          expenseNumber: expense.expense_number,
+          payee: expense.payee,
+          amount: expense.amount,
+          status: expense.status,
+        },
+      },
+      connection
+    );
+
+    await hardDelete(
+      'This expense is still referenced by financial records, so it cannot be deleted.',
+      () => expensesRepository.deleteById(tenantId, expenseId, connection)
+    );
+
+    return { id: expenseId, deleted: true };
   });
 }

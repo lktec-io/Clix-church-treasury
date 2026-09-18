@@ -27,6 +27,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
 const ContributionsPage = lazy(() => import('./pages/ContributionsPage.jsx'));
 const ContributorsPage = lazy(() => import('./pages/ContributorsPage.jsx'));
 const ExpensesPage = lazy(() => import('./pages/ExpensesPage.jsx'));
+const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage.jsx'));
 const RemittancePage = lazy(() => import('./pages/RemittancePage.jsx'));
 const TrialBalancePage = lazy(() => import('./pages/TrialBalancePage.jsx'));
 const AccountsPage = lazy(() => import('./pages/AccountsPage.jsx'));
@@ -101,6 +102,7 @@ function App() {
           <Route path="/contributions" element={<ContributionsPage />} />
           <Route path="/contributors" element={<ContributorsPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/treasury/approvals" element={<ApprovalsPage />} />
           <Route path="/treasury/remittance" element={<RemittancePage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
           <Route path="/accounts" element={<AccountsPage />} />

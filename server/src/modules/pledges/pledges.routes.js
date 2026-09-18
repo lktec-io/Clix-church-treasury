@@ -14,5 +14,8 @@ export function pledgesRoutes() {
   router.get('/:id', requirePermission('pledges.view'), pledgesController.get);
   router.patch('/:id', requirePermission('pledges.create'), pledgesController.update);
   router.post('/:id/status', requirePermission('pledges.create'), pledgesController.setStatus);
+  // Permanent removal. Refused once any payment has been recorded against
+  // the pledge (pledges.service.js#hardDeletePledge).
+  router.delete('/:id', requirePermission('pledges.create'), pledgesController.remove);
   return router;
 }

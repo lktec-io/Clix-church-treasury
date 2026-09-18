@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { FiTrash2 } from 'react-icons/fi';
 import { pledgesApi, contributorsApi, fundsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -101,6 +102,26 @@ export default function PledgesPage() {
       setError(unwrapApiError(err).message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Permanent removal, refused by the server (409) once any payment has
+  // been recorded against the pledge.
+  const handleHardDelete = async (pledge) => {
+    const ok = await confirm({
+      title: t('common.deletePermanently'),
+      message: `${t('common.deleteConfirm')} — ${pledge.contributor?.full_name ?? ''} ${formatMoney(pledge.pledged_amount)}`,
+      tone: 'danger',
+      confirmLabel: t('common.deletePermanently'),
+    });
+    if (!ok) return;
+    setError(null);
+    try {
+      await pledgesApi.remove(pledge.id);
+      await load();
+      toast.success(t('pledges.deletedToast'));
+    } catch (err) {
+      setError(unwrapApiError(err).message);
     }
   };
 
@@ -282,15 +303,24 @@ export default function PledgesPage() {
                         <span className={`badge ${STATUS_BADGE[p.status]}`}>{t(`pledges.status.${p.status}`)}</span>
                       </td>
                       <td className="col-actions">
-                        {p.status === 'active' && (
-                          <PermissionGate permission="pledges.create">
-                            <div className="row-actions">
+                        <PermissionGate permission="pledges.create">
+                          <div className="row-actions">
+                            {p.status === 'active' && (
                               <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleCancel(p)}>
                                 {t('pledges.cancel')}
                               </button>
-                            </div>
-                          </PermissionGate>
-                        )}
+                            )}
+                            <button
+                              type="button"
+                              className="icon-btn icon-btn--danger"
+                              aria-label={t('common.deletePermanently')}
+                              title={t('common.deletePermanently')}
+                              onClick={() => handleHardDelete(p)}
+                            >
+                              <FiTrash2 aria-hidden="true" />
+                            </button>
+                          </div>
+                        </PermissionGate>
                       </td>
                     </tr>
                   );

@@ -106,7 +106,7 @@
 
 .balance-tile--emphasis .balance-tile__currency,
 .balance-tile--emphasis .balance-tile__caption {
-  color: rgba(255, 255, 255, 0.72);
+  color: #ffffff;
 }
 
 .balance-tile__caption {
@@ -122,7 +122,8 @@
 }
 
 .balance-tile--emphasis .balance-tile__lines {
-  border-top-color: rgba(255, 255, 255, 0.18);
+  /* The rule stays translucent — it is a divider, not text. */
+  border-top-color: rgba(255, 255, 255, 0.28);
 }
 
 .balance-tile__line {
@@ -139,7 +140,7 @@
 }
 
 .balance-tile--emphasis .balance-tile__line dt {
-  color: rgba(255, 255, 255, 0.72);
+  color: #ffffff;
 }
 
 .balance-tile__line dd {
@@ -440,4 +441,157 @@
   .activity-timeline__amount {
     grid-column: 2;
   }
+}
+
+/* ---------- Income vs expenses comparison ---------- */
+.compare-rows {
+  margin: 0;
+}
+
+.compare-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 10px 0;
+}
+
+.compare-row + .compare-row {
+  border-top: 1px solid var(--border);
+}
+
+.compare-row dt {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.compare-row dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.compare-row dd.is-in {
+  color: var(--color-success);
+}
+
+.compare-row dd.is-out {
+  color: var(--color-danger);
+}
+
+.compare-row .fin-bar {
+  grid-column: 1 / -1;
+}
+
+.compare-result {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.compare-result.is-deficit {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.compare-result__label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.compare-result__value {
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* ---------- Monthly variance target tracker ---------- */
+.variance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.variance-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.variance-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.variance-row__name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 700;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.variance-row__kind {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-light);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.variance-row__kind.is-income {
+  border-color: rgba(var(--color-accent-rgb), 0.35);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.variance-row__figures {
+  font-weight: 800;
+  color: var(--text-heading);
+  white-space: nowrap;
+}
+
+.variance-row__of {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.variance-row__note {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.variance-row__note.is-over {
+  color: var(--color-danger);
+  font-weight: 700;
 }

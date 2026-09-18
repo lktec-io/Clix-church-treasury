@@ -164,3 +164,12 @@ export async function resetContributorPin(req, res, next) {
     next(err);
   }
 }
+
+export async function remove(req, res, next) {
+  try {
+    const result = await contributorsService.hardDeleteContributor(req.tenantId, req.params.id, req.auth.userId);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}

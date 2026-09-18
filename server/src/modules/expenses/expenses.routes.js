@@ -13,5 +13,8 @@ export function expensesRoutes() {
   router.post('/:id/reject', requirePermission('expense.reject'), expensesController.reject);
   router.post('/:id/return', requirePermission('expense.reject'), expensesController.returnForCorrection);
   router.post('/:id/pay', requirePermission('expense.pay'), expensesController.pay);
+  // Permanent removal of an unpaid request. A paid expense is in the ledger
+  // and is refused (expenses.service.js#hardDeleteExpense).
+  router.delete('/:id', requirePermission('expense.update'), expensesController.remove);
   return router;
 }

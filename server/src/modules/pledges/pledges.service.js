@@ -1,7 +1,10 @@
 import { notFound } from '../../errors/AppError.js';
+import { withTransaction } from '../../config/db.js';
 import { pledgesRepository } from './pledges.repository.js';
+import { contributionsRepository } from '../contributions/contributions.repository.js';
 import { generatePledgeNumber } from './pledgeNumber.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
+import { hardDelete, refuseDelete } from '../../db/deleteGuards.js';
 import { subtractMoney } from '../financial/money.js';
 import { computePledgeSchedule } from './pledgeSchedule.js';
 
@@ -126,4 +129,53 @@ export async function syncPledgeStatus(tenantId, pledgeId, connection) {
   } else if (fulfilled < pledged && pledge.status === 'completed') {
     await pledgesRepository.update(tenantId, pledgeId, { status: 'active' }, connection);
   }
+}
+
+/**
+ * PERMANENT DELETE of a pledge.
+ *
+ * A pledge that has been paid against cannot be deleted: those payments are
+ * posted contributions that point at it, and the money is real whatever
+ * happens to the promise. Cancelling is the route for a pledge that will not
+ * be honoured — it keeps the history and stops accepting payments.
+ *
+ * Deleting is for the promise recorded by mistake: wrong member, wrong fund,
+ * duplicated entry, nothing paid yet.
+ */
+export async function hardDeletePledge(tenantId, pledgeId, actorUserId) {
+  const pledge = await pledgesRepository.findById(tenantId, pledgeId);
+  if (!pledge) throw notFound('Pledge not found');
+
+  const payments = await contributionsRepository.search(tenantId, { pledgeId, limit: 1 });
+  if (payments.length > 0) {
+    refuseDelete(
+      'Payments have already been recorded against this pledge, so it cannot be deleted. Cancel it instead — the payments stay in the ledger either way.'
+    );
+  }
+
+  return withTransaction(async (connection) => {
+    await recordAuditLog(
+      {
+        tenantId,
+        actorUserId,
+        action: 'pledge.deleted',
+        entityType: 'pledges',
+        entityId: pledgeId,
+        before: {
+          contributorId: pledge.contributor_id,
+          fundId: pledge.fund_id,
+          pledgedAmount: pledge.pledged_amount,
+          status: pledge.status,
+        },
+      },
+      connection
+    );
+
+    await hardDelete(
+      'This pledge is still referenced by other records, so it cannot be deleted.',
+      () => pledgesRepository.deleteById(tenantId, pledgeId, connection)
+    );
+
+    return { id: pledgeId, deleted: true };
+  });
 }

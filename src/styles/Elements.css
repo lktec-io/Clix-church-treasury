@@ -670,6 +670,8 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
+  /* Gold on the deep emerald panel clears 4.5:1; it is the one accent that
+     is allowed to sit on this surface instead of solid white. */
   color: var(--color-gold);
 }
 

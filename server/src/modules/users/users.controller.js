@@ -48,3 +48,12 @@ export async function disable(req, res, next) {
     next(err);
   }
 }
+
+export async function hardDelete(req, res, next) {
+  try {
+    const result = await usersService.hardDeleteUser(req.tenantId, req.params.id, req.auth.userId);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}

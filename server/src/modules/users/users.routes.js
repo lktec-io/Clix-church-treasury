@@ -9,5 +9,8 @@ export function usersRoutes() {
   router.post('/:id/roles', requirePermission('users.manage'), usersController.assignRole);
   router.delete('/:id/roles/:roleId', requirePermission('users.manage'), usersController.removeRole);
   router.post('/:id/disable', requirePermission('users.manage'), usersController.disable);
+  // Permanent removal of the account row. Refused for an account that has
+  // already recorded or approved anything (users.service.js#hardDeleteUser).
+  router.delete('/:id', requirePermission('users.manage'), usersController.hardDelete);
   return router;
 }

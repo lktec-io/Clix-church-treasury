@@ -2,7 +2,17 @@
 // aggregations (reports.service.js#getDashboardInsights, financialSummary,
 // transactionJournal). The only arithmetic here is presentational: how much
 // of a bar to fill.
-import { FiArrowDownLeft, FiArrowUpRight, FiLayers, FiRepeat, FiRotateCcw, FiSliders, FiSmartphone } from 'react-icons/fi';
+import {
+  FiArrowDownLeft,
+  FiArrowUpRight,
+  FiBarChart2,
+  FiLayers,
+  FiRepeat,
+  FiRotateCcw,
+  FiSliders,
+  FiSmartphone,
+  FiTarget,
+} from 'react-icons/fi';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 import EmptyState from '../ui/EmptyState.jsx';
 import { formatDate, formatMoney, formatTime } from '../../utils/format.js';
@@ -108,6 +118,11 @@ export function MakatoWidget({ makato }) {
       ]
     : [];
 
+  // Fees charged before migration 0039 were recorded beside the contribution
+  // but never posted as an expense. Saying so is the honest reading of the
+  // figure above: part of it is in the books, part of it is only noted.
+  const unposted = Number(makato.unpostedFees ?? 0);
+
   return (
     <section className="dash-section makato-widget">
       <header className="dash-section__head">
@@ -144,7 +159,16 @@ export function MakatoWidget({ makato }) {
           ))}
         </dl>
       )}
-      <p className="dash-section__note">{t('insights.makato.note')}</p>
+      {hasData && (
+        <p className="dash-section__note">
+          {unposted > 0
+            ? t('dashboard.makato.partlyPosted', {
+                posted: formatMoney(makato.postedFees ?? '0.00'),
+                unposted: formatMoney(makato.unpostedFees ?? '0.00'),
+              })
+            : t('dashboard.makato.postedNote')}
+        </p>
+      )}
     </section>
   );
 }
@@ -192,5 +216,121 @@ export function ActivityTimeline({ transactions }) {
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * Income against expenses for the selected range: the two bars share one
+ * scale (the larger of the two), so their lengths are directly comparable,
+ * with the surplus or deficit stated underneath in words rather than left
+ * to be inferred from bar lengths.
+ */
+export function NetComparison({ income, expenses, net, periodLabel }) {
+  const { t } = useLocale();
+  if (income === null || expenses === null) return null;
+
+  const scale = Math.max(Number(income) || 0, Number(expenses) || 0);
+  const deficit = String(net ?? '').startsWith('-');
+
+  return (
+    <section className="dash-section">
+      <header className="dash-section__head">
+        <h2 className="dash-section__title">
+          <FiBarChart2 aria-hidden="true" /> {t('dashboard.netComparison.title')}
+        </h2>
+        <span className="dash-section__hint">{periodLabel}</span>
+      </header>
+
+      <dl className="compare-rows">
+        <div className="compare-row">
+          <dt>{t('dashboard.income')}</dt>
+          <dd className="tabular-nums is-in">{formatMoney(income)}</dd>
+          <Bar percent={percentOf(income, scale)} tone="in" />
+        </div>
+        <div className="compare-row">
+          <dt>{t('dashboard.expenses')}</dt>
+          <dd className="tabular-nums is-out">{formatMoney(expenses)}</dd>
+          <Bar percent={percentOf(expenses, scale)} tone="out" />
+        </div>
+      </dl>
+
+      <p className={`compare-result${deficit ? ' is-deficit' : ''}`}>
+        <span className="compare-result__label">
+          {deficit ? t('dashboard.netComparison.deficit') : t('dashboard.netComparison.surplus')}
+        </span>
+        <span className="compare-result__value tabular-nums">
+          {formatMoney(String(net ?? '0').replace(/^-/, ''))}
+        </span>
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Monthly variance against target, per budget line of the open period.
+ *
+ * Income budgets are targets to reach and expense budgets are limits to stay
+ * under, so they are read in opposite directions and never summed together:
+ * "95% of a collection target" and "95% of a spending limit" are good news
+ * and a warning respectively. Every figure (budget, actual, variance) comes
+ * from the server's budget-vs-actual report; only the bar width is computed
+ * here.
+ */
+export function VarianceTracker({ rows, fundNameById }) {
+  const { t } = useLocale();
+  if (rows.length === 0) {
+    return (
+      <section className="dash-section">
+        <header className="dash-section__head">
+          <h2 className="dash-section__title">
+            <FiTarget aria-hidden="true" /> {t('dashboard.variance.title')}
+          </h2>
+        </header>
+        <p className="dash-section__empty">{t('dashboard.variance.empty')}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="dash-section">
+      <header className="dash-section__head">
+        <h2 className="dash-section__title">
+          <FiTarget aria-hidden="true" /> {t('dashboard.variance.title')}
+        </h2>
+        <span className="dash-section__hint">{t('dashboard.variance.hint')}</span>
+      </header>
+      <ul className="variance-list">
+        {rows.map((row) => {
+          const reached = percentOf(row.actual_amount, row.budget_amount);
+          const over = Number(row.actual_amount) > Number(row.budget_amount);
+          const isIncome = row.type === 'income';
+          // Emerald when an income target is being met or a spending limit
+          // respected; crimson only when spending has passed its limit.
+          const tone = isIncome ? 'in' : over ? 'out' : undefined;
+          return (
+            <li className="variance-row" key={row.id}>
+              <div className="variance-row__head">
+                <span className="variance-row__name">
+                  {fundNameById.get(row.fund_id) ?? `#${row.fund_id}`}
+                  <span className={`variance-row__kind${isIncome ? ' is-income' : ''}`}>
+                    {isIncome ? t('dashboard.variance.target') : t('dashboard.variance.limit')}
+                  </span>
+                </span>
+                <span className="variance-row__figures tabular-nums">
+                  {formatMoney(row.actual_amount)}
+                  <span className="variance-row__of"> / {formatMoney(row.budget_amount)}</span>
+                </span>
+              </div>
+              <Bar percent={reached} tone={tone} />
+              <span className={`variance-row__note${!isIncome && over ? ' is-over' : ''}`}>
+                {!isIncome && over
+                  ? t('dashboard.variance.over', { amount: formatMoney(String(row.variance).replace(/^-/, '')) })
+                  : t('dashboard.variance.reached', { percent: Math.round(reached) })}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

@@ -138,3 +138,92 @@ body {
     font-size: 12.5px;
   }
 }
+
+/* ==========================================================================
+   OVERFLOW CONTAINMENT — the defensive layer.
+
+   One rule decides whether a page can be pushed sideways on a phone: a grid
+   or flex CHILD defaults to `min-width: auto`, which means "never shrink
+   below my content". A long email address, a 20-character department name or
+   a seven-figure amount inside such a child therefore widens its track, the
+   track widens the grid, and the whole page scrolls horizontally — the
+   classic "mobile flooding". Setting `min-width: 0` lets the track shrink,
+   and the wrapping rules below then decide how the text behaves inside it.
+
+   Applied structurally, to the layout primitives, so a page built from them
+   inherits the protection instead of each new screen having to remember it.
+   ========================================================================== */
+.form-grid > *,
+.balance-grid > *,
+.dash-columns > *,
+.split-view > *,
+.subaccount-grid > *,
+.approval-grid > *,
+.compare-row > *,
+.variance-row > *,
+.makato-widget__row > *,
+.activity-timeline__item > *,
+.ledger-toolbar > *,
+.page-header > *,
+.card__header > * {
+  min-width: 0;
+}
+
+/* Free text that a member typed: names, payees, descriptions, emails,
+   references. Breaks inside a word only when the word itself is longer than
+   the line — "elizabeth.mwanahamisi@parokia.co.tz" wraps instead of
+   escaping the card. */
+.cell-stack,
+.cell-stack__primary,
+.cell-stack__secondary,
+.approval-card__payee,
+.approval-card__desc,
+.subaccount__name,
+.variance-row__name,
+.dropdown__value,
+.dropdown__option-text,
+.profile-menu__name,
+.balance-tile__label,
+.dash-section__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Inside a data table the cell keeps its `white-space: nowrap` (columns of
+   figures must not wrap mid-number), but a stacked text cell opts back into
+   wrapping so a long name grows downward rather than widening the table. */
+.data-table td .cell-stack {
+  white-space: normal;
+}
+
+/* Money never wraps: a figure split across two lines is unreadable, and
+   these are short enough that the column can simply be as wide as it needs
+   to be inside the table's own horizontal scroll. */
+.is-amount,
+.balance-tile__value,
+.compare-row dd,
+.approval-card__amount,
+.variance-row__figures {
+  white-space: nowrap;
+}
+
+/* The last-resort guard: nothing anywhere may paint outside the viewport. */
+@media (max-width: 719px) {
+  .card,
+  .dash-section,
+  .approval-card,
+  .balance-tile {
+    max-width: 100%;
+  }
+
+  /* A long single-line label with nowhere to wrap ends in an ellipsis rather
+     than a horizontal scrollbar. */
+  .ledger-toolbar__count,
+  .dash-section__hint,
+  .approval-card__note {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

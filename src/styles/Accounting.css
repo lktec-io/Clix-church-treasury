@@ -914,3 +914,108 @@ table.data-table {
   letter-spacing: 0.1em;
   color: var(--text-muted);
 }
+
+/* ==========================================================================
+   APPROVALS ROOM — everything waiting on a decision (ApprovalsPage.jsx)
+   ========================================================================== */
+.approval-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+}
+
+.approval-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--color-gold);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+/* Approved and waiting to be paid: emerald edge, because the remaining
+   action moves money rather than authorising it. */
+.approval-card--payment {
+  border-left-color: var(--color-primary);
+}
+
+.approval-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.approval-card__payee {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-heading);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.approval-card__amount {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-heading);
+  white-space: nowrap;
+}
+
+.approval-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  min-width: 0;
+}
+
+.approval-card__desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.approval-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.approval-card__note {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* The two decision keys. Sharp, outlined, and unmistakably opposed: emerald
+   for approve, crimson for reject, both filling on hover so the committed
+   click is felt. */
+.btn.btn--approve {
+  background: var(--surface);
+  border: 1px solid var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  color: var(--color-accent);
+}
+
+.btn.btn--approve:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.btn.btn--reject {
+  background: var(--surface);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.btn.btn--reject:hover:not(:disabled) {
+  background: var(--color-danger);
+  color: #ffffff;
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FiTrash2 } from 'react-icons/fi';
 import { expensesApi, accountsApi, fundsApi, categoriesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -139,6 +140,27 @@ export default function ExpensesPage() {
       setError(unwrapApiError(err).message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Permanent removal of an unpaid request. A paid expense sits in the
+  // ledger and the server refuses (409) — reversal is the correction for
+  // money that has already moved.
+  const handleHardDelete = async (expense) => {
+    const ok = await confirm({
+      title: t('common.deletePermanently'),
+      message: `${t('common.deleteConfirm')} — ${expense.payee} ${formatMoney(expense.amount)}`,
+      tone: 'danger',
+      confirmLabel: t('common.deletePermanently'),
+    });
+    if (!ok) return;
+    setError(null);
+    try {
+      await expensesApi.remove(expense.id);
+      await load();
+      toast.success(t('expenses.deletedToast'));
+    } catch (err) {
+      setError(unwrapApiError(err).message);
     }
   };
 
@@ -470,6 +492,21 @@ export default function ExpensesPage() {
                               onClick={() => runAction(() => expensesApi.pay(expense.id), t('expenses.paidToast'))}
                             >
                               {t('expenses.pay')}
+                            </button>
+                          </PermissionGate>
+                        )}
+                        {/* Not offered on a paid expense: it is in the ledger
+                            and the server refuses to delete it. */}
+                        {expense.status !== 'paid' && (
+                          <PermissionGate permission="expense.update">
+                            <button
+                              type="button"
+                              className="icon-btn icon-btn--danger"
+                              aria-label={t('common.deletePermanently')}
+                              title={t('common.deletePermanently')}
+                              onClick={() => handleHardDelete(expense)}
+                            >
+                              <FiTrash2 aria-hidden="true" />
                             </button>
                           </PermissionGate>
                         )}

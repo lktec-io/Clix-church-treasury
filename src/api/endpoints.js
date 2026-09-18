@@ -106,6 +106,7 @@ export const contributorsApi = {
   create: (body) => apiClient.post('/contributors', body).then(unwrap),
   enablePortalAccess: (id) => apiClient.post(`/contributors/${id}/portal-access`).then(unwrap),
   resetPin: (id) => apiClient.post(`/contributors/${id}/portal-access/reset-pin`).then(unwrap),
+  remove: (id) => apiClient.delete(`/contributors/${id}`).then(unwrap),
   statement: (id, year, month) =>
     apiClient.get(`/contributors/${id}/statement`, { params: { year, month } }).then(unwrap),
   sendStatementSms: (id, year, month) =>
@@ -152,6 +153,7 @@ export const expensesApi = {
   reject: (id, reason) => apiClient.post(`/expenses/${id}/reject`, { reason }).then(unwrap),
   returnForCorrection: (id, reason) => apiClient.post(`/expenses/${id}/return`, { reason }).then(unwrap),
   pay: (id) => apiClient.post(`/expenses/${id}/pay`).then(unwrap),
+  remove: (id) => apiClient.delete(`/expenses/${id}`).then(unwrap),
 };
 
 export const remittanceApi = {
@@ -172,6 +174,7 @@ export const pledgesApi = {
   list: (params) => apiClient.get('/pledges', { params }).then(unwrap),
   create: (body) => apiClient.post('/pledges', body).then(unwrap),
   setStatus: (id, status) => apiClient.post(`/pledges/${id}/status`, { status }).then(unwrap),
+  remove: (id) => apiClient.delete(`/pledges/${id}`).then(unwrap),
 };
 
 export const receiptsApi = {
@@ -197,6 +200,7 @@ export const usersApi = {
   assignRole: (userId, roleId) => apiClient.post(`/users/${userId}/roles`, { roleId }).then(unwrap),
   removeRole: (userId, roleId) => apiClient.delete(`/users/${userId}/roles/${roleId}`).then(unwrap),
   disable: (userId) => apiClient.post(`/users/${userId}/disable`).then(unwrap),
+  remove: (userId) => apiClient.delete(`/users/${userId}`).then(unwrap),
 };
 
 export const rolesApi = {

@@ -78,4 +78,23 @@ export class TenantScopedRepository {
     if (result.affectedRows === 0) return null;
     return this.findById(tenantId, id, connection);
   }
+
+  /**
+   * Permanently removes one row belonging to this tenant. Returns true when
+   * a row was deleted, false when the id did not exist for this tenant.
+   *
+   * Deliberately plain: the decision about whether a row MAY be destroyed —
+   * whether it carries financial history, whether the actor is allowed to —
+   * belongs in the service layer, where the domain rules and the audit log
+   * live. The database's own foreign keys remain the final backstop; a row
+   * still referenced by a ledger entry cannot be deleted here at all.
+   */
+  async deleteById(tenantId, id, connection) {
+    assertTenantId(tenantId);
+    const [result] = await this.runner(connection).query(
+      `DELETE FROM ${this.table} WHERE tenant_id = ? AND id = ?`,
+      [tenantId, id]
+    );
+    return result.affectedRows > 0;
+  }
 }

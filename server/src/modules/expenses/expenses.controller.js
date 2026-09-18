@@ -126,3 +126,12 @@ export async function pay(req, res, next) {
     next(err);
   }
 }
+
+export async function remove(req, res, next) {
+  try {
+    const result = await expensesService.hardDeleteExpense(req.tenantId, req.params.id, req.auth.userId);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}

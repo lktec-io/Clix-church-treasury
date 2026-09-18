@@ -57,6 +57,12 @@ class RefreshTokensRepository {
     }
   }
 
+  // Hard removal, for a deleted account. revokeAllForUser only marks rows
+  // revoked, which still leaves them pointing at the user row.
+  async deleteAllForUser(userId, connection) {
+    await this.runner(connection).query('DELETE FROM refresh_tokens WHERE user_id = ?', [userId]);
+  }
+
   async revokeAllForUser(userId, connection) {
     await this.runner(connection).query(
       'UPDATE refresh_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL',

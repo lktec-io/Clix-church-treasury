@@ -22,6 +22,12 @@ class UserRolesRepository {
     ]);
   }
 
+  // Used when an account is deleted outright: its grants are part of the
+  // account, not of the roles, so they go with it.
+  async removeAllForUser(userId, connection) {
+    await this.runner(connection).query('DELETE FROM user_roles WHERE user_id = ?', [userId]);
+  }
+
   async listRoleIdsForUser(userId, connection) {
     const [rows] = await this.runner(connection).query('SELECT role_id FROM user_roles WHERE user_id = ?', [
       userId,

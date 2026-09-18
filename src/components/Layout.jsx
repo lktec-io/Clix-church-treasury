@@ -23,6 +23,7 @@ import {
   FiChevronsRight,
   FiChevronDown,
   FiSettings,
+  FiCheckSquare,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -47,6 +48,9 @@ const PRIMARY_NAV = [
   { to: '/', icon: FiHome, labelKey: 'nav.dashboard', end: true, permission: null },
   { to: '/contributions', icon: FiDollarSign, labelKey: 'nav.contributions', permission: 'income.view' },
   { to: '/expenses', icon: FiCreditCard, labelKey: 'nav.expenses', permission: 'expense.view' },
+  // Everything waiting on a decision. Gated on expense.approve: a treasurer
+  // who cannot approve has nothing to do in this room.
+  { to: '/treasury/approvals', icon: FiCheckSquare, labelKey: 'nav.approvals', permission: 'expense.approve' },
   { to: '/pledges', icon: FiTarget, labelKey: 'nav.pledges', permission: 'pledges.view' },
   { to: '/contributors', icon: FiUsers, labelKey: 'nav.contributors', permission: 'contributors.view' },
 ];

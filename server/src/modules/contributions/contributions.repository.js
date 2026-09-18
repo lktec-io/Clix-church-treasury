@@ -1,8 +1,59 @@
 import { TenantScopedRepository, assertTenantId } from '../../db/TenantScopedRepository.js';
 
+// Columns added by later migrations. Recording income is the core of this
+// product, so a server whose database is a migration or two behind must
+// still be able to do it: the optional field is dropped from the INSERT
+// (with one loud warning) instead of the whole contribution failing with a
+// 500 and the money going unrecorded.
+//
+//   department_id, mobile_provider, transfer_fee → migration 0038
+//   fee_transaction_id                           → migration 0039
+const OPTIONAL_COLUMNS = ['department_id', 'mobile_provider', 'transfer_fee', 'fee_transaction_id'];
+
+let presentOptionalColumns = null;
+const warnedFor = new Set();
+
+async function resolveOptionalColumns(runner) {
+  if (presentOptionalColumns) return presentOptionalColumns;
+  try {
+    const [rows] = await runner.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contributions' AND COLUMN_NAME IN (?)`,
+      [OPTIONAL_COLUMNS]
+    );
+    presentOptionalColumns = new Set(rows.map((row) => row.COLUMN_NAME));
+  } catch {
+    // If the probe itself fails, assume none are present and write the
+    // columns this table has always had.
+    presentOptionalColumns = new Set();
+  }
+  return presentOptionalColumns;
+}
+
 class ContributionsRepository extends TenantScopedRepository {
   constructor() {
     super('contributions');
+  }
+
+  /**
+   * INSERT, minus any later-migration column this database does not have.
+   * Everything else about the write is unchanged.
+   */
+  async insert(tenantId, row, connection) {
+    const present = await resolveOptionalColumns(this.runner(connection));
+    const writable = { ...row };
+    for (const column of OPTIONAL_COLUMNS) {
+      if (writable[column] === undefined || present.has(column)) continue;
+      delete writable[column];
+      if (!warnedFor.has(column)) {
+        warnedFor.add(column);
+        console.warn(
+          `[contributions] contributions.${column} is missing — this database is behind on migrations. ` +
+            'Contributions are being saved WITHOUT it. Run "npm run migrate" (server/) to enable it.'
+        );
+      }
+    }
+    return super.insert(tenantId, writable, connection);
   }
 
   async findByTransactionId(tenantId, transactionId, connection) {
@@ -117,15 +168,29 @@ class ContributionsRepository extends TenantScopedRepository {
     return rows;
   }
 
-  /** Mobile-money volume and agent/transfer fees (makato) per provider (migration 0038). */
+  /**
+   * Mobile-money volume and agent fees per provider.
+   *
+   * `posted_fees` is the part of those fees that exists in the ledger as its
+   * own expense transaction (migration 0039). It is summed from the LINKED
+   * transaction rather than from contributions.transfer_fee, so it reports
+   * what the books actually contain: fees recorded before 0039 have a
+   * transfer_fee but no fee_transaction_id, and must not be counted as
+   * posted. The dashboard shows the gap rather than hiding it.
+   */
   async mobileMoneyFees(tenantId, { dateFrom, dateTo }, connection) {
     assertTenantId(tenantId);
     const [rows] = await this.runner(connection).query(
       `SELECT COALESCE(c.mobile_provider, 'other') AS provider,
               COUNT(*) AS transaction_count,
               CAST(COALESCE(SUM(c.amount), 0) AS DECIMAL(14,2)) AS total_sent,
-              CAST(COALESCE(SUM(c.transfer_fee), 0) AS DECIMAL(14,2)) AS total_fees
+              CAST(COALESCE(SUM(c.transfer_fee), 0) AS DECIMAL(14,2)) AS total_fees,
+              CAST(COALESCE(SUM(fee_tx.amount), 0) AS DECIMAL(14,2)) AS posted_fees
          FROM contributions c
+         LEFT JOIN transactions fee_tx
+           ON fee_tx.id = c.fee_transaction_id
+          AND fee_tx.tenant_id = c.tenant_id
+          AND fee_tx.status = 'posted'
         WHERE c.tenant_id = ? AND c.status = 'posted' AND c.payment_method = 'mobile_money'
           AND c.contribution_date >= ? AND c.contribution_date <= ?
         GROUP BY COALESCE(c.mobile_provider, 'other')
