@@ -36,15 +36,21 @@ export default function MemberLayout() {
           {t('app.name')}
         </div>
         <div className="member-topbar__actions">
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value)}
-            aria-label={t('member.language')}
-            className="member-topbar__locale"
-          >
-            <option value="en">EN</option>
-            <option value="sw">SW</option>
-          </select>
+          {/* Two options never justified a dropdown: a segmented pair is
+              one tap instead of two. */}
+          <div className="seg-switch" role="group" aria-label={t('member.language')}>
+            {['en', 'sw'].map((code) => (
+              <button
+                key={code}
+                type="button"
+                className={`seg-switch__opt${locale === code ? ' is-active' : ''}`}
+                onClick={() => setLocale(code)}
+                aria-pressed={locale === code}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
+          </div>
           <button type="button" className="btn btn--secondary btn--sm" onClick={handleLogout}>
             <FiLogOut aria-hidden="true" /> {t('nav.logout')}
           </button>

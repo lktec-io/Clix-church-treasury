@@ -44,6 +44,7 @@ export default function ExpensesPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -105,16 +106,22 @@ export default function ExpensesPage() {
 
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  const setField = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
+  const setField = (field) => (value) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    setFieldErrors((errors) => ({ ...errors, [field]: undefined }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    // The dropdowns are not native <select required>; check before sending.
-    if (!form.accountId || !form.fundId || !form.categoryId) {
-      setError(t('expenses.error.required'));
-      return;
-    }
+    // The dropdowns are not native <select required>, so each missing
+    // choice is reported on its own control before anything is sent.
+    const errors = {};
+    if (!form.accountId) errors.accountId = t('common.required');
+    if (!form.fundId) errors.fundId = t('common.required');
+    if (!form.categoryId) errors.categoryId = t('common.required');
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setSubmitting(true);
     try {
       await expensesApi.create({
@@ -125,6 +132,7 @@ export default function ExpensesPage() {
         accountId: Number(form.accountId),
       });
       setForm(emptyForm());
+      setFieldErrors({});
       await load();
       toast.success(t('expenses.requested'));
     } catch (err) {
@@ -210,7 +218,7 @@ export default function ExpensesPage() {
   );
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('expenses.title')} subtitle={t('expenses.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -248,7 +256,12 @@ export default function ExpensesPage() {
                   options={accounts.map((a) => ({ value: String(a.id), label: a.name }))}
                   value={form.accountId}
                   onChange={setField('accountId')}
+                  invalid={Boolean(fieldErrors.accountId)}
+                  errorId="expense-account-error"
                 />
+                {fieldErrors.accountId && (
+                  <span className="field-error" id="expense-account-error">{fieldErrors.accountId}</span>
+                )}
               </div>
               <div className="field">
                 <Dropdown
@@ -257,7 +270,10 @@ export default function ExpensesPage() {
                   options={funds.map((f) => ({ value: String(f.id), label: f.name }))}
                   value={form.fundId}
                   onChange={setField('fundId')}
+                  invalid={Boolean(fieldErrors.fundId)}
+                  errorId="expense-fund-error"
                 />
+                {fieldErrors.fundId && <span className="field-error" id="expense-fund-error">{fieldErrors.fundId}</span>}
               </div>
               <div className="field">
                 <Dropdown
@@ -266,7 +282,12 @@ export default function ExpensesPage() {
                   options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
                   value={form.categoryId}
                   onChange={setField('categoryId')}
+                  invalid={Boolean(fieldErrors.categoryId)}
+                  errorId="expense-category-error"
                 />
+                {fieldErrors.categoryId && (
+                  <span className="field-error" id="expense-category-error">{fieldErrors.categoryId}</span>
+                )}
                 {categories.length === 0 && (
                   <span className="field-error">
                     {t('categories.emptyHint')} <Link to="/categories">{t('categories.title')}</Link>
@@ -372,16 +393,19 @@ export default function ExpensesPage() {
               <span className="ledger-toolbar__count tabular-nums">{t('expenses.ledger.count', { count: expenses.length })}</span>
             )}
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label={t('expenses.filterStatus')}
-          >
-            <option value="">{t('expenses.allStatuses')}</option>
-            {STATUSES.map((status) => (
-              <option key={status} value={status}>{t(`expenses.status.${status}`)}</option>
-            ))}
-          </select>
+          <div className="ledger-toolbar__filter">
+            <Dropdown
+              id="expense-status-filter"
+              options={[
+                { value: '', label: t('expenses.allStatuses') },
+                ...STATUSES.map((status) => ({ value: status, label: t(`expenses.status.${status}`) })),
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              placeholder={t('expenses.allStatuses')}
+              ariaLabel={t('expenses.filterStatus')}
+            />
+          </div>
         </div>
         {loading ? (
           <SkeletonTable rows={4} columns={6} />

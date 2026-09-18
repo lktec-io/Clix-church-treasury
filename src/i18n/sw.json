@@ -586,8 +586,18 @@
   "contributions.formula.fee": "Makato",
   "contributions.formula.net": "Kilichowekwa benki",
   "expenses.subtitle": "Omba, idhinisha na lipa matumizi ya kanisa.",
-  "expenses.error.required": "Chagua akaunti, mfuko na aina ya matumizi haya.",
   "pledges.recordedAt": "Imerekodiwa",
   "pledges.standing": "Hali ya ratiba",
-  "pledges.error.memberAndFund": "Chagua mshirika na mfuko wa ahadi hii."
+  "common.required": "Inahitajika",
+  "users.subtitle": "Alika wafanyakazi wa hazina na simamia ruhusa zao.",
+  "users.directory": "Orodha ya timu",
+  "users.count": "Watumiaji {{count}}",
+  "users.member": "Mtumiaji",
+  "users.manageRoles": "Simamia majukumu",
+  "users.currentRoles": "Majukumu ya sasa",
+  "users.removeRole": "Ondoa jukumu",
+  "users.noRoleYet": "Hakuna jukumu bado",
+  "users.chooseRole": "Chagua jukumu",
+  "users.allRolesHeld": "Majukumu yote tayari yamepewa",
+  "users.passwordNote": "Hakuna nenosiri linalowekwa hapa: kiungo cha mwaliko humruhusu mtumiaji kuchagua lake."
 }

@@ -39,36 +39,7 @@
 }
 
 .period-select {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.period-select__label {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
-.period-select select {
-  min-height: 42px;
-  min-width: 180px;
-  padding: 8px 36px 8px 12px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  background-color: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.period-select select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: var(--ring-accent);
+  min-width: 200px;
 }
 
 /* ---------- Balance tiles ---------- */
@@ -457,13 +428,8 @@
   .dash-header__title {
     font-size: 22px;
   }
-  .period-select,
-  .period-select select {
+  .period-select {
     width: 100%;
-  }
-  .period-select select {
-    min-height: var(--touch-target);
-    font-size: 16px;
   }
   .balance-tile__value {
     font-size: 28px;

@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -5,34 +6,39 @@ import PublicOnlyRoute from './components/PublicOnlyRoute.jsx';
 import PlatformProtectedRoute from './components/PlatformProtectedRoute.jsx';
 import Layout from './components/Layout.jsx';
 import PlatformLayout from './components/PlatformLayout.jsx';
-import PlatformLoginPage from './pages/platform/PlatformLoginPage.jsx';
-import PlatformDashboardPage from './pages/platform/PlatformDashboardPage.jsx';
-import PlatformTenantsPage from './pages/platform/PlatformTenantsPage.jsx';
 import MemberProtectedRoute from './components/member/MemberProtectedRoute.jsx';
 import MemberPublicOnlyRoute from './components/member/MemberPublicOnlyRoute.jsx';
 import MemberLayout from './components/member/MemberLayout.jsx';
-import MemberLoginPage from './pages/member/MemberLoginPage.jsx';
-import MemberDashboardPage from './pages/member/MemberDashboardPage.jsx';
-import MemberHistoryPage from './pages/member/MemberHistoryPage.jsx';
-import MemberStatementPage from './pages/member/MemberStatementPage.jsx';
-import MemberChangePinPage from './pages/member/MemberChangePinPage.jsx';
-import LoginPage from './pages/LoginPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
-import ContributionsPage from './pages/ContributionsPage.jsx';
-import ContributorsPage from './pages/ContributorsPage.jsx';
-import ExpensesPage from './pages/ExpensesPage.jsx';
-import RemittancePage from './pages/RemittancePage.jsx';
-import TrialBalancePage from './pages/TrialBalancePage.jsx';
-import AccountsPage from './pages/AccountsPage.jsx';
-import FundsPage from './pages/FundsPage.jsx';
-import CategoriesPage from './pages/CategoriesPage.jsx';
-import TransfersPage from './pages/TransfersPage.jsx';
-import PledgesPage from './pages/PledgesPage.jsx';
-import BudgetsPage from './pages/BudgetsPage.jsx';
-import FinancialPeriodsPage from './pages/FinancialPeriodsPage.jsx';
-import ReportsPage from './pages/ReportsPage.jsx';
-import MemberStatementsPage from './pages/MemberStatementsPage.jsx';
-import UsersPage from './pages/UsersPage.jsx';
+
+// Pages are loaded on demand: a treasurer who only records collections never
+// downloads the reports or platform screens, and no single bundle grows past
+// the size where the browser stalls on first paint. The shell (layouts, route
+// guards) stays eager — it is needed for the very first render.
+const PlatformLoginPage = lazy(() => import('./pages/platform/PlatformLoginPage.jsx'));
+const PlatformDashboardPage = lazy(() => import('./pages/platform/PlatformDashboardPage.jsx'));
+const PlatformTenantsPage = lazy(() => import('./pages/platform/PlatformTenantsPage.jsx'));
+const MemberLoginPage = lazy(() => import('./pages/member/MemberLoginPage.jsx'));
+const MemberDashboardPage = lazy(() => import('./pages/member/MemberDashboardPage.jsx'));
+const MemberHistoryPage = lazy(() => import('./pages/member/MemberHistoryPage.jsx'));
+const MemberStatementPage = lazy(() => import('./pages/member/MemberStatementPage.jsx'));
+const MemberChangePinPage = lazy(() => import('./pages/member/MemberChangePinPage.jsx'));
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
+const ContributionsPage = lazy(() => import('./pages/ContributionsPage.jsx'));
+const ContributorsPage = lazy(() => import('./pages/ContributorsPage.jsx'));
+const ExpensesPage = lazy(() => import('./pages/ExpensesPage.jsx'));
+const RemittancePage = lazy(() => import('./pages/RemittancePage.jsx'));
+const TrialBalancePage = lazy(() => import('./pages/TrialBalancePage.jsx'));
+const AccountsPage = lazy(() => import('./pages/AccountsPage.jsx'));
+const FundsPage = lazy(() => import('./pages/FundsPage.jsx'));
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage.jsx'));
+const TransfersPage = lazy(() => import('./pages/TransfersPage.jsx'));
+const PledgesPage = lazy(() => import('./pages/PledgesPage.jsx'));
+const BudgetsPage = lazy(() => import('./pages/BudgetsPage.jsx'));
+const FinancialPeriodsPage = lazy(() => import('./pages/FinancialPeriodsPage.jsx'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage.jsx'));
+const MemberStatementsPage = lazy(() => import('./pages/MemberStatementsPage.jsx'));
+const UsersPage = lazy(() => import('./pages/UsersPage.jsx'));
 
 function App() {
   return (
@@ -40,6 +46,9 @@ function App() {
       {/* Inside the router so it can read useLocation(), outside <Routes>
           so it survives every route change rather than remounting. */}
       <ScrollToTop />
+      {/* One fallback for every lazy route: a quiet placeholder rather than a
+          full-page spinner, since most chunks arrive in a few milliseconds. */}
+      <Suspense fallback={<div className="route-fallback" role="status" aria-live="polite" />}>
       <Routes>
       {/* /login is the ONLY public entry point for staff/platform accounts —
           there is deliberately no /register: every tenant and its first
@@ -109,6 +118,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </>
   );
 }

@@ -7,6 +7,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney } from '../utils/format.js';
 
@@ -86,27 +87,27 @@ export default function TrialBalancePage() {
   const accountName = (row) => (locale === 'sw' && row.nameSw ? row.nameSw : row.name);
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('reports.trialBalance')} subtitle={t('reports.trialBalance.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
       <div className="card">
         <div className="card__header">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h2 className="card__title-icon">
             <FiBookOpen aria-hidden="true" /> {t('reports.trialBalance')}
           </h2>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <select
+          <div className="toolbar-controls">
+            <Dropdown
+              id="trial-balance-period"
+              options={[
+                { value: '', label: t('reports.trialBalance.allPeriods') },
+                ...periods.map((p) => ({ value: String(p.id), label: p.label })),
+              ]}
               value={periodId}
-              onChange={(e) => setPeriodId(e.target.value)}
-              aria-label={t('budgets.financialPeriod')}
-              style={{ maxWidth: 220 }}
-            >
-              <option value="">{t('reports.trialBalance.allPeriods')}</option>
-              {periods.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
+              onChange={setPeriodId}
+              placeholder={t('reports.trialBalance.allPeriods')}
+              ariaLabel={t('budgets.financialPeriod')}
+            />
             <PermissionGate permission="reports.export">
               <button
                 type="button"

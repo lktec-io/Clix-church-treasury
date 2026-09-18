@@ -399,7 +399,7 @@ export default function ContributionsPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('contributions.title')} subtitle={t('contributions.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
       {/* Shown for EVERY outcome now, not just failures: a clerk who has
@@ -701,7 +701,7 @@ export default function ContributionsPage() {
                     </button>
                   </div>
                 ))}
-                <button type="button" className="btn btn--secondary btn--sm" onClick={addItem} style={{ marginTop: 4 }}>
+                <button type="button" className="btn btn--secondary btn--sm breakdown-panel__add" onClick={addItem}>
                   <FiPlus aria-hidden="true" /> {t('contributions.addItem')}
                 </button>
                 {items.length > 0 && (
@@ -711,7 +711,7 @@ export default function ContributionsPage() {
                   </div>
                 )}
                 {itemsMismatch && (
-                  <div className="field-error" style={{ marginTop: 8 }}>
+                  <div className="field-error breakdown-panel__error">
                     {t('contributions.itemsMismatch')} ({itemsTotal} ≠ {form.amount})
                   </div>
                 )}

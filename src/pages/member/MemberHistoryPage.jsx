@@ -4,6 +4,7 @@ import { FiDollarSign, FiCheckCircle, FiXCircle, FiClock } from 'react-icons/fi'
 import { memberApi } from '../../api/memberEndpoints.js';
 import { unwrapApiError } from '../../api/client.js';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
+import Dropdown from '../../components/ui/Dropdown.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import { SkeletonCard } from '../../components/ui/Skeleton.jsx';
 import { formatMoney, formatDate, sumMoneyStrings } from '../../utils/format.js';
@@ -58,16 +59,15 @@ export default function MemberHistoryPage() {
   let rowIndex = 0;
 
   return (
-    <div>
-      <div className="field" style={{ maxWidth: 160, marginBottom: 16 }}>
-        <label htmlFor="year">{t('member.history.year')}</label>
-        <select id="year" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-          {YEAR_OPTIONS.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
+    <div className="page">
+      <div className="field member-filter">
+        <Dropdown
+          id="year"
+          label={t('member.history.year')}
+          options={YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+          value={String(year)}
+          onChange={(value) => setYear(Number(value))}
+        />
       </div>
 
       {error && <div className="alert alert--error">{error}</div>}
@@ -100,9 +100,9 @@ export default function MemberHistoryPage() {
                       {formatDate(c.contribution_date)}
                       {' · '}
                       {isReversed ? (
-                        <span style={{ color: 'var(--color-danger)' }}>{t('contributions.reversed')}</span>
+                        <span className="is-reversed-note">{t('contributions.reversed')}</span>
                       ) : (
-                        <span style={{ color: 'var(--color-success)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <span className="is-confirmed-note">
                           <FiCheckCircle aria-hidden="true" size={11} /> {t('member.history.confirmed')}
                         </span>
                       )}

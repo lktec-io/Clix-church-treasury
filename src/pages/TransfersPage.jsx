@@ -5,12 +5,22 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney, formatDate, sanitizeAmountInput } from '../utils/format.js';
 
 function emptyForm() {
   return { fromAccountId: '', toAccountId: '', fromFundId: '', toFundId: '', amount: '', description: '' };
 }
+
+// The four required choices, rendered from one list so the account and fund
+// pairs cannot drift apart.
+const ACCOUNT_FIELDS = [
+  { field: 'fromAccountId', labelKey: 'transfers.fromAccount', source: 'accounts' },
+  { field: 'toAccountId', labelKey: 'transfers.toAccount', source: 'accounts' },
+  { field: 'fromFundId', labelKey: 'transfers.fromFund', source: 'funds' },
+  { field: 'toFundId', labelKey: 'transfers.toFund', source: 'funds' },
+];
 
 export default function TransfersPage() {
   const { t } = useLocale();
@@ -22,6 +32,7 @@ export default function TransfersPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,10 +58,24 @@ export default function TransfersPage() {
   }, [load]);
 
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  // Clearing the field's error as it is answered keeps the message from
+  // lingering next to a control that is now valid.
+  const setField = (field) => (value) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    setFieldErrors((errors) => ({ ...errors, [field]: undefined }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    // Dropdowns are not native <select required>, so an empty choice is
+    // caught here and reported inline instead of reaching the API.
+    const errors = {};
+    for (const { field } of ACCOUNT_FIELDS) {
+      if (!form[field]) errors[field] = t('common.required');
+    }
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setSubmitting(true);
     try {
       await transfersApi.create({
@@ -62,6 +87,7 @@ export default function TransfersPage() {
         toFundId: Number(form.toFundId),
       });
       setForm(emptyForm());
+      setFieldErrors({});
       await load();
       toast.success(t('transfers.created'));
     } catch (err) {
@@ -72,7 +98,7 @@ export default function TransfersPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('transfers.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -84,48 +110,44 @@ export default function TransfersPage() {
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
               <div className="field">
-                <label>{t('common.amount')}</label>
-                <input type="text" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={handleChange('amount')} required />
+                <label htmlFor="transfer-amount">{t('common.amount')}</label>
+                <div className="currency-input">
+                  <span className="currency-input__prefix">TZS</span>
+                  <input
+                    id="transfer-amount"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={form.amount}
+                    onChange={handleChange('amount')}
+                    required
+                  />
+                </div>
               </div>
-              <div className="field">
-                <label>{t('transfers.fromAccount')}</label>
-                <select value={form.fromAccountId} onChange={handleChange('fromAccountId')} required>
-                  <option value="" disabled>—</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('transfers.toAccount')}</label>
-                <select value={form.toAccountId} onChange={handleChange('toAccountId')} required>
-                  <option value="" disabled>—</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('transfers.fromFund')}</label>
-                <select value={form.fromFundId} onChange={handleChange('fromFundId')} required>
-                  <option value="" disabled>—</option>
-                  {funds.map((f) => (
-                    <option key={f.id} value={f.id}>{f.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('transfers.toFund')}</label>
-                <select value={form.toFundId} onChange={handleChange('toFundId')} required>
-                  <option value="" disabled>—</option>
-                  {funds.map((f) => (
-                    <option key={f.id} value={f.id}>{f.name}</option>
-                  ))}
-                </select>
-              </div>
+              {ACCOUNT_FIELDS.map(({ field, labelKey, source }) => (
+                <div className="field" key={field}>
+                  <Dropdown
+                    id={`transfer-${field}`}
+                    label={t(labelKey)}
+                    options={(source === 'accounts' ? accounts : funds).map((row) => ({
+                      value: String(row.id),
+                      label: row.name,
+                    }))}
+                    value={form[field]}
+                    onChange={setField(field)}
+                    invalid={Boolean(fieldErrors[field])}
+                    errorId={`transfer-${field}-error`}
+                  />
+                  {fieldErrors[field] && (
+                    <span className="field-error" id={`transfer-${field}-error`}>
+                      {fieldErrors[field]}
+                    </span>
+                  )}
+                </div>
+              ))}
               <div className="field field--full">
-                <label>{t('common.notes')}</label>
-                <input value={form.description} onChange={handleChange('description')} />
+                <label htmlFor="transfer-notes">{t('common.notes')}</label>
+                <input id="transfer-notes" value={form.description} onChange={handleChange('description')} />
               </div>
             </div>
             <div className="form-actions">

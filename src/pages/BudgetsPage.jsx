@@ -5,6 +5,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
 
@@ -23,6 +24,7 @@ export default function BudgetsPage() {
   const [form, setForm] = useState(emptyForm());
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(true);
 
   const loadStatic = useCallback(async () => {
@@ -80,9 +82,23 @@ export default function BudgetsPage() {
     if (field === 'type') loadCategories(value);
   };
 
+  // Same as handleChange, for the dropdowns: keeps the category reload when
+  // the budget type changes, and clears a field error once answered.
+  const setField = (field) => (value) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    setFieldErrors((errors) => ({ ...errors, [field]: undefined }));
+    if (field === 'type') loadCategories(value);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    // The dropdowns carry no native required check; report gaps inline.
+    const errors = {};
+    if (!form.financialPeriodId) errors.financialPeriodId = t('common.required');
+    if (!form.fundId) errors.fundId = t('common.required');
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setSubmitting(true);
     try {
       await budgetsApi.create({
@@ -93,6 +109,7 @@ export default function BudgetsPage() {
         categoryId: form.categoryId ? Number(form.categoryId) : null,
       });
       setForm(emptyForm(selectedPeriodId));
+      setFieldErrors({});
       await loadBudgets(selectedPeriodId);
       toast.success(t('budgets.created'));
     } catch (err) {
@@ -103,20 +120,23 @@ export default function BudgetsPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('budgets.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
-      <div className="card">
-        <div className="field" style={{ maxWidth: 280 }}>
-          <label>{t('budgets.financialPeriod')}</label>
-          <select value={selectedPeriodId} onChange={(e) => setSelectedPeriodId(Number(e.target.value))}>
-            {periods.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label} ({t(`financialPeriods.status.${p.status}`)})
-              </option>
-            ))}
-          </select>
+      <div className="card filter-bar">
+        <div className="field filter-bar__field">
+          <Dropdown
+            id="budget-period-filter"
+            label={t('budgets.financialPeriod')}
+            options={periods.map((p) => ({
+              value: String(p.id),
+              label: p.label,
+              meta: t(`financialPeriods.status.${p.status}`),
+            }))}
+            value={String(selectedPeriodId ?? '')}
+            onChange={(id) => setSelectedPeriodId(Number(id))}
+          />
         </div>
       </div>
 
@@ -128,42 +148,66 @@ export default function BudgetsPage() {
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
               <div className="field">
-                <label>{t('budgets.financialPeriod')}</label>
-                <select value={form.financialPeriodId} onChange={handleChange('financialPeriodId')} required>
-                  <option value="" disabled>—</option>
-                  {periods.map((p) => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="budget-period"
+                  label={t('budgets.financialPeriod')}
+                  options={periods.map((p) => ({ value: String(p.id), label: p.label }))}
+                  value={form.financialPeriodId}
+                  onChange={setField('financialPeriodId')}
+                  invalid={Boolean(fieldErrors.financialPeriodId)}
+                  errorId="budget-period-error"
+                />
+                {fieldErrors.financialPeriodId && (
+                  <span className="field-error" id="budget-period-error">{fieldErrors.financialPeriodId}</span>
+                )}
               </div>
               <div className="field">
-                <label>{t('budgets.fund')}</label>
-                <select value={form.fundId} onChange={handleChange('fundId')} required>
-                  <option value="" disabled>—</option>
-                  {funds.map((f) => (
-                    <option key={f.id} value={f.id}>{f.name}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="budget-fund"
+                  label={t('budgets.fund')}
+                  options={funds.map((f) => ({ value: String(f.id), label: f.name }))}
+                  value={form.fundId}
+                  onChange={setField('fundId')}
+                  invalid={Boolean(fieldErrors.fundId)}
+                  errorId="budget-fund-error"
+                />
+                {fieldErrors.fundId && <span className="field-error" id="budget-fund-error">{fieldErrors.fundId}</span>}
               </div>
               <div className="field">
-                <label>{t('budgets.type')}</label>
-                <select value={form.type} onChange={handleChange('type')}>
-                  <option value="expense">{t('nav.expenses')}</option>
-                  <option value="income">{t('nav.contributions')}</option>
-                </select>
+                <Dropdown
+                  id="budget-type"
+                  label={t('budgets.type')}
+                  options={[
+                    { value: 'expense', label: t('nav.expenses') },
+                    { value: 'income', label: t('nav.contributions') },
+                  ]}
+                  value={form.type}
+                  onChange={setField('type')}
+                />
               </div>
               <div className="field">
-                <label>{t('budgets.category')}</label>
-                <select value={form.categoryId} onChange={handleChange('categoryId')}>
-                  <option value="">—</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="budget-category"
+                  label={t('budgets.category')}
+                  options={[{ value: '', label: '—' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+                  value={form.categoryId}
+                  onChange={setField('categoryId')}
+                />
               </div>
               <div className="field">
-                <label>{t('budgets.budgetAmount')}</label>
-                <input type="text" inputMode="decimal" placeholder="0.00" value={form.budgetAmount} onChange={handleChange('budgetAmount')} required />
+                <label htmlFor="budget-amount">{t('budgets.budgetAmount')}</label>
+                <div className="currency-input">
+                  <span className="currency-input__prefix">TZS</span>
+                  <input
+                    id="budget-amount"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={form.budgetAmount}
+                    onChange={handleChange('budgetAmount')}
+                    required
+                  />
+                </div>
               </div>
             </div>
             <div className="form-actions">
@@ -201,7 +245,7 @@ export default function BudgetsPage() {
                     <td>{b.type === 'income' ? t('nav.contributions') : t('nav.expenses')}</td>
                     <td>{formatMoney(b.budget_amount)}</td>
                     <td>{formatMoney(b.actual_amount)}</td>
-                    <td style={{ color: Number(b.variance) < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                    <td className={`is-amount ${Number(b.variance) < 0 ? 'is-expense' : 'is-income'}`}>
                       {formatMoney(b.variance)}
                     </td>
                   </tr>

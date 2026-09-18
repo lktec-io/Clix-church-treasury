@@ -934,25 +934,60 @@
   color: var(--color-primary);
 }
 
-/* The list floats over the form, scrolls inside itself, and never hands a
-   scroll gesture to the page when it reaches its end. */
-.dropdown__list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 60;
-  max-height: min(300px, 50vh);
-  margin: 0;
-  padding: 4px 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  list-style: none;
+/* The panel floats over the form; the list inside it scrolls and never
+   hands a scroll gesture back to the page when it reaches its end. */
+.dropdown__panel {
+  /* Position comes from the component (fixed, measured against the trigger),
+     so the list is never clipped by a scrolling table around it. */
+  display: flex;
+  flex-direction: column;
+  z-index: 120;
   border: 1px solid var(--border);
   border-top: 2px solid var(--color-primary);
   border-radius: var(--radius-sm);
   background: var(--glass-panel-bg);
   box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.dropdown__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.dropdown__search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.dropdown__search input:focus {
+  outline: none;
+}
+
+.dropdown__list {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.dropdown__empty {
+  padding: 14px;
+  font-size: 14px;
+  color: var(--text-muted);
 }
 
 .dropdown__option {
@@ -986,6 +1021,14 @@
   box-shadow: inset 3px 0 0 var(--color-gold);
 }
 
+.dropdown.is-invalid .dropdown__trigger {
+  border-color: var(--color-danger);
+}
+
+.dropdown.is-invalid .dropdown__trigger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(var(--color-danger-rgb), 0.22);
+}
+
 .dropdown__check {
   flex-shrink: 0;
   color: var(--color-primary);
@@ -997,4 +1040,85 @@
     min-height: var(--touch-target);
     font-size: 16px;
   }
+}
+
+/* ==========================================================================
+   SMALL SHARED PIECES — replacements for what used to be inline styles, so
+   every surface is described in one place.
+   ========================================================================== */
+/* An explanatory line inside a form (never an error). */
+.form-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-lavender-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.form-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-primary);
+}
+
+.breakdown-panel__add {
+  margin-top: 4px;
+}
+
+.breakdown-panel__error {
+  margin-top: 8px;
+}
+
+.fund-restricted-check {
+  margin-right: 6px;
+}
+
+.import-panel__hint {
+  margin: 0 0 14px;
+}
+
+.import-panel__actions {
+  margin-top: 0;
+  margin-bottom: 14px;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* A toolbar row inside a card header: filter control plus buttons. */
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.toolbar-controls .dropdown {
+  min-width: 200px;
+}
+
+/* A card that holds nothing but one filter. */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filter-bar__field {
+  min-width: min(100%, 280px);
+}
+
+.ledger-toolbar__filter {
+  min-width: min(100%, 200px);
+}
+
+.member-filter {
+  max-width: 200px;
+  margin-bottom: 16px;
 }

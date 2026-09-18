@@ -160,10 +160,6 @@ table.data-table {
   gap: 6px;
 }
 
-.row-actions--center {
-  align-items: center;
-}
-
 /* In a dedicated, right-aligned actions column the buttons hug the edge. */
 .col-actions .row-actions {
   justify-content: flex-end;
@@ -835,4 +831,86 @@ table.data-table {
     border-bottom: 1px solid var(--border);
     font-size: 15px;
   }
+}
+
+/* ==========================================================================
+   SPLIT VIEW — a compact form beside a directory grid (Users).
+   35 / 65 on a wide screen; one column, form first, on anything narrower.
+   ========================================================================== */
+.split-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .split-view {
+    grid-template-columns: minmax(280px, 35fr) minmax(0, 65fr);
+  }
+}
+
+.split-view__aside,
+.split-view__main {
+  margin: 0;
+  min-width: 0;
+}
+
+/* The form column stacks its fields: at 35% width a two-column grid would
+   leave every control half-empty. */
+.split-view__aside .field + .field {
+  margin-top: 14px;
+}
+
+.split-view__aside .form-actions {
+  justify-content: stretch;
+}
+
+.invite-token {
+  margin: 14px 16px 16px;
+  overflow-wrap: anywhere;
+}
+
+/* Expanded role panel under a directory row. */
+.role-editor td {
+  padding: 0;
+  background: var(--color-gray-light);
+  border-bottom: 1px solid var(--border);
+}
+
+.role-editor__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 24px;
+  padding: 14px 16px;
+  white-space: normal;
+}
+
+.role-editor__assign {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.role-editor__assign .dropdown {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.role-editor__current {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.role-editor__label {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
 }

@@ -586,8 +586,18 @@
   "contributions.formula.fee": "Fee",
   "contributions.formula.net": "Net banked",
   "expenses.subtitle": "Request, approve and pay church expenses.",
-  "expenses.error.required": "Choose the account, fund and category for this expense.",
   "pledges.recordedAt": "Recorded",
   "pledges.standing": "Standing",
-  "pledges.error.memberAndFund": "Choose the member and the fund for this pledge."
+  "common.required": "Required",
+  "users.subtitle": "Invite treasury staff and manage what each of them can do.",
+  "users.directory": "Team directory",
+  "users.count": "{{count}} users",
+  "users.member": "User",
+  "users.manageRoles": "Manage roles",
+  "users.currentRoles": "Current roles",
+  "users.removeRole": "Remove role",
+  "users.noRoleYet": "No role yet",
+  "users.chooseRole": "Choose a role",
+  "users.allRolesHeld": "All roles already assigned",
+  "users.passwordNote": "No password is set here: the invitation link lets the user choose their own."
 }

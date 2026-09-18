@@ -166,7 +166,7 @@ export default function ContributorsPage() {
   }, [contributors, search]);
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('contributors.title')} subtitle={t('contributors.subtitle')} />
 
       <AnimatePresence>

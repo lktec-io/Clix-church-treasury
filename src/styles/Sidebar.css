@@ -127,6 +127,13 @@
   white-space: nowrap;
 }
 
+.app-sidebar__brand-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .app-sidebar__brand-mark {
   display: inline-flex;
   align-items: center;

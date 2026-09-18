@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 
 const TYPES = ['cash', 'bank', 'mobile_money'];
@@ -81,7 +82,7 @@ export default function AccountsPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('accounts.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -93,16 +94,22 @@ export default function AccountsPage() {
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
               <div className="field">
-                <label>{t('common.name')}</label>
-                <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+                <label htmlFor="account-name">{t('common.name')}</label>
+                <input
+                  id="account-name"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  required
+                />
               </div>
               <div className="field">
-                <label>{t('accounts.type')}</label>
-                <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
-                  {TYPES.map((ty) => (
-                    <option key={ty} value={ty}>{t(`accounts.type.${ty}`)}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="account-type"
+                  label={t('accounts.type')}
+                  options={TYPES.map((ty) => ({ value: ty, label: t(`accounts.type.${ty}`) }))}
+                  value={form.type}
+                  onChange={(type) => setForm((f) => ({ ...f, type }))}
+                />
               </div>
             </div>
             <div className="form-actions">

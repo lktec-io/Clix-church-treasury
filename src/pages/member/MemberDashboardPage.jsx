@@ -48,7 +48,7 @@ export default function MemberDashboardPage() {
 
   if (loading) {
     return (
-      <div>
+      <div className="page">
         <SkeletonStatGrid count={2} />
         <SkeletonCard lines={3} />
         <SkeletonCard lines={3} />
@@ -108,7 +108,7 @@ export default function MemberDashboardPage() {
                 <tr>
                   <th>{t('common.date')}</th>
                   <th>{t('contributions.category')}</th>
-                  <th style={{ textAlign: 'right' }}>{t('common.amount')}</th>
+                  <th className="is-amount">{t('common.amount')}</th>
                 </tr>
               </thead>
               <tbody>

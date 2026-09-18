@@ -8,6 +8,7 @@ import { useToast } from '../../components/Toast.jsx';
 import { useConfirm } from '../../components/ConfirmDialog.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
+import Dropdown from '../../components/ui/Dropdown.jsx';
 import { SkeletonTable } from '../../components/ui/Skeleton.jsx';
 import { formatDate } from '../../utils/format.js';
 
@@ -359,11 +360,16 @@ function EditTenantModal({ tenant, onClose, onSaved }) {
                 <input id="editCurrency" value={form.baseCurrency} onChange={handleChange('baseCurrency')} maxLength={3} required />
               </div>
               <div className="field">
-                <label htmlFor="editLocale">{t('platform.tenants.defaultLocale')}</label>
-                <select id="editLocale" value={form.localeDefault} onChange={handleChange('localeDefault')}>
-                  <option value="en">EN</option>
-                  <option value="sw">SW</option>
-                </select>
+                <Dropdown
+                  id="editLocale"
+                  label={t('platform.tenants.defaultLocale')}
+                  options={[
+                    { value: 'en', label: 'EN' },
+                    { value: 'sw', label: 'SW' },
+                  ]}
+                  value={form.localeDefault}
+                  onChange={(localeDefault) => setForm((f) => ({ ...f, localeDefault }))}
+                />
               </div>
             </div>
 
@@ -476,7 +482,7 @@ export default function PlatformTenantsPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader
         title={t('platform.tenants.title')}
         subtitle={t('platform.tenants.subtitle')}

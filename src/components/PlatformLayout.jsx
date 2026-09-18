@@ -75,7 +75,7 @@ export default function PlatformLayout() {
   const sidebarContent = (
     <>
       <div className="app-sidebar__brand">
-        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        <span className="app-sidebar__brand-text">
           <span className="app-sidebar__brand-mark">
             <FiShield aria-hidden="true" />
           </span>

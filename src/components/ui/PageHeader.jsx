@@ -7,10 +7,10 @@ export default function PageHeader({ eyebrow, title, subtitle, actions }) {
     <div className="page-header">
       <div>
         {eyebrow && <div className="page-header__eyebrow">{eyebrow}</div>}
-        <h1 style={{ marginBottom: 0 }}>{title}</h1>
+        <h1 className="page-header__title">{title}</h1>
         {subtitle && <div className="page-header__subtitle">{subtitle}</div>}
       </div>
-      {actions && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{actions}</div>}
+      {actions && <div className="page-header__actions">{actions}</div>}
     </div>
   );
 }

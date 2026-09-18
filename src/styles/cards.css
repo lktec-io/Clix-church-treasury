@@ -375,10 +375,6 @@
   background: var(--color-warning-bg);
   color: var(--color-warning);
 }
-.alert--info {
-  background: var(--color-info-bg);
-  color: var(--color-info);
-}
 
 /* ---------- Empty state ---------- */
 .empty-state {
@@ -866,3 +862,43 @@
   font-size: 18px;
 }
 
+/* Neutral icon action (manage): the default .icon-btn hover is destructive
+   crimson, which is wrong for an edit control. */
+.icon-btn.icon-btn--neutral:hover {
+  background: var(--color-lavender-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.icon-btn.is-active {
+  background: var(--color-lavender-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: inset 0 -2px 0 var(--color-gold);
+}
+
+/* Role chips: emerald for a held role, grey when none is held. */
+.role-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stat-tile__icon.is-inline,
+.hero-card__breakdown-label.is-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0;
+}
+
+.is-reversed-note {
+  color: var(--color-danger);
+}
+
+.is-confirmed-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-success);
+}

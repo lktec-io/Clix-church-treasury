@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useActivity } from '../context/ActivityContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 import { formatMoney, sanitizeAmountInput } from '../utils/format.js';
@@ -174,7 +175,7 @@ export default function RemittancePage() {
   const availableFunds = funds.filter((f) => !rules.some((r) => r.fund_id === f.id));
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('remittance.title')} subtitle={t('remittance.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -312,20 +313,18 @@ export default function RemittancePage() {
             <form onSubmit={handleCreateRule} noValidate>
               <div className="form-grid">
                 <div className="field">
-                  <label htmlFor="rule-fund">{t('contributions.fund')}</label>
-                  <select
+                  <Dropdown
                     id="rule-fund"
+                    label={t('contributions.fund')}
+                    options={availableFunds.map((f) => ({ value: String(f.id), label: f.name }))}
                     value={ruleForm.fundId}
-                    onChange={handleRuleChange('fundId')}
-                    aria-invalid={Boolean(ruleErrors.fundId)}
-                    required
-                  >
-                    <option value="" disabled>—</option>
-                    {availableFunds.map((f) => (
-                      <option key={f.id} value={f.id}>{f.name}</option>
-                    ))}
-                  </select>
-                  {ruleErrors.fundId && <span className="field-error">{ruleErrors.fundId}</span>}
+                    onChange={(fundId) => handleRuleChange('fundId')({ target: { value: fundId } })}
+                    invalid={Boolean(ruleErrors.fundId)}
+                    errorId="rule-fund-error"
+                  />
+                  {ruleErrors.fundId && (
+                    <span className="field-error" id="rule-fund-error">{ruleErrors.fundId}</span>
+                  )}
                   {availableFunds.length === 0 && funds.length > 0 && (
                     <span className="field-hint">{t('remittance.rules.allFundsConfigured')}</span>
                   )}
@@ -481,18 +480,13 @@ export default function RemittancePage() {
 
               <div className="form-grid">
                 <div className="field">
-                  <label htmlFor="remit-account">{t('remittance.payFrom')}</label>
-                  <select
+                  <Dropdown
                     id="remit-account"
+                    label={t('remittance.payFrom')}
+                    options={accounts.map((a) => ({ value: String(a.id), label: a.name }))}
                     value={payAccountId}
-                    onChange={(e) => setPayAccountId(e.target.value)}
-                    required
-                  >
-                    <option value="" disabled>—</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>{a.name}</option>
-                    ))}
-                  </select>
+                    onChange={setPayAccountId}
+                  />
                 </div>
                 <div className="field">
                   <label htmlFor="remit-amount">{t('common.amount')}</label>

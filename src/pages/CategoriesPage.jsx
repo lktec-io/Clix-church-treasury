@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 
 // Genuinely missing until now: income.view/expense.create both require a
@@ -49,6 +50,7 @@ export default function CategoriesPage() {
   }, [load]);
 
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const setField = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,7 +88,7 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('categories.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -98,26 +100,33 @@ export default function CategoriesPage() {
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
               <div className="field">
-                <label>{t('budgets.type')}</label>
-                <select value={form.type} onChange={handleChange('type')}>
-                  <option value="income">{t('nav.contributions')}</option>
-                  <option value="expense">{t('nav.expenses')}</option>
-                </select>
+                <Dropdown
+                  id="category-type"
+                  label={t('budgets.type')}
+                  options={[
+                    { value: 'income', label: t('nav.contributions') },
+                    { value: 'expense', label: t('nav.expenses') },
+                  ]}
+                  value={form.type}
+                  onChange={setField('type')}
+                />
               </div>
               <div className="field">
-                <label>{t('common.name')}</label>
-                <input value={form.name} onChange={handleChange('name')} required />
+                <label htmlFor="category-name">{t('common.name')}</label>
+                <input id="category-name" value={form.name} onChange={handleChange('name')} required />
               </div>
               {form.type === 'income' && (
                 <div className="field">
-                  <label>{t('categories.reportGroup')}</label>
-                  <select value={form.reportGroup} onChange={handleChange('reportGroup')}>
-                    {REPORT_GROUPS.map((g) => (
-                      <option key={g || 'none'} value={g}>
-                        {g ? t(`categories.reportGroup.${g}`) : t('categories.reportGroup.none')}
-                      </option>
-                    ))}
-                  </select>
+                  <Dropdown
+                    id="category-report-group"
+                    label={t('categories.reportGroup')}
+                    options={REPORT_GROUPS.map((g) => ({
+                      value: g,
+                      label: g ? t(`categories.reportGroup.${g}`) : t('categories.reportGroup.none'),
+                    }))}
+                    value={form.reportGroup}
+                    onChange={setField('reportGroup')}
+                  />
                 </div>
               )}
             </div>
@@ -155,17 +164,17 @@ export default function CategoriesPage() {
                       {c.type !== 'income' ? (
                         '—'
                       ) : hasPermission('categories.manage') ? (
-                        <select
+                        <Dropdown
+                          id={`category-${c.id}-report-group`}
+                          options={REPORT_GROUPS.map((g) => ({
+                            value: g,
+                            label: g ? t(`categories.reportGroup.${g}`) : t('categories.reportGroup.none'),
+                          }))}
                           value={c.report_group ?? ''}
+                          ariaLabel={t('categories.reportGroup')}
                           disabled={savingGroupId === c.id}
-                          onChange={(e) => handleReportGroupChange(c, e.target.value)}
-                        >
-                          {REPORT_GROUPS.map((g) => (
-                            <option key={g || 'none'} value={g}>
-                              {g ? t(`categories.reportGroup.${g}`) : t('categories.reportGroup.none')}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(group) => handleReportGroupChange(c, group)}
+                        />
                       ) : c.report_group ? (
                         t(`categories.reportGroup.${c.report_group}`)
                       ) : (

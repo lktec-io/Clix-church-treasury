@@ -7,6 +7,7 @@ import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import { formatMoney, formatDate } from '../utils/format.js';
 
 const PAYMENT_METHODS = ['cash', 'bank', 'mobile_money', 'cheque', 'other'];
@@ -114,6 +115,7 @@ export default function ReportsPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [running, setRunning] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [exportingFormat, setExportingFormat] = useState(null);
 
   const availableReports = useMemo(() => REPORT_DEFS.filter((r) => hasPermission(r.permission)), [hasPermission]);
@@ -161,11 +163,25 @@ export default function ReportsPage() {
   }, [reportKey]);
 
   const handleFilterChange = (field) => (e) => setFilters((f) => ({ ...f, [field]: e.target.value }));
+  const setFilter = (field) => (value) => {
+    setFilters((f) => ({ ...f, [field]: value }));
+    setFieldErrors((errors) => ({ ...errors, [field]: undefined }));
+  };
 
   const handleRun = async (e) => {
     e.preventDefault();
     if (!def) return;
     setError(null);
+    // The dropdowns replace native <select required>, so the report's own
+    // required filters are checked here and reported next to the control.
+    const errors = {};
+    if (def.account === 'required' && !filters.accountId) errors.accountId = t('common.required');
+    if (def.fund === 'required' && !filters.fundId) errors.fundId = t('common.required');
+    if (def.financialPeriod === 'required' && !filters.financialPeriodId) {
+      errors.financialPeriodId = t('common.required');
+    }
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setRunning(true);
     setResult(null);
     try {
@@ -197,7 +213,7 @@ export default function ReportsPage() {
   const canExport = def?.key !== 'financialSummary';
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('reports.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -219,12 +235,16 @@ export default function ReportsPage() {
         <form onSubmit={handleRun}>
           <div className="form-grid">
             <div className="field">
-              <label>{t('reports.selectReport')}</label>
-              <select value={reportKey} onChange={(e) => setReportKey(e.target.value)}>
-                {availableReports.map((r) => (
-                  <option key={r.key} value={r.key}>{t(r.labelKey)}</option>
-                ))}
-              </select>
+              <Dropdown
+                id="report-key"
+                label={t('reports.selectReport')}
+                options={availableReports.map((r) => ({ value: r.key, label: t(r.labelKey) }))}
+                value={reportKey}
+                onChange={(key) => {
+                  setReportKey(key);
+                  setFieldErrors({});
+                }}
+              />
             </div>
 
             {def?.dateRange && (
@@ -242,86 +262,125 @@ export default function ReportsPage() {
 
             {def?.account && (
               <div className="field">
-                <label>{t('reports.account')}</label>
-                <select value={filters.accountId} onChange={handleFilterChange('accountId')} required={def.account === 'required'}>
-                  {def.account !== 'required' && <option value="">{t('reports.allAccounts')}</option>}
-                  {def.account === 'required' && <option value="" disabled>—</option>}
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="report-account"
+                  label={t('reports.account')}
+                  options={[
+                    ...(def.account === 'required' ? [] : [{ value: '', label: t('reports.allAccounts') }]),
+                    ...accounts.map((a) => ({ value: String(a.id), label: a.name })),
+                  ]}
+                  value={filters.accountId}
+                  onChange={setFilter('accountId')}
+                  placeholder={def.account === 'required' ? '—' : t('reports.allAccounts')}
+                  invalid={Boolean(fieldErrors.accountId)}
+                  errorId="report-account-error"
+                />
+                {fieldErrors.accountId && (
+                  <span className="field-error" id="report-account-error">{fieldErrors.accountId}</span>
+                )}
               </div>
             )}
 
             {def?.fund && (
               <div className="field">
-                <label>{t('budgets.fund')}</label>
-                <select value={filters.fundId} onChange={handleFilterChange('fundId')} required={def.fund === 'required'}>
-                  {def.fund !== 'required' && <option value="">{t('reports.allFunds')}</option>}
-                  {def.fund === 'required' && <option value="" disabled>—</option>}
-                  {funds.map((f) => (
-                    <option key={f.id} value={f.id}>{f.name}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="report-fund"
+                  label={t('budgets.fund')}
+                  options={[
+                    ...(def.fund === 'required' ? [] : [{ value: '', label: t('reports.allFunds') }]),
+                    ...funds.map((f) => ({ value: String(f.id), label: f.name })),
+                  ]}
+                  value={filters.fundId}
+                  onChange={setFilter('fundId')}
+                  placeholder={def.fund === 'required' ? '—' : t('reports.allFunds')}
+                  invalid={Boolean(fieldErrors.fundId)}
+                  errorId="report-fund-error"
+                />
+                {fieldErrors.fundId && <span className="field-error" id="report-fund-error">{fieldErrors.fundId}</span>}
               </div>
             )}
 
             {def?.category && (
               <div className="field">
-                <label>{t('contributions.category')}</label>
-                <select value={filters.categoryId} onChange={handleFilterChange('categoryId')}>
-                  <option value="">{t('reports.allCategories')}</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="report-category"
+                  label={t('contributions.category')}
+                  options={[
+                    { value: '', label: t('reports.allCategories') },
+                    ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+                  ]}
+                  value={filters.categoryId}
+                  onChange={setFilter('categoryId')}
+                  placeholder={t('reports.allCategories')}
+                />
               </div>
             )}
 
             {def?.paymentMethod && (
               <div className="field">
-                <label>{t('contributions.paymentMethod')}</label>
-                <select value={filters.paymentMethod} onChange={handleFilterChange('paymentMethod')}>
-                  <option value="">{t('reports.allMethods')}</option>
-                  {PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m}>{t(`paymentMethod.${m}`)}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="report-method"
+                  label={t('contributions.paymentMethod')}
+                  options={[
+                    { value: '', label: t('reports.allMethods') },
+                    ...PAYMENT_METHODS.map((m) => ({ value: m, label: t(`paymentMethod.${m}`) })),
+                  ]}
+                  value={filters.paymentMethod}
+                  onChange={setFilter('paymentMethod')}
+                  placeholder={t('reports.allMethods')}
+                />
               </div>
             )}
 
             {def?.status && (
               <div className="field">
-                <label>{t('common.status')}</label>
-                <select value={filters.status} onChange={handleFilterChange('status')}>
-                  <option value="">{t('reports.allStatuses')}</option>
-                  <option value="posted">{t('common.active')}</option>
-                  <option value="reversed">{t('contributions.reversed')}</option>
-                </select>
+                <Dropdown
+                  id="report-status"
+                  label={t('common.status')}
+                  options={[
+                    { value: '', label: t('reports.allStatuses') },
+                    { value: 'posted', label: t('common.active') },
+                    { value: 'reversed', label: t('contributions.reversed') },
+                  ]}
+                  value={filters.status}
+                  onChange={setFilter('status')}
+                  placeholder={t('reports.allStatuses')}
+                />
               </div>
             )}
 
             {def?.pledgeStatus && (
               <div className="field">
-                <label>{t('common.status')}</label>
-                <select value={filters.status} onChange={handleFilterChange('status')}>
-                  <option value="">{t('reports.allStatuses')}</option>
-                  <option value="active">{t('pledges.status.active')}</option>
-                  <option value="completed">{t('pledges.status.completed')}</option>
-                  <option value="cancelled">{t('pledges.status.cancelled')}</option>
-                </select>
+                <Dropdown
+                  id="report-pledge-status"
+                  label={t('common.status')}
+                  options={[
+                    { value: '', label: t('reports.allStatuses') },
+                    { value: 'active', label: t('pledges.status.active') },
+                    { value: 'completed', label: t('pledges.status.completed') },
+                    { value: 'cancelled', label: t('pledges.status.cancelled') },
+                  ]}
+                  value={filters.status}
+                  onChange={setFilter('status')}
+                  placeholder={t('reports.allStatuses')}
+                />
               </div>
             )}
 
             {def?.financialPeriod && (
               <div className="field">
-                <label>{t('budgets.financialPeriod')}</label>
-                <select value={filters.financialPeriodId} onChange={handleFilterChange('financialPeriodId')} required>
-                  <option value="" disabled>—</option>
-                  {periods.map((p) => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="report-period"
+                  label={t('budgets.financialPeriod')}
+                  options={periods.map((p) => ({ value: String(p.id), label: p.label }))}
+                  value={filters.financialPeriodId}
+                  onChange={setFilter('financialPeriodId')}
+                  invalid={Boolean(fieldErrors.financialPeriodId)}
+                  errorId="report-period-error"
+                />
+                {fieldErrors.financialPeriodId && (
+                  <span className="field-error" id="report-period-error">{fieldErrors.financialPeriodId}</span>
+                )}
               </div>
             )}
           </div>

@@ -78,7 +78,7 @@ export default function FundsPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('funds.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -99,7 +99,7 @@ export default function FundsPage() {
                     type="checkbox"
                     checked={form.isRestricted}
                     onChange={(e) => setForm((f) => ({ ...f, isRestricted: e.target.checked }))}
-                    style={{ marginRight: 6 }}
+                    className="fund-restricted-check"
                   />
                   {t('funds.restricted')}
                 </label>

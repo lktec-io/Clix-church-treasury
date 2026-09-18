@@ -29,6 +29,13 @@
   padding-top: var(--navbar-height);
 }
 
+/* Every page's root element. Named rather than a bare <div> so the shell can
+   reason about it: it must be allowed to shrink inside the content column,
+   or a wide table's intrinsic width would push the whole page sideways. */
+.page {
+  min-width: 0;
+}
+
 /* ---------- Page header ---------- */
 .page-header {
   display: flex;
@@ -36,6 +43,16 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.page-header__title {
+  margin-bottom: 0;
+}
+
+.page-header__actions {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -107,15 +124,6 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-}
-
-.member-topbar__locale {
-  font-size: 12px;
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  background: var(--sidebar-hover-bg);
-  color: var(--sidebar-text-strong);
-  border: 1px solid var(--sidebar-border);
 }
 
 .member-topbar .btn--secondary {
@@ -207,4 +215,11 @@
     top: auto;
     bottom: -6px;
   }
+}
+
+/* Placeholder while a lazily-loaded route chunk arrives. Reserves height so
+   the header does not jump when the page mounts; deliberately silent, since
+   most chunks land in a few milliseconds. */
+.route-fallback {
+  min-height: 60svh;
 }

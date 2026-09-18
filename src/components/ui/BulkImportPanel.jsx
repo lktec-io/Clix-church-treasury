@@ -116,7 +116,7 @@ export default function BulkImportPanel({ open, onClose, onImported }) {
         <motion.div variants={panelVariants} initial="hidden" animate="visible" exit="exit" style={{ overflow: 'hidden' }}>
           <div className="card">
             <div className="card__header">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 className="card__title-icon">
                 <FiUpload aria-hidden="true" /> {t('contributors.import.title')}
               </h2>
               <button type="button" className="btn btn--secondary btn--sm" onClick={close}>
@@ -124,9 +124,9 @@ export default function BulkImportPanel({ open, onClose, onImported }) {
               </button>
             </div>
 
-            <p className="field-hint" style={{ margin: '0 0 14px' }}>{t('contributors.import.hint')}</p>
+            <p className="field-hint import-panel__hint">{t('contributors.import.hint')}</p>
 
-            <div className="form-actions" style={{ marginTop: 0, marginBottom: 14 }}>
+            <div className="form-actions import-panel__actions">
               <button type="button" className="btn btn--secondary btn--sm" onClick={handleDownloadTemplate}>
                 <FiDownload aria-hidden="true" /> {t('contributors.import.downloadTemplate')}
               </button>

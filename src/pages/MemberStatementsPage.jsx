@@ -6,6 +6,7 @@ import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import SmsPopCenter from '../components/ui/SmsPopCenter.jsx';
 import { useActivity } from '../context/ActivityContext.jsx';
@@ -113,7 +114,7 @@ export default function MemberStatementsPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('memberStatements.title')} subtitle={t('memberStatements.subtitle')} />
 
       <AnimatePresence>
@@ -126,35 +127,36 @@ export default function MemberStatementsPage() {
       <div className="card">
         <div className="form-grid">
           <div className="field">
-            <label>{t('pledges.contributor')}</label>
-            <select value={contributorId} onChange={(e) => setContributorId(e.target.value)}>
-              <option value="">—</option>
-              {contributors.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.full_name} {c.member_number ? `(${c.member_number})` : ''}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              id="statement-member"
+              label={t('pledges.contributor')}
+              options={contributors.map((c) => ({
+                value: String(c.id),
+                label: c.full_name,
+                meta: c.member_number ?? undefined,
+              }))}
+              value={contributorId}
+              onChange={setContributorId}
+              searchPlaceholder={t('contributors.searchPlaceholder')}
+            />
           </div>
           <div className="field">
-            <label>{t('member.history.year')}</label>
-            <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              id="statement-year"
+              label={t('member.history.year')}
+              options={YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+              value={String(year)}
+              onChange={(value) => setYear(Number(value))}
+            />
           </div>
           <div className="field">
-            <label>{t('member.statement.month')}</label>
-            <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-              {MONTH_OPTIONS.map((m) => (
-                <option key={m} value={m}>
-                  {String(m).padStart(2, '0')}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              id="statement-month"
+              label={t('member.statement.month')}
+              options={MONTH_OPTIONS.map((m) => ({ value: String(m), label: String(m).padStart(2, '0') }))}
+              value={String(month)}
+              onChange={(value) => setMonth(Number(value))}
+            />
           </div>
         </div>
         <div className="form-actions">

@@ -178,7 +178,7 @@ export default function Layout() {
   const sidebarContent = (
     <>
       <div className="app-sidebar__brand">
-        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        <span className="app-sidebar__brand-text">
           <span className="app-sidebar__brand-mark">C</span>
           <span>{t('app.name')}</span>
         </span>

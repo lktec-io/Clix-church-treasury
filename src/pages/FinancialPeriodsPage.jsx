@@ -107,7 +107,7 @@ export default function FinancialPeriodsPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('financialPeriods.title')} />
       {error && <div className="alert alert--error">{error}</div>}
 

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
+import { FiEdit2, FiSlash, FiUserPlus, FiX, FiInfo } from 'react-icons/fi';
 import { usersApi, rolesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -7,10 +8,11 @@ import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import { SkeletonTable } from '../components/ui/Skeleton.jsx';
 
 function emptyForm() {
-  return { email: '', fullName: '' };
+  return { fullName: '', email: '', roleId: '' };
 }
 
 const STATUS_BADGE = {
@@ -28,6 +30,9 @@ export default function UsersPage() {
   const [roles, setRoles] = useState([]);
   const [form, setForm] = useState(emptyForm());
   const [roleChoice, setRoleChoice] = useState({});
+  // Which row has its role panel open. One at a time: this is a rare,
+  // deliberate action, not something to leave expanded across the grid.
+  const [editingUserId, setEditingUserId] = useState(null);
   const [devInviteToken, setDevInviteToken] = useState(null);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -59,7 +64,17 @@ export default function UsersPage() {
     setDevInviteToken(null);
     setSubmitting(true);
     try {
-      const result = await usersApi.invite(form);
+      const result = await usersApi.invite({ fullName: form.fullName.trim(), email: form.email.trim() });
+      // The API creates the account and grants roles separately, so a role
+      // chosen on the form is applied straight after the account exists.
+      // A failure here must not read as "the user was not created".
+      if (form.roleId && result?.user?.id) {
+        try {
+          await usersApi.assignRole(result.user.id, Number(form.roleId));
+        } catch (roleErr) {
+          setError(unwrapApiError(roleErr).message);
+        }
+      }
       setForm(emptyForm());
       await load();
       toast.success(t('users.invited'));
@@ -74,15 +89,13 @@ export default function UsersPage() {
   const handleAssignRole = async (user) => {
     const roleId = Number(roleChoice[user.id]);
     if (!roleId) return;
-    // Clear any banner from a previous attempt before starting a new one —
-    // otherwise a stale "you cannot remove a role from your own account"
-    // sits above a role change that has just succeeded.
+    // Clear any banner from a previous attempt, so a stale refusal does not
+    // sit above a role change that has just succeeded.
     setError(null);
     try {
       await usersApi.assignRole(user.id, roleId);
-      // Reset this row's picker so it does not keep displaying the role that
-      // has just been granted, which invites a second click that the server
-      // treats as a silent no-op (assign is INSERT IGNORE).
+      // Reset this row's picker: leaving the granted role selected invites a
+      // second click the server treats as a no-op (assign is INSERT IGNORE).
       setRoleChoice((c) => ({ ...c, [user.id]: '' }));
       await load();
       toast.success(t('users.roleAssigned'));
@@ -109,9 +122,7 @@ export default function UsersPage() {
       tone: 'danger',
       confirmLabel: t('users.disable'),
     });
-    // confirm() resolves to a bare boolean unless `requireReason` is set, in
-    // which case it resolves to { confirmed, reason } — see ConfirmDialog.jsx.
-    // No reason is required here, so this is the boolean form.
+    // confirm() resolves to a bare boolean unless `requireReason` is set.
     if (!ok) return;
     setError(null);
     try {
@@ -125,141 +136,231 @@ export default function UsersPage() {
 
   const isSelf = (user) => user.id === session?.user?.id;
 
-  // Roles this user does not already hold. Offering the full catalog meant
-  // the picker listed roles the member already had, where "Assign" is an
-  // INSERT IGNORE no-op — a button that reports success and changes nothing.
+  // Roles the user does not already hold. Offering the full catalogue listed
+  // roles where "Assign" is a no-op that still reports success.
   const assignableRoles = (user) => {
     const held = new Set(user.roles.map((r) => r.id));
     return roles.filter((r) => !held.has(r.id));
   };
 
   return (
-    <div>
-      <PageHeader title={t('users.title')} />
+    <div className="page">
+      <PageHeader title={t('users.title')} subtitle={t('users.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
-      <PermissionGate permission="users.manage">
-        <div className="card">
-          <div className="card__header">
-            <h2>{t('users.invite')}</h2>
-          </div>
-          <form onSubmit={handleInvite}>
-            <div className="form-grid">
+      <div className="split-view">
+        <PermissionGate permission="users.manage">
+          <section className="card form-card split-view__aside">
+            <div className="card__header">
+              <h2 className="card__title-icon">
+                <FiUserPlus aria-hidden="true" /> {t('users.invite')}
+              </h2>
+            </div>
+            <form onSubmit={handleInvite}>
               <div className="field">
-                <label>{t('contributors.fullName')}</label>
-                <input value={form.fullName} onChange={handleChange('fullName')} required />
+                <label htmlFor="user-full-name">{t('contributors.fullName')}</label>
+                <input
+                  id="user-full-name"
+                  autoComplete="name"
+                  value={form.fullName}
+                  onChange={handleChange('fullName')}
+                  required
+                />
               </div>
               <div className="field">
-                <label>{t('auth.login.email')}</label>
-                <input type="email" value={form.email} onChange={handleChange('email')} required />
+                <label htmlFor="user-email">{t('auth.login.email')}</label>
+                <input
+                  id="user-email"
+                  type="email"
+                  autoComplete="email"
+                  value={form.email}
+                  onChange={handleChange('email')}
+                  required
+                />
               </div>
-            </div>
-            <div className="form-actions">
-              <button type="submit" className="btn btn--primary" disabled={submitting}>
-                {submitting ? t('common.loading') : t('users.invite')}
-              </button>
-            </div>
-          </form>
-          {devInviteToken && (
-            <div className="alert alert--success" style={{ marginTop: 12, wordBreak: 'break-all' }}>
-              {t('users.devTokenHint')}: <code>{devInviteToken}</code>
-            </div>
-          )}
-        </div>
-      </PermissionGate>
+              <div className="field">
+                <Dropdown
+                  id="user-role"
+                  label={t('users.roles')}
+                  options={[
+                    { value: '', label: t('users.noRoleYet') },
+                    ...roles.map((r) => ({ value: String(r.id), label: r.name })),
+                  ]}
+                  value={form.roleId}
+                  onChange={(roleId) => setForm((f) => ({ ...f, roleId }))}
+                  placeholder={t('users.noRoleYet')}
+                />
+              </div>
 
-      <div className="card">
-        {loading ? (
-          <SkeletonTable rows={4} columns={4} />
-        ) : users.length === 0 ? (
-          <div className="empty-state">{t('common.noResults')}</div>
-        ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>{t('contributors.fullName')}</th>
-                  <th>{t('auth.login.email')}</th>
-                  <th>{t('users.roles')}</th>
-                  <th>{t('common.status')}</th>
-                  <PermissionGate permission="users.manage">
-                    <th>{t('common.actions')}</th>
-                  </PermissionGate>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.full_name}</td>
-                    <td>{u.email}</td>
-                    <td>
-                      {u.roles.length === 0
-                        ? '—'
-                        : u.roles.map((r) => (
-                            <span key={r.id} className="badge badge--neutral" style={{ marginRight: 4 }}>
-                              {r.name}
-                              {/* No remove control on your own roles: the
-                                  server refuses self-removal outright
-                                  (users.service.js guards against the
-                                  self-lockout it would cause), so the button
-                                  could only ever produce a 403. */}
-                              {!isSelf(u) && (
-                                <PermissionGate permission="users.manage">
-                                  <button
-                                    type="button"
-                                    className="badge__remove"
-                                    onClick={() => handleRemoveRole(u, r.id)}
-                                    aria-label={`${t('common.deactivate')} ${r.name}`}
-                                  >
-                                    ×
-                                  </button>
-                                </PermissionGate>
-                              )}
-                            </span>
-                          ))}
-                    </td>
-                    <td>
-                      <span className={`badge ${STATUS_BADGE[u.status]}`}>{t(`users.status.${u.status}`)}</span>
-                    </td>
+              {/* No password box: the account is created with an unusable
+                  placeholder and the invitee sets their own password from the
+                  invite link (users.service.js#inviteUser). A password typed
+                  here would have nowhere to go. */}
+              <p className="form-note">
+                <FiInfo aria-hidden="true" /> {t('users.passwordNote')}
+              </p>
+
+              <div className="form-actions">
+                <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>
+                  {submitting ? t('common.loading') : t('users.invite')}
+                </button>
+              </div>
+            </form>
+            {devInviteToken && (
+              <div className="alert alert--success invite-token">
+                {t('users.devTokenHint')}: <code>{devInviteToken}</code>
+              </div>
+            )}
+          </section>
+        </PermissionGate>
+
+        <section className="card ledger-card split-view__main">
+          <div className="ledger-toolbar">
+            <div className="ledger-toolbar__title">
+              <h2>{t('users.directory')}</h2>
+              {!loading && (
+                <span className="ledger-toolbar__count tabular-nums">{t('users.count', { count: users.length })}</span>
+              )}
+            </div>
+          </div>
+          {loading ? (
+            <SkeletonTable rows={4} columns={4} />
+          ) : users.length === 0 ? (
+            <div className="empty-state">{t('common.noResults')}</div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table data-table--dense">
+                <thead>
+                  <tr>
+                    <th>{t('users.member')}</th>
+                    <th>{t('users.roles')}</th>
+                    <th>{t('common.status')}</th>
                     <PermissionGate permission="users.manage">
-                      <td>
-                        <div className="row-actions row-actions--center">
-                          <select
-                            value={roleChoice[u.id] ?? ''}
-                            onChange={(e) => setRoleChoice((c) => ({ ...c, [u.id]: e.target.value }))}
-                            aria-label={t('users.assignRole')}
-                            disabled={assignableRoles(u).length === 0}
-                            style={{ maxWidth: 160 }}
-                          >
-                            <option value="">—</option>
-                            {assignableRoles(u).map((r) => (
-                              <option key={r.id} value={r.id}>{r.name}</option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            className="btn btn--secondary btn--sm"
-                            // Nothing picked means the handler returns early;
-                            // disabling says so before the click instead.
-                            disabled={!roleChoice[u.id]}
-                            onClick={() => handleAssignRole(u)}
-                          >
-                            {t('users.assignRole')}
-                          </button>
-                          {u.status !== 'disabled' && !isSelf(u) && (
-                            <button type="button" className="btn btn--danger btn--sm" onClick={() => handleDisable(u)}>
-                              {t('users.disable')}
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                      <th className="col-actions">{t('common.actions')}</th>
                     </PermissionGate>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {users.map((u) => {
+                    const editing = editingUserId === u.id;
+                    return (
+                      <Fragment key={u.id}>
+                        <tr>
+                          <td>
+                            <span className="cell-stack">
+                              <span className="cell-stack__primary">{u.full_name}</span>
+                              <span className="cell-stack__secondary">{u.email}</span>
+                            </span>
+                          </td>
+                          <td>
+                            {u.roles.length === 0 ? (
+                              <span className="badge badge--neutral">{t('users.noRoleYet')}</span>
+                            ) : (
+                              <span className="role-tags">
+                                {u.roles.map((r) => (
+                                  <span key={r.id} className="badge badge--accent">
+                                    {r.name}
+                                  </span>
+                                ))}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`badge ${STATUS_BADGE[u.status]}`}>{t(`users.status.${u.status}`)}</span>
+                          </td>
+                          <PermissionGate permission="users.manage">
+                            <td className="col-actions">
+                              <div className="row-actions">
+                                <button
+                                  type="button"
+                                  className={`icon-btn icon-btn--neutral${editing ? ' is-active' : ''}`}
+                                  aria-label={t('users.manageRoles')}
+                                  title={t('users.manageRoles')}
+                                  aria-expanded={editing}
+                                  onClick={() => setEditingUserId(editing ? null : u.id)}
+                                >
+                                  {editing ? <FiX aria-hidden="true" /> : <FiEdit2 aria-hidden="true" />}
+                                </button>
+                                {/* Disabling yourself would lock you out, and
+                                    the server refuses it; the control is not
+                                    offered rather than failing on click. */}
+                                {u.status !== 'disabled' && !isSelf(u) && (
+                                  <button
+                                    type="button"
+                                    className="icon-btn"
+                                    aria-label={t('users.disable')}
+                                    title={t('users.disable')}
+                                    onClick={() => handleDisable(u)}
+                                  >
+                                    <FiSlash aria-hidden="true" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </PermissionGate>
+                        </tr>
+                        {editing && (
+                          <tr className="role-editor">
+                            <td colSpan={4}>
+                              <div className="role-editor__body">
+                                <div className="role-editor__assign">
+                                  <Dropdown
+                                    id={`user-${u.id}-role`}
+                                    label={t('users.assignRole')}
+                                    options={assignableRoles(u).map((r) => ({ value: String(r.id), label: r.name }))}
+                                    value={roleChoice[u.id] ?? ''}
+                                    onChange={(roleId) => setRoleChoice((c) => ({ ...c, [u.id]: roleId }))}
+                                    disabled={assignableRoles(u).length === 0}
+                                    placeholder={
+                                      assignableRoles(u).length === 0 ? t('users.allRolesHeld') : t('users.chooseRole')
+                                    }
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn--secondary btn--sm"
+                                    disabled={!roleChoice[u.id]}
+                                    onClick={() => handleAssignRole(u)}
+                                  >
+                                    {t('users.assignRole')}
+                                  </button>
+                                </div>
+                                {u.roles.length > 0 && (
+                                  <div className="role-editor__current">
+                                    <span className="role-editor__label">{t('users.currentRoles')}</span>
+                                    <span className="role-tags">
+                                      {u.roles.map((r) => (
+                                        <span key={r.id} className="badge badge--accent">
+                                          {r.name}
+                                          {/* Self-removal is refused by the
+                                              server (it would lock you out),
+                                              so no control is offered. */}
+                                          {!isSelf(u) && (
+                                            <button
+                                              type="button"
+                                              className="badge__remove"
+                                              onClick={() => handleRemoveRole(u, r.id)}
+                                              aria-label={`${t('users.removeRole')} ${r.name}`}
+                                            >
+                                              ×
+                                            </button>
+                                          )}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

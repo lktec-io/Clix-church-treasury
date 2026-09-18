@@ -4,6 +4,7 @@ import { FiHeart, FiGift, FiLayers, FiDownload, FiFileText } from 'react-icons/f
 import { memberApi } from '../../api/memberEndpoints.js';
 import { unwrapApiError } from '../../api/client.js';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
+import Dropdown from '../../components/ui/Dropdown.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import { SkeletonCard } from '../../components/ui/Skeleton.jsx';
 import { formatMoney, formatCurrency } from '../../utils/format.js';
@@ -51,31 +52,29 @@ export default function MemberStatementPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <div className="card">
         <div className="card__header">
           <h2>{t('member.statement.title')}</h2>
         </div>
         <div className="form-grid">
           <div className="field">
-            <label htmlFor="year">{t('member.history.year')}</label>
-            <select id="year" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              id="year"
+              label={t('member.history.year')}
+              options={YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+              value={String(year)}
+              onChange={(value) => setYear(Number(value))}
+            />
           </div>
           <div className="field">
-            <label htmlFor="month">{t('member.statement.month')}</label>
-            <select id="month" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-              {MONTH_OPTIONS.map((m) => (
-                <option key={m} value={m}>
-                  {String(m).padStart(2, '0')}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              id="month"
+              label={t('member.statement.month')}
+              options={MONTH_OPTIONS.map((m) => ({ value: String(m), label: String(m).padStart(2, '0') }))}
+              value={String(month)}
+              onChange={(value) => setMonth(Number(value))}
+            />
           </div>
         </div>
       </div>
@@ -95,19 +94,19 @@ export default function MemberStatementPage() {
             <div className="hero-card__value tabular-nums">{formatCurrency(statement?.total)}</div>
             <div className="hero-card__breakdown">
               <div className="hero-card__breakdown-item">
-                <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="hero-card__breakdown-label is-inline">
                   <FiHeart aria-hidden="true" /> {t('categories.tithe')}
                 </span>
                 <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement?.tithe)}</span>
               </div>
               <div className="hero-card__breakdown-item">
-                <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="hero-card__breakdown-label is-inline">
                   <FiGift aria-hidden="true" /> {t('categories.offering')}
                 </span>
                 <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement?.offering)}</span>
               </div>
               <div className="hero-card__breakdown-item">
-                <span className="hero-card__breakdown-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="hero-card__breakdown-label is-inline">
                   <FiLayers aria-hidden="true" /> {t('categories.other')}
                 </span>
                 <span className="hero-card__breakdown-value tabular-nums">{formatMoney(statement?.other)}</span>

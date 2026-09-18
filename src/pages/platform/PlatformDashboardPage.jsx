@@ -45,7 +45,7 @@ export default function PlatformDashboardPage() {
 
   if (loading) {
     return (
-      <div>
+      <div className="page">
         <PageHeader title={t('platform.dashboard.title')} />
         <SkeletonStatGrid />
       </div>

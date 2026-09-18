@@ -40,6 +40,7 @@ export default function PledgesPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,18 +67,23 @@ export default function PledgesPage() {
   }, [load]);
 
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
-  const setField = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
+  const setField = (field) => (value) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    setFieldErrors((errors) => ({ ...errors, [field]: undefined }));
+  };
   const isRecurring = form.frequency !== 'once';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     // The dropdowns are not native <select required>, so the browser does
-    // not block an empty choice — checked here before any request.
-    if (!form.contributorId || !form.fundId) {
-      setError(t('pledges.error.memberAndFund'));
-      return;
-    }
+    // not block an empty choice — checked here, and reported on the control
+    // itself rather than as a banner at the top of the page.
+    const errors = {};
+    if (!form.contributorId) errors.contributorId = t('common.required');
+    if (!form.fundId) errors.fundId = t('common.required');
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setSubmitting(true);
     try {
       await pledgesApi.create({
@@ -88,6 +94,7 @@ export default function PledgesPage() {
         targetDate: form.targetDate || null,
       });
       setForm(emptyForm());
+      setFieldErrors({});
       await load();
       toast.success(t('pledges.created'));
     } catch (err) {
@@ -115,7 +122,7 @@ export default function PledgesPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('pledges.title')} subtitle={t('pledges.subtitle')} />
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -133,7 +140,12 @@ export default function PledgesPage() {
                   options={contributors.map((c) => ({ value: String(c.id), label: c.full_name, meta: c.member_number ?? undefined }))}
                   value={form.contributorId}
                   onChange={setField('contributorId')}
+                  invalid={Boolean(fieldErrors.contributorId)}
+                  errorId="pledge-contributor-error"
                 />
+                {fieldErrors.contributorId && (
+                  <span className="field-error" id="pledge-contributor-error">{fieldErrors.contributorId}</span>
+                )}
               </div>
               <div className="field">
                 <Dropdown
@@ -142,7 +154,10 @@ export default function PledgesPage() {
                   options={funds.map((f) => ({ value: String(f.id), label: f.name }))}
                   value={form.fundId}
                   onChange={setField('fundId')}
+                  invalid={Boolean(fieldErrors.fundId)}
+                  errorId="pledge-fund-error"
                 />
+                {fieldErrors.fundId && <span className="field-error" id="pledge-fund-error">{fieldErrors.fundId}</span>}
               </div>
               <div className="field">
                 <label htmlFor="pledge-amount">{t('pledges.pledgedAmount')}</label>

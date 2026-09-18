@@ -11,6 +11,7 @@ import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
 import PageHeader from '../components/ui/PageHeader.jsx';
+import Dropdown from '../components/ui/Dropdown.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import { SkeletonStatGrid, SkeletonTable } from '../components/ui/Skeleton.jsx';
 import {
@@ -178,19 +179,20 @@ export default function DashboardPage() {
   const tithesAndOfferings = collections ? sumMoneyStrings([collections.tithe, collections.offering]) : null;
 
   const periodSelect = (
-    <label className="period-select">
-      <span className="period-select__label">{t('dashboard.periodFilter')}</span>
-      <select value={range} onChange={(e) => setRange(e.target.value)}>
-        {RANGE_OPTIONS.map((opt) => (
-          <option key={opt} value={opt}>{t(`dashboard.period.${opt}`)}</option>
-        ))}
-      </select>
-    </label>
+    <div className="period-select">
+      <Dropdown
+        id="dashboard-period"
+        label={t('dashboard.periodFilter')}
+        options={RANGE_OPTIONS.map((opt) => ({ value: opt, label: t(`dashboard.period.${opt}`) }))}
+        value={range}
+        onChange={setRange}
+      />
+    </div>
   );
 
   if (loading) {
     return (
-      <div>
+      <div className="page">
         <PageHeader title={t('dashboard.title')} />
         <SkeletonStatGrid />
         <SkeletonTable rows={4} columns={3} />

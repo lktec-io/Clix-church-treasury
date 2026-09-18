@@ -38,16 +38,16 @@ export default function MemberChangePinPage() {
   };
 
   return (
-    <div>
+    <div className="page">
       <PageHeader title={t('member.changePin.title')} />
       {session?.mustChangePin && <div className="alert alert--warning">{t('member.changePin.required')}</div>}
       {error && <div className="alert alert--error">{error}</div>}
       <div className="card">
         <div className="card__header">
-          <span className="stat-tile__icon" style={{ marginBottom: 0 }}>
+          <span className="stat-tile__icon is-inline">
             <FiLock aria-hidden="true" />
           </span>
-          <h2 style={{ marginBottom: 0 }}>{t('member.changePin.title')}</h2>
+          <h2 className="page-header__title">{t('member.changePin.title')}</h2>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
