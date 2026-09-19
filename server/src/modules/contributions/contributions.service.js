@@ -18,6 +18,7 @@ import { tenantsRepository } from '../tenants/tenants.repository.js';
 import { categoriesRepository } from '../categories/categories.repository.js';
 import { sendSms } from '../sms/sms.service.js';
 import { accrueRemittanceForContribution } from '../remittance/remittance.service.js';
+import { runInBackground } from '../../utils/backgroundJob.js';
 
 export { enrichWithContributorInfo } from '../contributors/contributorEnrichment.js';
 
@@ -35,7 +36,9 @@ async function loadContributionResponse(tenantId, contribution) {
     contributionItemsRepository.findByContributionId(tenantId, contribution.id),
     receiptsRepository.findByContributionId(tenantId, contribution.id),
   ]);
-  return { ...contribution, transaction, receipt, items, sms: null, deduplicated: true };
+  // A duplicate never sends a second SMS: the member was (or was not)
+  // notified by the original request.
+  return { ...contribution, transaction, receipt, items, sms: null, sms_status: 'skipped', deduplicated: true };
 }
 
 // Shared by recordContribution's post-commit SMS attempt and the standalone
@@ -73,6 +76,45 @@ async function sendContributionConfirmationSms(tenantId, contribution) {
     relatedType: 'contributions',
     relatedId: contribution.id,
   });
+}
+
+/**
+ * Schedules the member's confirmation SMS OUTSIDE the request and returns
+ * immediately with what was done: 'queued', or 'skipped' when the gift has no
+ * contributor to notify.
+ *
+ * WHY setImmediate: everything about the SMS — the contributor, tenant and
+ * category lookups, the provider call, the sms_log insert (migrations 0030 /
+ * 0033) — happens after the contribution has committed and has no bearing on
+ * whether it is correct. Running it in the request made the request's status
+ * depend on it: a missing sms_log column or a misconfigured gateway turned a
+ * successfully recorded gift into a 500, and a treasurer who retried then
+ * posted it twice. On the next turn of the event loop the response has
+ * already been sent, so nothing here can change it.
+ *
+ * The job's own failures are caught in full and logged loudly — an unhandled
+ * rejection must never take the worker process down. The outcome is recorded
+ * in sms_log when that table is usable, and the Collections ledger's resend
+ * action retries it on demand.
+ */
+function scheduleConfirmationSms(tenantId, contribution) {
+  if (!contribution.contributor_id) return 'skipped';
+
+  // runInBackground catches and logs any failure of the job itself, so the
+  // body only reports the outcomes that are not exceptions.
+  runInBackground(`confirmation SMS for contribution ${contribution.id} (recorded; SMS only)`, async () => {
+    const sms = await sendContributionConfirmationSms(tenantId, contribution);
+    if (!sms) {
+      console.log(`[contributions] contribution ${contribution.id}: no SMS sent (contributor has no phone on file)`);
+    } else if (sms.status !== 'sent') {
+      console.warn(
+        `[contributions] contribution ${contribution.id}: confirmation SMS ${sms.status}` +
+          (sms.reasonCode ? ` (${sms.reasonCode})` : '')
+      );
+    }
+  });
+
+  return 'queued';
 }
 
 // The expense category every mobile-money agent fee posts against. Created
@@ -319,34 +361,12 @@ export async function recordContribution(tenantId, data, actorUserId) {
     throw error;
   }
 
-  // SMS confirmation happens strictly after the transaction above has
-  // committed, and CANNOT fail the request.
-  //
-  // This is the 500 that was breaking POST /contributions. sendSms() itself
-  // swallows provider errors, but everything around it still touches the
-  // database — the sms_log insert (migration 0030, reason_code added in
-  // 0033) and the contributor/tenant/category lookups. On a server whose
-  // database is behind on migrations those throw, and because the throw
-  // happened AFTER the commit the money was already in the ledger while the
-  // caller got a 500 and no receipt: the worst possible outcome, since a
-  // treasurer who retries then posts the gift twice.
-  //
-  // The contribution is committed and correct by this point, so the only
-  // honest response is 201 with the SMS reported as failed.
-  let sms = null;
-  try {
-    sms = await sendContributionConfirmationSms(tenantId, result);
-  } catch (error) {
-    console.error(
-      `[contributions] contribution ${result.id} committed, but its confirmation SMS failed: ${error.message}`
-    );
-    sms = {
-      status: 'failed',
-      reasonCode: 'unexpected_error',
-      errorMessage: error.message,
-    };
-  }
-  return { ...result, sms };
+  // The transaction has committed: the gift, its ledger entries and its
+  // receipt exist. Everything from here is notification, and it runs in the
+  // background (scheduleConfirmationSms) so no part of it can turn this
+  // successful write into an error response.
+  const smsStatus = scheduleConfirmationSms(tenantId, result);
+  return { ...result, sms: { status: smsStatus }, sms_status: smsStatus };
 }
 
 // Staff-triggered "Jaribu Kutuma SMS Tena" (try sending SMS again) —

@@ -50,6 +50,29 @@ export async function get(req, res, next) {
   }
 }
 
+// POST /contributions
+//
+// 201 means exactly one thing: the gift, its ledger entries (and Makato fee
+// line) and its receipt are committed. The response is decided the moment
+// that transaction commits — nothing that happens afterwards can change it.
+//
+//   data.sms_status   'queued'  confirmation SMS handed to a background job
+//                     'skipped' no contributor to notify, or a deduplicated
+//                               retry (the original request already did)
+//
+// The SMS outcome itself is never part of this response: it happens after
+// the response is sent (contributions.service.js#scheduleConfirmationSms),
+// is logged server-side, and can be retried from the resend-sms endpoint.
+//
+// A retry carrying the same idempotencyKey returns the ORIGINAL record with
+// `deduplicated: true` and posts nothing — the key is checked before any
+// financial work and backstopped by a UNIQUE index (migration 0032).
+//
+// Failures that do reach next(): a validation error (422), no open period
+// (404), a closed/foreign account/fund (422), and — if the database is behind
+// this build's migrations — a 503 SCHEMA_OUT_OF_DATE (middleware/
+// errorHandler.js). In every one of those the transaction rolled back whole,
+// so nothing was recorded and a retry is safe.
 export async function create(req, res, next) {
   try {
     const data = validateCreateContribution(req.body ?? {});

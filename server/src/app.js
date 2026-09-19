@@ -1,4 +1,5 @@
 import express from 'express';
+import { getPendingMigrations } from './db/pendingMigrations.js';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -51,8 +52,16 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
 
+  // Liveness plus schema state. Still HTTP 200 when migrations are pending —
+  // the process is up and a load balancer must not restart it — but the
+  // body says "degraded" and how many are missing, which the header's status
+  // light (SystemStatus.jsx) turns into a visible "Server issue".
   app.get('/health', (req, res) => {
-    res.json({ success: true, data: { status: 'ok' } });
+    const pendingMigrations = getPendingMigrations().length;
+    res.json({
+      success: true,
+      data: { status: pendingMigrations > 0 ? 'degraded' : 'ok', pendingMigrations },
+    });
   });
 
   app.use('/api/v1/auth', authRoutes({ authenticate: auth, tenantContext }));

@@ -12,6 +12,7 @@ import {
   FiFileText,
   FiDownload,
   FiRotateCcw,
+  FiMessageSquare,
 } from 'react-icons/fi';
 import {
   contributionsApi,
@@ -326,25 +327,17 @@ export default function ContributionsPage() {
       // Feeds the navbar's live counter. Fired only after the server
       // confirmed the save — the feed must never claim work that failed.
       recordActivity({ kind: 'contribution', message: t('contributions.activity.recorded') });
-      // SMS delivery never blocks or reverses the save above (server/src/
-      // modules/contributions/contributions.service.js) — the contribution
-      // toast above already fired unconditionally. This is a *separate*,
-      // secondary notice: an inline banner (not another toast, which would
-      // auto-dismiss and hide the retry action) so a failed send is both
-      // honest and recoverable without re-entering the whole contribution.
-      if (result.sms) {
-        const dispatch = {
-          // Bumped on every dispatch so the indicator replays its sequence
-          // for a resend instead of sitting on the previous result.
-          dispatchId: Date.now(),
-          contributionId: result.id,
-          status: result.sms.status,
-          reasonCode: result.sms.reasonCode,
-          reason: result.sms.errorMessage,
-          preview: result.sms.preview,
-        };
-        setSmsNotice(dispatch);
-        setSmsPop(dispatch);
+      // The server sends the member's confirmation SMS in a background job
+      // AFTER responding (contributions.service.js#scheduleConfirmationSms),
+      // so this response can only say it was handed off — never whether it
+      // was delivered. Reported as exactly that, rather than a delivery
+      // tick the server never confirmed.
+      if (result.deduplicated) {
+        // A retry of a request that had already succeeded: nothing new was
+        // posted and no second SMS was sent.
+        toast.info(t('contributions.alreadyRecorded'));
+      } else if (result.sms_status === 'queued') {
+        toast.info(t('contributions.sms.queued'));
       }
     } catch (err) {
       setError(unwrapApiError(err).message);
@@ -353,14 +346,18 @@ export default function ContributionsPage() {
     }
   };
 
-  const handleRetrySms = async () => {
-    if (!smsNotice) return;
+  // Sends (or re-sends) one contribution's confirmation SMS and waits for the
+  // provider's answer. Synchronous on purpose, unlike the automatic send on
+  // record: the treasurer asked for this specific message and is looking at
+  // the screen for the result, which the dispatch dialog then shows.
+  const sendSmsFor = async (contributionId) => {
     setResendingSms(true);
+    setError(null);
     try {
-      const { sms } = await contributionsApi.resendSms(smsNotice.contributionId);
+      const { sms } = await contributionsApi.resendSms(contributionId);
       const dispatch = {
         dispatchId: Date.now(),
-        contributionId: smsNotice.contributionId,
+        contributionId,
         status: sms.status,
         reasonCode: sms.reasonCode,
         reason: sms.errorMessage,
@@ -378,6 +375,10 @@ export default function ContributionsPage() {
     } finally {
       setResendingSms(false);
     }
+  };
+
+  const handleRetrySms = () => {
+    if (smsNotice) sendSmsFor(smsNotice.contributionId);
   };
 
   const handleReverse = async (id) => {
@@ -906,6 +907,21 @@ export default function ContributionsPage() {
                               <FiDownload aria-hidden="true" /> {t('receipts.download')}
                             </button>
                           </PermissionGate>
+                          {/* The automatic confirmation runs in the background
+                              and can fail silently (no phone, gateway down);
+                              this is how a treasurer sends it again. */}
+                          {c.status === 'posted' && c.contributor_id && (
+                            <PermissionGate permission="income.create">
+                              <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                disabled={resendingSms}
+                                onClick={() => sendSmsFor(c.id)}
+                              >
+                                <FiMessageSquare aria-hidden="true" /> {t('contributions.resendSms')}
+                              </button>
+                            </PermissionGate>
+                          )}
                           {c.status === 'posted' && (
                             <PermissionGate permission="income.reverse">
                               <button type="button" className="btn btn--ghost btn--sm" onClick={() => handleReverse(c.id)}>

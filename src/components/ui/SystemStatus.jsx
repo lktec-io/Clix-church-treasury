@@ -47,7 +47,15 @@ export default function SystemStatus() {
     const check = async () => {
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: 'no-store' });
-        if (!cancelled) setApi(res.ok ? 'up' : 'down');
+        // A reachable server whose database is behind its migrations reports
+        // status "degraded" with HTTP 200 — shown as "Server issue", because
+        // saving money will fail until an administrator migrates.
+        let degraded = false;
+        if (res.ok) {
+          const body = await res.json().catch(() => null);
+          degraded = body?.data?.status === 'degraded';
+        }
+        if (!cancelled) setApi(res.ok && !degraded ? 'up' : 'down');
       } catch {
         if (!cancelled) setApi('down');
       }

@@ -1,5 +1,6 @@
 import { env } from './config/env.js';
 import { createApp } from './app.js';
+import { checkPendingMigrations } from './db/pendingMigrations.js';
 
 const app = createApp();
 
@@ -16,6 +17,9 @@ function credentialFingerprint(value) {
 
 app.listen(env.port, () => {
   console.log(`Clix Treasury API listening on port ${env.port} (${env.nodeEnv})`);
+  // Loud, non-fatal: a database behind this build's migrations is the usual
+  // cause of 500s on posting endpoints. See db/pendingMigrations.js.
+  checkPendingMigrations();
   // Safe, non-secret SMS config summary at boot — an operator watching
   // `pm2 logs` after a deploy/restart can immediately see which provider
   // is active and whether the required variables are actually present,

@@ -5,6 +5,7 @@ import { validateNida, validateMemberIdentity } from '../../src/modules/contribu
 import { computePledgeSchedule } from '../../src/modules/pledges/pledgeSchedule.js';
 import { titheComplianceStatus } from '../../src/modules/contributors/titheCompliance.js';
 import { hardDelete, refuseDelete } from '../../src/db/deleteGuards.js';
+import { runInBackground } from '../../src/utils/backgroundJob.js';
 
 const TODAY = new Date(Date.UTC(2026, 8, 16)); // 16 Sep 2026
 
@@ -171,5 +172,47 @@ describe('hardDelete guard', () => {
 
   it('refuseDelete states the domain reason as a 409', () => {
     expect(() => refuseDelete('This expense has been paid.')).toThrowError(/paid/i);
+  });
+});
+
+// The background runner that isolates post-commit work (the contribution
+// confirmation SMS) from the request. Pure: fake jobs, no database.
+describe('runInBackground', () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+  it('starts the job only after the caller has returned', async () => {
+    const order = [];
+    runInBackground('ordering', () => order.push('job'));
+    order.push('caller returned');
+    await flush();
+    expect(order).toEqual(['caller returned', 'job']);
+  });
+
+  // The exact failure behind the contribution 500: an sms_log write against a
+  // database missing a migration. It must be logged, never rethrown.
+  it('contains a rejected job instead of letting it escape', async () => {
+    const errors = [];
+    const originalError = console.error;
+    console.error = (message) => errors.push(message);
+    let unhandled = 0;
+    const onUnhandled = () => {
+      unhandled += 1;
+    };
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      runInBackground('sms_log insert', async () => {
+        throw Object.assign(new Error("Unknown column 'reason_code'"), { code: 'ER_BAD_FIELD_ERROR' });
+      });
+      runInBackground('synchronous throw', () => {
+        throw new Error('gateway not configured');
+      });
+      await flush();
+    } finally {
+      console.error = originalError;
+      process.off('unhandledRejection', onUnhandled);
+    }
+    expect(unhandled).toBe(0);
+    expect(errors.join('\n')).toMatch(/sms_log insert failed/);
+    expect(errors.join('\n')).toMatch(/synchronous throw failed/);
   });
 });

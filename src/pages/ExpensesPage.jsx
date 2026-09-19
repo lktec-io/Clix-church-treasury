@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiTrash2 } from 'react-icons/fi';
+import { FiCheckSquare, FiTrash2 } from 'react-icons/fi';
 import { expensesApi, accountsApi, fundsApi, categoriesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -33,11 +33,10 @@ function emptyForm() {
 
 export default function ExpensesPage() {
   const { t } = useLocale();
-  const { session, hasPermission } = useAuth();
+  const { session } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const [expenses, setExpenses] = useState([]);
-  const [pending, setPending] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [funds, setFunds] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -50,28 +49,16 @@ export default function ExpensesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
-  // Whether to render the approvals queue at all. Checked here rather than
-  // relying only on <PermissionGate> around the markup so the extra
-  // status=submitted request is never even fired by a clerk who could not
-  // action its contents — the API would answer it fine (expense.view covers
-  // the read), but it would be a wasted round-trip on every page load.
-  const canApprove = hasPermission('expense.approve');
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [expenseData, pendingData, accountData, fundData, categoryData] = await Promise.all([
+      const [expenseData, accountData, fundData, categoryData] = await Promise.all([
         expensesApi.list({ limit: PAGE_SIZE, ...(statusFilter ? { status: statusFilter } : {}) }),
-        // Fetched separately rather than filtered out of `expenseData`: the
-        // main list is paginated, so a submitted expense sitting past the
-        // first 50 rows would silently never appear in the queue.
-        canApprove ? expensesApi.list({ status: 'submitted', limit: PAGE_SIZE }) : Promise.resolve([]),
         accountsApi.list(),
         fundsApi.list(),
         categoriesApi.list('expense'),
       ]);
       setExpenses(expenseData);
-      setPending(pendingData);
       setHasMore(expenseData.length === PAGE_SIZE);
       setAccounts(accountData);
       setFunds(fundData);
@@ -81,7 +68,7 @@ export default function ExpensesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, canApprove]);
+  }, [statusFilter]);
 
   const loadMore = async () => {
     setLoadingMore(true);
@@ -175,69 +162,7 @@ export default function ExpensesPage() {
     }
   };
 
-  const handleReject = async (expense) => {
-    const result = await confirm({
-      title: t('expenses.reject'),
-      message: t('expenses.rejectConfirm'),
-      tone: 'danger',
-      confirmLabel: t('expenses.reject'),
-      requireReason: true,
-    });
-    if (!result.confirmed) return;
-    await runAction(() => expensesApi.reject(expense.id, result.reason), t('expenses.rejectedToast'));
-  };
-
-  // The softer half of "not approving this": sends the request back to draft
-  // so the requester can correct and resubmit, instead of killing it. The
-  // endpoint has existed since Phase 5 but had no control on this screen, so
-  // an approver's only option for a fixable typo was outright rejection.
-  const handleReturn = async (expense) => {
-    const result = await confirm({
-      title: t('expenses.returnForCorrection'),
-      message: t('expenses.returnConfirm'),
-      confirmLabel: t('expenses.returnForCorrection'),
-      requireReason: true,
-    });
-    if (!result.confirmed) return;
-    await runAction(() => expensesApi.returnForCorrection(expense.id, result.reason), t('expenses.returnedToast'));
-  };
-
   const isOwnRequest = (expense) => expense.requested_by_user_id === session?.user?.id;
-
-  // Approve / Reject / Return, shared by the approvals queue and the main
-  // list so the two can never drift apart on what an approver is offered.
-  //
-  // Every button here is additionally enforced server-side — the routes are
-  // behind requirePermission('expense.approve' / 'expense.reject'), and
-  // approveExpense() independently re-checks that the approver is not the
-  // requester. <PermissionGate> and the isOwnRequest() check below only
-  // decide what is worth *showing*; neither is the control.
-  const approvalActions = (expense) => (
-    <>
-      {/* Segregation of duties: an approver cannot approve their own
-          request, so the button is not offered on it. Reject/Return stay
-          available — withdrawing your own request is legitimate. */}
-      {!isOwnRequest(expense) && (
-        <PermissionGate permission="expense.approve">
-          <button
-            type="button"
-            className="btn btn--success btn--sm"
-            onClick={() => runAction(() => expensesApi.approve(expense.id), t('expenses.approvedToast'))}
-          >
-            {t('expenses.approve')}
-          </button>
-        </PermissionGate>
-      )}
-      <PermissionGate permission="expense.reject">
-        <button type="button" className="btn btn--secondary btn--sm" onClick={() => handleReturn(expense)}>
-          {t('expenses.returnForCorrection')}
-        </button>
-        <button type="button" className="btn btn--danger btn--sm" onClick={() => handleReject(expense)}>
-          {t('expenses.reject')}
-        </button>
-      </PermissionGate>
-    </>
-  );
 
   return (
     <div className="page">
@@ -343,70 +268,6 @@ export default function ExpensesPage() {
         </div>
       </PermissionGate>
 
-      {/* THE TREASURY GATE.
-          Every submitted expense waiting on a decision, in one place, ahead
-          of the general list — an approver should not have to hunt through
-          paid history to find what needs them.
-
-          Worth being explicit about what this screen does and does not do:
-          no expense reduces a fund or account balance at any point in this
-          card. The ledger is touched exactly once, at "Mark paid"
-          (expenses.service.js#payExpense), which requires status 'approved'
-          and posts through the shared financial engine inside one DB
-          transaction. Draft, submitted, approved and rejected expenses have
-          zero balance effect — approval is a separate gate BEFORE payment,
-          not the payment itself. */}
-      <PermissionGate permission="expense.approve">
-        <div className="card ledger-card">
-          <div className="ledger-toolbar">
-            <div className="ledger-toolbar__title">
-              <h2>{t('expenses.pendingApprovals')}</h2>
-              {pending.length > 0 && <span className="badge badge--warning tabular-nums">{pending.length}</span>}
-            </div>
-          </div>
-          <p className="ledger-note">{t('expenses.pendingHint')}</p>
-          {loading ? (
-            <SkeletonTable rows={2} columns={5} />
-          ) : pending.length === 0 ? (
-            <div className="empty-state">{t('expenses.noPending')}</div>
-          ) : (
-            <div className="table-wrap">
-              <table className="data-table data-table--dense">
-                <thead>
-                  <tr>
-                    <th>{t('expenses.recordedAt')}</th>
-                    <th>{t('expenses.voucher')}</th>
-                    <th>{t('expenses.payee')}</th>
-                    <th className="is-amount">{t('common.amount')}</th>
-                    <th className="col-actions">{t('common.actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pending.map((expense) => (
-                    <tr key={expense.id}>
-                      <td>
-                        <RecordedStamp value={expense.created_at} />
-                      </td>
-                      <td className="is-ref">{expense.expense_number ?? '—'}</td>
-                      <td>
-                        <span className="cell-stack">
-                          <span className="cell-stack__primary">{expense.payee}</span>
-                          {expense.description && <span className="cell-stack__secondary">{expense.description}</span>}
-                        </span>
-                      </td>
-                      <td className="is-amount is-expense">− {formatMoney(expense.amount)}</td>
-                      <td className="col-actions">
-                        <div className="row-actions">{approvalActions(expense)}</div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </PermissionGate>
-
       <div className="card ledger-card">
         <div className="ledger-toolbar">
           <div className="ledger-toolbar__title">
@@ -483,16 +344,21 @@ export default function ExpensesPage() {
                             </button>
                           </PermissionGate>
                         )}
-                        {expense.status === 'submitted' && approvalActions(expense)}
+                        {/* Approving and paying happen in one place only, the
+                            Approvals Room; the ledger points there instead of
+                            repeating the decision buttons. */}
+                        {expense.status === 'submitted' && (
+                          <PermissionGate permission="expense.approve">
+                            <Link to="/treasury/approvals" className="btn btn--ghost btn--sm">
+                              <FiCheckSquare aria-hidden="true" /> {t('expenses.reviewInApprovals')}
+                            </Link>
+                          </PermissionGate>
+                        )}
                         {expense.status === 'approved' && (
                           <PermissionGate permission="expense.pay">
-                            <button
-                              type="button"
-                              className="btn btn--primary btn--sm"
-                              onClick={() => runAction(() => expensesApi.pay(expense.id), t('expenses.paidToast'))}
-                            >
-                              {t('expenses.pay')}
-                            </button>
+                            <Link to="/treasury/approvals" className="btn btn--ghost btn--sm">
+                              <FiCheckSquare aria-hidden="true" /> {t('expenses.payInApprovals')}
+                            </Link>
                           </PermissionGate>
                         )}
                         {/* Not offered on a paid expense: it is in the ledger
