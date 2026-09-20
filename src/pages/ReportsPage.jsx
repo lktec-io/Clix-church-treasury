@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiBookOpen, FiArrowRight } from 'react-icons/fi';
+import { FiBookOpen, FiArrowRight, FiAlertTriangle } from 'react-icons/fi';
 import { reportsApi, accountsApi, fundsApi, categoriesApi, financialPeriodsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
@@ -448,6 +448,26 @@ export default function ReportsPage() {
 
       {result && def && def.key !== 'financialSummary' && (
         <div className="card">
+          {/* A capped report looks exactly like a complete one, so it has to
+              say otherwise — above the table, before anything is read off
+              it, and stating whether the totals still cover everything. */}
+          {result.truncated && (
+            <div className="alert alert--warning report-notice">
+              <FiAlertTriangle className="report-notice__icon" aria-hidden="true" />
+              <div className="report-notice__body">
+                <strong className="report-notice__lead">{t('reports.truncated.lead')}</strong>
+                <span>{t('reports.truncated', { limit: Number(result.rowLimit ?? 0).toLocaleString() })}</span>
+                {/* The totals line is the one a treasurer acts on, so whether
+                    it still covers everything is said on its own line rather
+                    than buried at the end of a paragraph. */}
+                <span className="report-notice__totals">
+                  {result.totalsCoverAllRows === false
+                    ? t('reports.truncated.totalsShownOnly')
+                    : t('reports.truncated.totalsComplete')}
+                </span>
+              </div>
+            </div>
+          )}
           {(result.account || result.fund) && (
             <div style={{ marginBottom: 12 }}>
               <strong>{(result.account ?? result.fund).name}</strong>

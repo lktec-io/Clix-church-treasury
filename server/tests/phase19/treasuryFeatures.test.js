@@ -4,8 +4,10 @@ import { describe, it, expect } from 'vitest';
 import { validateNida, validateMemberIdentity } from '../../src/modules/contributors/memberId.js';
 import { computePledgeSchedule } from '../../src/modules/pledges/pledgeSchedule.js';
 import { titheComplianceStatus } from '../../src/modules/contributors/titheCompliance.js';
-import { hardDelete, refuseDelete } from '../../src/db/deleteGuards.js';
+import { hardDelete, refuseDelete, blocker, parseForeignKeyReference } from '../../src/db/deleteGuards.js';
 import { runInBackground } from '../../src/utils/backgroundJob.js';
+import ExcelJS from 'exceljs';
+import { toCsv, toExcelBuffer } from '../../src/modules/reports/exporters.js';
 
 const TODAY = new Date(Date.UTC(2026, 8, 16)); // 16 Sep 2026
 
@@ -214,5 +216,106 @@ describe('runInBackground', () => {
     expect(unhandled).toBe(0);
     expect(errors.join('\n')).toMatch(/sms_log insert failed/);
     expect(errors.join('\n')).toMatch(/synchronous throw failed/);
+  });
+});
+
+// The row cap on list reports. A capped report that does not say it is capped
+// reads as a complete one, so the warning travels into the exported file as
+// well as the screen.
+describe('report export truncation notice', () => {
+  const columns = [
+    { header: 'Date', key: 'date' },
+    { header: 'Amount', key: 'amount' },
+  ];
+  const rows = [{ date: '2026-01-04', amount: '25000.00' }];
+  const notice = 'INCOMPLETE REPORT: only the first 1,000 rows are shown.';
+
+  it('leaves a complete CSV export exactly as it was', () => {
+    expect(toCsv(rows, columns)).toBe('Date,Amount\r\n2026-01-04,25000.00');
+  });
+
+  it('appends the notice below the data so the header row never shifts', () => {
+    const lines = toCsv(rows, columns, { notice }).split('\r\n');
+    expect(lines[0]).toBe('Date,Amount');
+    expect(lines[1]).toBe('2026-01-04,25000.00');
+    expect(lines.at(-1)).toBe(`"${notice}"`);
+  });
+
+  it('writes the notice into the spreadsheet, under the data', async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await toExcelBuffer(rows, columns, 'Report', { notice }));
+    const sheet = workbook.worksheets[0];
+    expect(sheet.getRow(1).getCell(1).value).toBe('Date');
+    expect(sheet.getRow(2).getCell(1).value).toBe('2026-01-04');
+    expect(sheet.getRow(4).getCell(1).value).toBe(notice);
+  });
+});
+
+// A refused delete has to explain ITSELF: which records still point at the
+// row, and how many. Without that the user is told "no" and left to guess.
+describe('delete refusal details', () => {
+  // Verbatim MySQL 8 text. Parsing it is how the foreign-key backstop learns
+  // which table objected when the service layer did not already know.
+  const FK_MESSAGE =
+    'Cannot delete or update a parent row: a foreign key constraint fails ' +
+    '(`clix_treasury`.`transactions`, CONSTRAINT `fk_transactions_created_by` ' +
+    'FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`))';
+
+  it('names the child table, constraint and column behind a refusal', () => {
+    expect(parseForeignKeyReference({ sqlMessage: FK_MESSAGE })).toEqual({
+      table: 'transactions',
+      constraint: 'fk_transactions_created_by',
+      column: 'created_by_user_id',
+    });
+  });
+
+  it('returns null rather than guessing when the text is not a foreign-key error', () => {
+    expect(parseForeignKeyReference({ message: 'Deadlock found when trying to get lock' })).toBeNull();
+    expect(parseForeignKeyReference(undefined)).toBeNull();
+  });
+
+  it('turns the database refusal into a 409 carrying the offending table', async () => {
+    const error = Object.assign(new Error('fk'), {
+      code: 'ER_ROW_IS_REFERENCED_2',
+      sqlMessage: FK_MESSAGE,
+    });
+    const originalWarn = console.warn;
+    console.warn = () => {};
+    try {
+      await expect(
+        hardDelete('This user has recorded financial records.', () => {
+          throw error;
+        })
+      ).rejects.toMatchObject({
+        status: 409,
+        code: 'CONFLICT',
+        details: { reason: 'referenced', blockers: [{ entity: 'transactions' }], constraint: 'fk_transactions_created_by' },
+      });
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  it('passes any other database error through untouched', async () => {
+    const error = Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK' });
+    await expect(hardDelete('unused', () => { throw error; })).rejects.toThrowError('deadlock');
+  });
+
+  it('carries the counts the service already measured', () => {
+    try {
+      refuseDelete('This member has recorded giving.', [blocker('contributions', 12), blocker('pledges', 1)]);
+      throw new Error('refuseDelete should have thrown');
+    } catch (error) {
+      expect(error.status).toBe(409);
+      expect(error.details.blockers).toEqual([
+        { entity: 'contributions', count: 12 },
+        { entity: 'pledges', count: 1 },
+      ]);
+    }
+  });
+
+  it('omits the count when the number is genuinely unknown', () => {
+    expect(blocker('transactions')).toEqual({ entity: 'transactions' });
+    expect(blocker('transactions', 0)).toEqual({ entity: 'transactions', count: 0 });
   });
 });

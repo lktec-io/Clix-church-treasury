@@ -6,7 +6,7 @@ import { generateExpenseNumber } from './expenseNumber.js';
 import { postLedgerEntry } from '../financial/financialEngine.service.js';
 import { getOpenPeriod } from '../financial/financialPeriods.service.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
-import { hardDelete, refuseDelete } from '../../db/deleteGuards.js';
+import { hardDelete, refuseDelete, blocker } from '../../db/deleteGuards.js';
 
 const MAX_NUMBER_ATTEMPTS = 5;
 
@@ -16,6 +16,21 @@ function assertStatus(expense, expected) {
       status: 409,
     });
   }
+}
+
+// Raised when a conditional transition matched no row: between reading the
+// expense and writing it, someone else moved it on. Same 409 as the check
+// above, because to the caller it is the same situation — the expense is no
+// longer in the state their click assumed.
+function assertTransitioned(updated, expected) {
+  if (!updated) {
+    throw new AppError(
+      'CONFLICT',
+      `This expense is no longer in "${expected}" status — someone else acted on it first. Reload to see where it stands.`,
+      { status: 409 }
+    );
+  }
+  return updated;
 }
 
 // Draft only — no financial effect whatsoever. Nothing here touches the
@@ -92,7 +107,11 @@ export async function submitExpense(tenantId, id, actorUserId) {
   if (!expense) throw notFound('Expense not found');
   assertStatus(expense, 'draft');
 
-  const updated = await expensesRepository.update(tenantId, id, { status: 'submitted' });
+  // Conditional write: two submits of the same draft cannot both succeed.
+  const updated = assertTransitioned(
+    await expensesRepository.updateWhere(tenantId, id, { status: 'draft' }, { status: 'submitted' }),
+    'draft'
+  );
   await recordAuditLog({
     tenantId,
     actorUserId,
@@ -113,11 +132,15 @@ export async function approveExpense(tenantId, id, actorUserId) {
     throw forbidden('You cannot approve an expense you requested yourself');
   }
 
-  const updated = await expensesRepository.update(tenantId, id, {
-    status: 'approved',
-    approved_by_user_id: actorUserId,
-    approval_date: nowSql(),
-  });
+  const updated = assertTransitioned(
+    await expensesRepository.updateWhere(
+      tenantId,
+      id,
+      { status: 'submitted' },
+      { status: 'approved', approved_by_user_id: actorUserId, approval_date: nowSql() }
+    ),
+    'submitted'
+  );
   await recordAuditLog({
     tenantId,
     actorUserId,
@@ -133,11 +156,15 @@ export async function rejectExpense(tenantId, id, reason, actorUserId) {
   if (!expense) throw notFound('Expense not found');
   assertStatus(expense, 'submitted');
 
-  const updated = await expensesRepository.update(tenantId, id, {
-    status: 'rejected',
-    rejected_by_user_id: actorUserId,
-    rejection_reason: reason,
-  });
+  const updated = assertTransitioned(
+    await expensesRepository.updateWhere(
+      tenantId,
+      id,
+      { status: 'submitted' },
+      { status: 'rejected', rejected_by_user_id: actorUserId, rejection_reason: reason }
+    ),
+    'submitted'
+  );
   await recordAuditLog({
     tenantId,
     actorUserId,
@@ -159,7 +186,10 @@ export async function returnForCorrection(tenantId, id, reason, actorUserId) {
   if (!expense) throw notFound('Expense not found');
   assertStatus(expense, 'submitted');
 
-  const updated = await expensesRepository.update(tenantId, id, { status: 'draft' });
+  const updated = assertTransitioned(
+    await expensesRepository.updateWhere(tenantId, id, { status: 'submitted' }, { status: 'draft' }),
+    'submitted'
+  );
   await recordAuditLog({
     tenantId,
     actorUserId,
@@ -178,7 +208,13 @@ export async function returnForCorrection(tenantId, id, reason, actorUserId) {
 // ledger row, or vice versa.
 export async function payExpense(tenantId, id, actorUserId) {
   return withTransaction(async (connection) => {
-    const expense = await expensesRepository.findById(tenantId, id, connection);
+    // LOCKED READ. Paying posts a real ledger entry, so two concurrent
+    // "Mark paid" clicks must not both get past the status check: that
+    // would take the money out twice and leave the first transaction
+    // orphaned (the expense can only point at one of them). The row lock
+    // serialises them — the second request finds status 'paid' and is
+    // refused with a 409.
+    const expense = await expensesRepository.findByIdForUpdate(tenantId, id, connection);
     if (!expense) throw notFound('Expense not found');
     assertStatus(expense, 'approved');
 
@@ -246,8 +282,10 @@ export async function hardDeleteExpense(tenantId, expenseId, actorUserId) {
   if (!expense) throw notFound('Expense not found');
 
   if (expense.status === 'paid' || expense.transaction_id) {
+    // The ledger posting IS the blocker here, and there is exactly one.
     refuseDelete(
-      'This expense has been paid and posted to the ledger, so it cannot be deleted. Reverse the transaction instead — the ledger is append-only.'
+      'This expense has been paid and posted to the ledger, so it cannot be deleted. Reverse the transaction instead — the ledger is append-only.',
+      expense.transaction_id ? [blocker('transactions', 1)] : []
     );
   }
 

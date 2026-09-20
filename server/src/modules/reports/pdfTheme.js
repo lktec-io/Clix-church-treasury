@@ -20,6 +20,12 @@ export const PALETTE = {
   muted: '#5b6b8c',
   hairline: '#dbe2ef',
   zebra: '#f4f7fc',
+  // Reserved for statements a reader must not skim past — currently the
+  // "this document is incomplete" notice on a capped report. This is the
+  // app's own --color-warning (themes.css), so the warning a treasurer sees
+  // on screen and the one printed in the PDF are the same colour rather
+  // than two different opinions about what a warning looks like.
+  warning: '#9a6b00',
   onNavy: '#ffffff',
   onNavyMuted: '#c7d2e8',
 };

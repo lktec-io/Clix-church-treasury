@@ -35,10 +35,40 @@ function describeFilters(filters) {
   return parts.join('   ');
 }
 
-async function respond(req, res, { title, columns, rows, exportRows = rows, totals, meta = {}, filterSummary }) {
+// Said in full, in the file and on screen: what is missing, why, and what to
+// do about it. "Truncated" alone tells a treasurer nothing actionable.
+function truncationNotice(rowLimit, totalsCoverAllRows) {
+  return (
+    `INCOMPLETE REPORT: only the first ${rowLimit.toLocaleString('en-US')} rows are shown — ` +
+    'more rows matched these filters. Narrow the date range and export again to see the rest. ' +
+    (totalsCoverAllRows
+      ? 'The totals cover every matching record, including the rows not listed.'
+      : 'The totals cover ONLY the rows listed here.')
+  );
+}
+
+async function respond(req, res, {
+  title,
+  columns,
+  rows,
+  exportRows = rows,
+  totals,
+  meta = {},
+  filterSummary,
+  truncated = false,
+  rowLimit,
+  // True for every report whose totals come from a database aggregate. The
+  // pledge report is the exception: fulfilment is computed per pledge, so
+  // its totals describe the listed rows and the notice has to say so.
+  totalsCoverAllRows = true,
+}) {
   const format = req.query.format ?? 'json';
+  // Carried on every list report, truncated or not, so the UI can rely on
+  // the field existing rather than inferring completeness from row counts.
+  const truncation = { truncated, rowLimit: rowLimit ?? null, totalsCoverAllRows };
+  const notice = truncated ? truncationNotice(rowLimit, totalsCoverAllRows) : undefined;
   if (format === 'json') {
-    return res.json({ success: true, data: { rows, totals, ...meta } });
+    return res.json({ success: true, data: { rows, totals, ...truncation, ...meta } });
   }
   // A user can view a report on-screen with only the report's own .view
   // permission, but exporting it (PDF/Excel/CSV) additionally requires
@@ -70,10 +100,10 @@ async function respond(req, res, { title, columns, rows, exportRows = rows, tota
   if (format === 'csv') {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${baseName}.csv"`);
-    return res.send(toCsv(exportRows, columns));
+    return res.send(toCsv(exportRows, columns, { notice }));
   }
   if (format === 'xlsx') {
-    const buffer = await toExcelBuffer(exportRows, columns, title);
+    const buffer = await toExcelBuffer(exportRows, columns, title, { notice });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${baseName}.xlsx"`);
     return res.send(buffer);
@@ -82,7 +112,7 @@ async function respond(req, res, { title, columns, rows, exportRows = rows, tota
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${baseName}.pdf"`);
     return streamPdfReport(
-      { tenant: exportTenant, title, filterSummary, columns, rows: exportRows, totals },
+      { tenant: exportTenant, title, filterSummary, notice, columns, rows: exportRows, totals },
       res
     );
   }
@@ -92,11 +122,13 @@ async function respond(req, res, { title, columns, rows, exportRows = rows, tota
 export async function income(req, res, next) {
   try {
     const filters = dateFilters(req.query);
-    const { rows, total } = await reportsService.getIncomeReport(req.tenantId, filters);
+    const { rows, total, truncated, rowLimit } = await reportsService.getIncomeReport(req.tenantId, filters);
     await respond(req, res, {
       title: 'Income Report',
       columns: TRANSACTION_COLUMNS,
       rows,
+      truncated,
+      rowLimit,
       totals: { amount: total },
       filterSummary: describeFilters(filters),
     });
@@ -108,11 +140,13 @@ export async function income(req, res, next) {
 export async function expense(req, res, next) {
   try {
     const filters = dateFilters(req.query);
-    const { rows, total } = await reportsService.getExpenseReport(req.tenantId, filters);
+    const { rows, total, truncated, rowLimit } = await reportsService.getExpenseReport(req.tenantId, filters);
     await respond(req, res, {
       title: 'Expense Report',
       columns: TRANSACTION_COLUMNS,
       rows,
+      truncated,
+      rowLimit,
       totals: { amount: total },
       filterSummary: describeFilters(filters),
     });
@@ -124,8 +158,15 @@ export async function expense(req, res, next) {
 export async function transactionJournal(req, res, next) {
   try {
     const filters = dateFilters(req.query);
-    const { rows } = await reportsService.getTransactionJournal(req.tenantId, filters);
-    await respond(req, res, { title: 'Transaction Journal', columns: TRANSACTION_COLUMNS, rows, filterSummary: describeFilters(filters) });
+    const { rows, truncated, rowLimit } = await reportsService.getTransactionJournal(req.tenantId, filters);
+    await respond(req, res, {
+      title: 'Transaction Journal',
+      columns: TRANSACTION_COLUMNS,
+      rows,
+      truncated,
+      rowLimit,
+      filterSummary: describeFilters(filters),
+    });
   } catch (err) {
     next(err);
   }
@@ -135,13 +176,15 @@ export async function contributions(req, res, next) {
   try {
     const canViewContributors = req.permissions?.includes('contributors.view') ?? false;
     const filters = dateFilters(req.query);
-    const { rows, total } = await reportsService.getContributionsReport(req.tenantId, filters, {
+    const { rows, total, truncated, rowLimit } = await reportsService.getContributionsReport(req.tenantId, filters, {
       canViewContributors,
     });
     await respond(req, res, {
       title: 'Contributions Report',
       columns: CONTRIBUTION_COLUMNS,
       rows,
+      truncated,
+      rowLimit,
       exportRows: rows.map(contributionRowForExport),
       totals: { amount: total },
       filterSummary: describeFilters(filters),
@@ -159,6 +202,8 @@ export async function accountStatement(req, res, next) {
       title: `Account Statement — ${data.account.name}`,
       columns: TRANSACTION_COLUMNS,
       rows: data.rows,
+      truncated: data.truncated,
+      rowLimit: data.rowLimit,
       totals: { amount: data.closingBalance },
       meta: { account: data.account, openingBalance: data.openingBalance, closingBalance: data.closingBalance },
       filterSummary: `Account: ${data.account.name}   Opening balance: ${data.openingBalance}   ${describeFilters(filters)}`,
@@ -176,6 +221,8 @@ export async function fundStatement(req, res, next) {
       title: `Fund Statement — ${data.fund.name}`,
       columns: TRANSACTION_COLUMNS,
       rows: data.rows,
+      truncated: data.truncated,
+      rowLimit: data.rowLimit,
       totals: { amount: data.closingBalance },
       meta: { fund: data.fund, openingBalance: data.openingBalance, closingBalance: data.closingBalance },
       filterSummary: `Fund: ${data.fund.name}   Opening balance: ${data.openingBalance}   ${describeFilters(filters)}`,
@@ -198,15 +245,16 @@ export async function pledgeReport(req, res, next) {
   try {
     const canViewContributors = req.permissions?.includes('contributors.view') ?? false;
     const filters = dateFilters(req.query);
-    const { rows, totalPledged, totalFulfilled, totalRemaining } = await reportsService.getPledgeReport(
-      req.tenantId,
-      filters,
-      { canViewContributors }
-    );
+    const { rows, totalPledged, totalFulfilled, totalRemaining, truncated, rowLimit } =
+      await reportsService.getPledgeReport(req.tenantId, filters, { canViewContributors });
     await respond(req, res, {
       title: 'Pledge Report',
       columns: PLEDGE_COLUMNS,
       rows,
+      truncated,
+      rowLimit,
+      // Pledge fulfilment is derived per row, not aggregated in SQL.
+      totalsCoverAllRows: false,
       exportRows: rows.map(pledgeRowForExport),
       totals: { pledged_amount: totalPledged, fulfilled_amount: totalFulfilled, remaining_amount: totalRemaining },
       filterSummary: describeFilters(filters),

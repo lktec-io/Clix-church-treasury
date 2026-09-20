@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { FiSearch, FiUsers, FiUserPlus, FiKey, FiRotateCcw, FiTrash2, FiUpload } from 'react-icons/fi';
 import { contributorsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
+import { useDeleteRefusal } from '../hooks/useDeleteRefusal.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
@@ -36,6 +37,7 @@ export default function ContributorsPage() {
   const toast = useToast();
   const { recordActivity } = useActivity();
   const confirm = useConfirm();
+  const explainRefusal = useDeleteRefusal();
   const [contributors, setContributors] = useState([]);
   const [form, setForm] = useState(emptyForm());
   const [error, setError] = useState(null);
@@ -172,7 +174,11 @@ export default function ContributorsPage() {
       await load();
       toast.success(t('contributors.deletedToast'));
     } catch (err) {
-      setError(unwrapApiError(err).message);
+      const failure = unwrapApiError(err);
+      // A refusal is explained in a dialog; anything else is a genuine
+      // error and belongs in the page's error strip.
+      if (explainRefusal(failure, contributor.full_name)) return;
+      setError(failure.message);
     } finally {
       setActioningId(null);
     }

@@ -136,6 +136,74 @@
   color: var(--text-muted);
   font-size: 14px;
   margin: 8px 0 4px;
+  /* A refusal quotes the record's own name, which can be a long payee or a
+     pasted string with no spaces in it. It wraps instead of widening the
+     dialog past the phone screen. */
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Blocked-action explain box ----------
+   Shown when the server refuses a delete: the records still pointing at the
+   row, as a list. Scanned rather than read, so each entry is one line with
+   the count set hard right, and the label wraps under it on a narrow screen
+   rather than colliding with the number. */
+.modal__icon {
+  color: var(--color-danger);
+  flex-shrink: 0;
+  margin-right: 8px;
+  vertical-align: -2px;
+}
+
+.modal__blockers-title {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.modal__blockers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.modal__blockers li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  font-size: 14px;
+  background: var(--bg-muted);
+}
+
+.modal__blockers li + li {
+  border-top: 1px solid var(--border);
+}
+
+.modal__blocker-label {
+  color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Tabular figures so a column of counts lines up on the digit. */
+.modal__blocker-count {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.modal__hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .modal__actions {
@@ -143,6 +211,8 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+  /* Two buttons and a long label must never overflow a 320px screen. */
+  flex-wrap: wrap;
 }
 
 /* ---------- Auth pages (staff login/register + member login) ----------

@@ -198,7 +198,12 @@ export async function recordContribution(tenantId, data, actorUserId) {
     // brief allows an explicit business rule to permit it, and none exists
     // yet, so the safe default is to block it.
     if (data.pledgeId) {
-      const pledge = await pledgesRepository.findById(tenantId, data.pledgeId, connection);
+      // LOCKED READ. The overpayment check below reads what has been paid so
+      // far and then writes a new payment; without the lock two payments
+      // recorded at the same moment both read the old total, both pass, and
+      // together exceed the pledge. Locking the pledge row makes the pair
+      // sequential, so the second one sees the first.
+      const pledge = await pledgesRepository.findByIdForUpdate(tenantId, data.pledgeId, connection);
       if (!pledge) throw notFound('Pledge not found');
       if (pledge.status === 'cancelled') {
         throw new AppError('CONFLICT', 'Cannot record a payment against a cancelled pledge', { status: 409 });

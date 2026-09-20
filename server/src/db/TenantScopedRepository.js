@@ -80,6 +80,61 @@ export class TenantScopedRepository {
   }
 
   /**
+   * Reads one row and holds a write lock on it until the caller's
+   * transaction ends.
+   *
+   * For any "check the state, then act on it" sequence where acting twice
+   * would be a financial error — paying an approved expense, taking a
+   * payment against a pledge. Without the lock two concurrent requests both
+   * read the old state and both proceed: two ledger postings for one
+   * expense, or two payments that together exceed a pledge.
+   *
+   * A connection is REQUIRED: a lock outside a transaction is released
+   * immediately and protects nothing, so passing none is a programming
+   * error rather than a silently weaker guarantee.
+   */
+  async findByIdForUpdate(tenantId, id, connection) {
+    assertTenantId(tenantId);
+    if (!connection) {
+      throw new Error(`${this.table}.findByIdForUpdate requires a transaction connection`);
+    }
+    const [rows] = await connection.query(
+      `SELECT * FROM ${this.table} WHERE tenant_id = ? AND id = ? FOR UPDATE`,
+      [tenantId, id]
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Updates a row only while a column still holds an expected value, in one
+   * atomic statement. Returns the updated row, or null when the row no
+   * longer matched — which the caller should report as a conflict.
+   *
+   * The lock-free alternative to findByIdForUpdate for transitions with no
+   * financial effect (draft → submitted, submitted → approved): whichever
+   * request arrives second changes nothing and is told why.
+   */
+  async updateWhere(tenantId, id, expected, updates, connection) {
+    assertTenantId(tenantId);
+    const payload = { ...updates, updated_at: nowSql() };
+    const setColumns = Object.keys(payload);
+    const whereColumns = Object.keys(expected);
+    const values = [
+      ...setColumns.map((c) => payload[c]),
+      tenantId,
+      id,
+      ...whereColumns.map((c) => expected[c]),
+    ];
+    const [result] = await this.runner(connection).query(
+      `UPDATE ${this.table} SET ${setColumns.map((c) => `${c} = ?`).join(', ')}
+        WHERE tenant_id = ? AND id = ? AND ${whereColumns.map((c) => `${c} = ?`).join(' AND ')}`,
+      values
+    );
+    if (result.affectedRows === 0) return null;
+    return this.findById(tenantId, id, connection);
+  }
+
+  /**
    * Permanently removes one row belonging to this tenant. Returns true when
    * a row was deleted, false when the id did not exist for this tenant.
    *

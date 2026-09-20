@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiCheckSquare, FiTrash2 } from 'react-icons/fi';
 import { expensesApi, accountsApi, fundsApi, categoriesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
+import { useDeleteRefusal } from '../hooks/useDeleteRefusal.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -36,6 +37,7 @@ export default function ExpensesPage() {
   const { session } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const explainRefusal = useDeleteRefusal();
   const [expenses, setExpenses] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [funds, setFunds] = useState([]);
@@ -147,7 +149,11 @@ export default function ExpensesPage() {
       await load();
       toast.success(t('expenses.deletedToast'));
     } catch (err) {
-      setError(unwrapApiError(err).message);
+      const failure = unwrapApiError(err);
+      // A refusal is explained in a dialog; anything else is a genuine
+      // error and belongs in the page's error strip.
+      if (explainRefusal(failure, expense.payee)) return;
+      setError(failure.message);
     }
   };
 

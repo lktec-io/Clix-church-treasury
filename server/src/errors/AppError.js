@@ -1,10 +1,18 @@
 // Matches the error envelope in docs/API_ARCHITECTURE.md §4.
 export class AppError extends Error {
-  constructor(code, message, { status = 400, fields = undefined } = {}) {
+  /**
+   * `details` — structured, machine-readable context the UI can render as
+   * something better than a sentence. Currently used by refused deletes to
+   * name the records that still reference the row (`blockers`), so the app
+   * can show "12 contributions, 1 pledge" instead of "cannot be deleted".
+   * It never carries anything the caller is not already allowed to see.
+   */
+  constructor(code, message, { status = 400, fields = undefined, details = undefined } = {}) {
     super(message);
     this.code = code;
     this.status = status;
     this.fields = fields;
+    this.details = details;
   }
 }
 

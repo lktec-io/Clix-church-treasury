@@ -125,6 +125,11 @@ export function unwrapApiError(error) {
     const err = new Error(apiError.message);
     err.code = apiError.code;
     err.fields = apiError.fields;
+    // Structured context the UI can render properly — currently the list of
+    // records blocking a refused delete. Carried through so a caller can
+    // show the audit trail rather than only the sentence.
+    err.details = apiError.details;
+    err.status = error.response?.status;
     return err;
   }
   if (!error?.response) {

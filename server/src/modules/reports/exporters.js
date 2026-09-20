@@ -14,22 +14,38 @@ function cellToString(value) {
 
 // Hand-written rather than a dependency — CSV escaping is a handful of
 // lines and doesn't warrant a new package (docs/DEVELOPMENT_RULES.md §1).
-export function toCsv(rows, columns) {
+// `notice` — a line every exporter carries into the file itself.
+//
+// It exists for one situation: the export does not contain every row that
+// matched. A downloaded spreadsheet outlives the screen that produced it, so
+// a warning shown only in the app is a warning the person reading the file
+// next month never sees. The notice travels with the data.
+export function toCsv(rows, columns, { notice } = {}) {
   const escape = (value) => {
     const str = cellToString(value);
     return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
   };
   const header = columns.map((c) => escape(c.header)).join(',');
   const lines = rows.map((row) => columns.map((c) => escape(row[c.key])).join(','));
-  return [header, ...lines].join('\r\n');
+  // Appended below the data, never prepended: a leading comment line would
+  // shift the header row and break every spreadsheet import of this file.
+  const footer = notice ? ['', escape(notice)] : [];
+  return [header, ...lines, ...footer].join('\r\n');
 }
 
-export async function toExcelBuffer(rows, columns, sheetName = 'Report') {
+export async function toExcelBuffer(rows, columns, sheetName = 'Report', { notice } = {}) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(sheetName);
   sheet.columns = columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? 18 }));
   sheet.getRow(1).font = { bold: true };
   rows.forEach((row) => sheet.addRow(row));
+  if (notice) {
+    sheet.addRow([]);
+    const row = sheet.addRow([notice]);
+    // PALETTE.warning (= the app's --color-warning) in ARGB, so the notice
+    // is the same colour in the spreadsheet, the PDF and the browser.
+    row.font = { bold: true, color: { argb: `FF${PALETTE.warning.slice(1).toUpperCase()}` } };
+  }
   return workbook.xlsx.writeBuffer();
 }
 
@@ -42,9 +58,9 @@ export async function toExcelBuffer(rows, columns, sheetName = 'Report') {
 // copy per generator.
 // HAIRLINE is intentionally absent: the totals rule it used to draw is now
 // the green double rule below.
-const { navy: NAVY, green: GREEN, ink: INK, muted: MUTED, zebra: ZEBRA } = PALETTE;
+const { navy: NAVY, green: GREEN, ink: INK, muted: MUTED, zebra: ZEBRA, warning: WARNING } = PALETTE;
 
-export function streamPdfReport({ tenant, title, filterSummary, columns, rows, totals }, stream) {
+export function streamPdfReport({ tenant, title, filterSummary, notice, columns, rows, totals }, stream) {
   const doc = new PDFDocument({ size: 'A4', margin: 40, layout: 'landscape' });
   doc.pipe(stream);
 
@@ -87,6 +103,13 @@ export function streamPdfReport({ tenant, title, filterSummary, columns, rows, t
   if (filterSummary) {
     doc.font('Helvetica').fontSize(9).fillColor(MUTED).text(filterSummary, left, doc.y, { width: contentWidth });
     doc.moveDown(0.4);
+  }
+  if (notice) {
+    // Above the table and in warning red, because it changes how the whole
+    // document should be read — an incomplete report that looks complete is
+    // the thing this prevents.
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(WARNING).text(notice, left, doc.y, { width: contentWidth });
+    doc.moveDown(0.5);
   }
   doc.fillColor(INK);
 

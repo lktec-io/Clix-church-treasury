@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import { FiEdit2, FiSlash, FiTrash2, FiUserPlus, FiX, FiInfo } from 'react-icons/fi';
 import { usersApi, rolesApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
+import { useDeleteRefusal } from '../hooks/useDeleteRefusal.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -26,6 +27,7 @@ export default function UsersPage() {
   const { session } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const explainRefusal = useDeleteRefusal();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [form, setForm] = useState(emptyForm());
@@ -151,7 +153,11 @@ export default function UsersPage() {
       await load();
       toast.success(t('users.deletedToast'));
     } catch (err) {
-      setError(unwrapApiError(err).message);
+      const failure = unwrapApiError(err);
+      // A refusal is explained in a dialog; anything else is a genuine
+      // error and belongs in the page's error strip.
+      if (explainRefusal(failure, user.full_name)) return;
+      setError(failure.message);
     }
   };
 

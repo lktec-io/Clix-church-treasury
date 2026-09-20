@@ -94,28 +94,67 @@ export async function getMonthlyTrends(tenantId, { months = 12 } = {}) {
   return { series, forecast, dateFrom, dateTo };
 }
 
+// ---------------------------------------------------------------------------
+// ROW CAP.
+//
+// A list-style report renders every row it is given — into a table, a
+// spreadsheet or a PDF — so it cannot fetch an unbounded result set; a church
+// with years of history would otherwise build a multi-hundred-thousand-row
+// response in memory.
+//
+// The cap itself is not the hazard. Hiding it is: a report that quietly stops
+// at row 1,000 looks exactly like a complete one, and a treasurer reconciling
+// against it has no way to tell. So every capped report fetches ONE ROW MORE
+// than it will show, and if that extra row arrives it reports `truncated`
+// with the cap that applied. The UI and the exports then say so in words.
+//
+// Totals are never derived from the capped rows — they come from an aggregate
+// over the whole filtered set, so the total stays correct even when the list
+// is only its first page.
+// ---------------------------------------------------------------------------
+export const REPORT_ROW_LIMIT = 1000;
+const FETCH_LIMIT = REPORT_ROW_LIMIT + 1;
+
+function capRows(rows) {
+  const truncated = rows.length > REPORT_ROW_LIMIT;
+  return {
+    rows: truncated ? rows.slice(0, REPORT_ROW_LIMIT) : rows,
+    truncated,
+    rowLimit: REPORT_ROW_LIMIT,
+  };
+}
+
 export async function getIncomeReport(tenantId, filters) {
-  const rows = await transactionsRepository.listHistory(tenantId, { ...filters, type: 'income', limit: 1000 });
-  const total = await transactionsRepository.sumByType(tenantId, 'income', filters);
-  return { rows, total };
+  const [history, total] = await Promise.all([
+    transactionsRepository.listHistory(tenantId, { ...filters, type: 'income', limit: FETCH_LIMIT }),
+    transactionsRepository.sumByType(tenantId, 'income', filters),
+  ]);
+  return { ...capRows(history), total };
 }
 
 export async function getExpenseReport(tenantId, filters) {
-  const rows = await transactionsRepository.listHistory(tenantId, { ...filters, type: 'expense', limit: 1000 });
-  const total = await transactionsRepository.sumByType(tenantId, 'expense', filters);
-  return { rows, total };
+  const [history, total] = await Promise.all([
+    transactionsRepository.listHistory(tenantId, { ...filters, type: 'expense', limit: FETCH_LIMIT }),
+    transactionsRepository.sumByType(tenantId, 'expense', filters),
+  ]);
+  return { ...capRows(history), total };
 }
 
 export async function getTransactionJournal(tenantId, filters) {
-  const rows = await transactionsRepository.listHistory(tenantId, { ...filters, limit: 1000 });
-  return { rows };
+  return capRows(await transactionsRepository.listHistory(tenantId, { ...filters, limit: FETCH_LIMIT }));
 }
 
 export async function getContributionsReport(tenantId, filters, { canViewContributors }) {
-  const rows = await contributionsRepository.search(tenantId, { ...filters, limit: 1000 });
-  const enriched = await enrichWithContributorInfo(tenantId, rows, canViewContributors);
-  const total = sumMoney(rows.filter((r) => r.status === 'posted').map((r) => r.amount));
-  return { rows: enriched, total };
+  // The total is a database aggregate over every matching contribution, not
+  // a sum of the rows below it: past the cap the two would disagree, and the
+  // total is the figure the report exists to state.
+  const [found, total] = await Promise.all([
+    contributionsRepository.search(tenantId, { ...filters, limit: FETCH_LIMIT }),
+    contributionsRepository.sumSearch(tenantId, filters),
+  ]);
+  const capped = capRows(found);
+  const enriched = await enrichWithContributorInfo(tenantId, capped.rows, canViewContributors);
+  return { ...capped, rows: enriched, total };
 }
 
 export async function getAccountStatement(tenantId, accountId, { dateFrom, dateTo, financialPeriodId } = {}) {
@@ -125,16 +164,21 @@ export async function getAccountStatement(tenantId, accountId, { dateFrom, dateT
   const openingBalance = dateFrom
     ? await transactionsRepository.sumSignedThroughDate(tenantId, dateFrom, { accountId, inclusive: false })
     : '0.00';
-  const rows = await transactionsRepository.listHistory(tenantId, {
-    accountId,
-    dateFrom,
-    dateTo,
-    financialPeriodId,
-    status: 'posted',
-    limit: 1000,
-  });
+  const capped = capRows(
+    await transactionsRepository.listHistory(tenantId, {
+      accountId,
+      dateFrom,
+      dateTo,
+      financialPeriodId,
+      status: 'posted',
+      limit: FETCH_LIMIT,
+    })
+  );
+  // Both balances are aggregates over the account's whole history, so they
+  // remain the true opening and closing figures even when the movement list
+  // between them is capped.
   const closingBalance = await transactionsRepository.sumSigned(tenantId, { accountId, financialPeriodId });
-  return { account, openingBalance, rows, closingBalance };
+  return { account, openingBalance, ...capped, closingBalance };
 }
 
 export async function getFundStatement(tenantId, fundId, { dateFrom, dateTo, financialPeriodId } = {}) {
@@ -144,16 +188,18 @@ export async function getFundStatement(tenantId, fundId, { dateFrom, dateTo, fin
   const openingBalance = dateFrom
     ? await transactionsRepository.sumSignedThroughDate(tenantId, dateFrom, { fundId, inclusive: false })
     : '0.00';
-  const rows = await transactionsRepository.listHistory(tenantId, {
-    fundId,
-    dateFrom,
-    dateTo,
-    financialPeriodId,
-    status: 'posted',
-    limit: 1000,
-  });
+  const capped = capRows(
+    await transactionsRepository.listHistory(tenantId, {
+      fundId,
+      dateFrom,
+      dateTo,
+      financialPeriodId,
+      status: 'posted',
+      limit: FETCH_LIMIT,
+    })
+  );
   const closingBalance = await transactionsRepository.sumSigned(tenantId, { fundId, financialPeriodId });
-  return { fund, openingBalance, rows, closingBalance };
+  return { fund, openingBalance, ...capped, closingBalance };
 }
 
 export async function getBudgetVsActualReport(tenantId, financialPeriodId) {
@@ -166,11 +212,24 @@ export async function getBudgetVsActualReport(tenantId, financialPeriodId) {
 }
 
 export async function getPledgeReport(tenantId, filters, { canViewContributors }) {
-  const pledges = await listPledges(tenantId, filters);
-  const enriched = await enrichWithContributorInfo(tenantId, pledges, canViewContributors);
-  const totalPledged = sumMoney(pledges.map((p) => p.pledged_amount));
-  const totalFulfilled = sumMoney(pledges.map((p) => p.fulfilled_amount));
-  return { rows: enriched, totalPledged, totalFulfilled, totalRemaining: subtractMoney(totalPledged, totalFulfilled) };
+  // An explicit limit. Without one this inherited the pledge repository's
+  // interactive-list default of 50 rows, so a church with more than fifty
+  // pledges got a report showing fifty of them — and totals added up from
+  // those fifty, printed as the campaign's total pledged and fulfilled.
+  const capped = capRows(await listPledges(tenantId, { ...filters, limit: FETCH_LIMIT }));
+  const enriched = await enrichWithContributorInfo(tenantId, capped.rows, canViewContributors);
+  // Fulfilment is computed per pledge rather than aggregated in SQL, so
+  // unlike the other reports these totals do describe the rows listed. Past
+  // the cap that is stated with the report instead of being left to assume.
+  const totalPledged = sumMoney(capped.rows.map((p) => p.pledged_amount));
+  const totalFulfilled = sumMoney(capped.rows.map((p) => p.fulfilled_amount));
+  return {
+    ...capped,
+    rows: enriched,
+    totalPledged,
+    totalFulfilled,
+    totalRemaining: subtractMoney(totalPledged, totalFulfilled),
+  };
 }
 
 export async function getFinancialSummaryReport(tenantId, financialPeriodId) {

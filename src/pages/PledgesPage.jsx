@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { FiTrash2 } from 'react-icons/fi';
 import { pledgesApi, contributorsApi, fundsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
+import { useDeleteRefusal } from '../hooks/useDeleteRefusal.js';
 import { useLocale } from '../i18n/LocaleContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
@@ -34,6 +35,7 @@ export default function PledgesPage() {
   const { t } = useLocale();
   const toast = useToast();
   const confirm = useConfirm();
+  const explainRefusal = useDeleteRefusal();
   const [pledges, setPledges] = useState([]);
   const [contributors, setContributors] = useState([]);
   const [funds, setFunds] = useState([]);
@@ -121,7 +123,11 @@ export default function PledgesPage() {
       await load();
       toast.success(t('pledges.deletedToast'));
     } catch (err) {
-      setError(unwrapApiError(err).message);
+      const failure = unwrapApiError(err);
+      // A refusal is explained in a dialog; anything else is a genuine
+      // error and belongs in the page's error strip.
+      if (explainRefusal(failure, pledge.pledge_number ?? String(pledge.id))) return;
+      setError(failure.message);
     }
   };
 

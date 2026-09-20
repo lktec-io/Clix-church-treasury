@@ -3,7 +3,7 @@ import { withTransaction } from '../../config/db.js';
 import { contributorsRepository } from './contributors.repository.js';
 import { normalizeTzPhone } from '../sms/phoneNumber.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
-import { hardDelete, refuseDelete } from '../../db/deleteGuards.js';
+import { hardDelete, refuseDelete, blocker } from '../../db/deleteGuards.js';
 import { parseContributorImport } from './bulkImport.js';
 import { titheComplianceStatus } from './titheCompliance.js';
 import { contributionsRepository } from '../contributions/contributions.repository.js';
@@ -246,17 +246,23 @@ export async function hardDeleteContributor(tenantId, contributorId, actorUserId
   const contributor = await contributorsRepository.findById(tenantId, contributorId);
   if (!contributor) throw notFound('Contributor not found');
 
-  const [contributions, pledges] = await Promise.all([
-    contributionsRepository.search(tenantId, { contributorId, limit: 1 }),
-    pledgesRepository.search(tenantId, { contributorId, limit: 1 }),
+  // Counted, not merely detected: the refusal tells the treasurer exactly
+  // what is holding the record, which is the difference between an error
+  // they can act on and one they can only be stopped by.
+  const [contributionCount, pledgeCount] = await Promise.all([
+    contributionsRepository.countSearch(tenantId, { contributorId }),
+    pledgesRepository.countSearch(tenantId, { contributorId }),
   ]);
-  if (contributions.length > 0) {
+  if (contributionCount > 0 || pledgeCount > 0) {
+    const blockers = [];
+    if (contributionCount > 0) blockers.push(blocker('contributions', contributionCount));
+    if (pledgeCount > 0) blockers.push(blocker('pledges', pledgeCount));
     refuseDelete(
-      'This member has recorded giving, so their record cannot be deleted — their contributions, receipts and statements all refer to it.'
+      contributionCount > 0
+        ? 'This member has recorded giving, so their record cannot be deleted — their contributions, receipts and statements all refer to it.'
+        : 'This member has a pledge on record, so their record cannot be deleted. Cancel the pledge first.',
+      blockers
     );
-  }
-  if (pledges.length > 0) {
-    refuseDelete('This member has a pledge on record, so their record cannot be deleted. Cancel the pledge first.');
   }
 
   return withTransaction(async (connection) => {

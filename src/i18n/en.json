@@ -626,5 +626,20 @@
   "contributions.alreadyRecorded": "This contribution was already recorded — nothing new was posted.",
   "contributions.resendSms": "Send SMS",
   "expenses.reviewInApprovals": "Review in Approvals",
-  "expenses.payInApprovals": "Pay in Approvals"
+  "expenses.payInApprovals": "Pay in Approvals",
+  "reports.truncated": "Showing the first {{limit}} rows only — more records matched these filters. Narrow the date range and run it again to see the rest.",
+  "reports.truncated.totalsComplete": "The totals below cover every matching record, including the rows not listed.",
+  "reports.truncated.totalsShownOnly": "The totals below cover only the rows shown here.",
+  "common.gotIt": "Got it",
+  "delete.blocked.title": "This record cannot be deleted",
+  "delete.blocked.hint": "Nothing was deleted. Records that carry financial history stay in the ledger — deactivate or cancel the record instead.",
+  "delete.blocked.references": "Still referenced by",
+  "delete.blocker.contributions": "Contributions recorded",
+  "delete.blocker.pledges": "Pledges on record",
+  "delete.blocker.transactions": "Ledger transactions",
+  "delete.blocker.expenses": "Expense records",
+  "delete.blocker.auditLogs": "Audit trail entries",
+  "delete.blocker.journalEntries": "Journal entries",
+  "delete.blocker.receipts": "Receipts issued",
+  "reports.truncated.lead": "Incomplete report"
 }

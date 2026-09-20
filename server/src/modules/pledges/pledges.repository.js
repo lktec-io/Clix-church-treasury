@@ -1,32 +1,50 @@
 import { TenantScopedRepository, assertTenantId } from '../../db/TenantScopedRepository.js';
 
+// Shared by `search` and `countSearch` so a listing and its count can never
+// be computed over different sets of rows. Only these keys are honoured; any
+// other property on the filter object is ignored, exactly as the
+// named-parameter version was — callers pass general-purpose filter bags.
+const SEARCH_FILTERS = {
+  contributorId: 'contributor_id = ?',
+  fundId: 'fund_id = ?',
+  status: 'status = ?',
+};
+
+function buildSearchWhere(tenantId, filters = {}) {
+  assertTenantId(tenantId);
+  const conditions = ['tenant_id = ?'];
+  const params = [tenantId];
+  for (const [key, condition] of Object.entries(SEARCH_FILTERS)) {
+    if (filters[key] === undefined) continue;
+    conditions.push(condition);
+    params.push(filters[key]);
+  }
+  return { clause: conditions.join(' AND '), params };
+}
+
 class PledgesRepository extends TenantScopedRepository {
   constructor() {
     super('pledges');
   }
 
-  async search(tenantId, { contributorId, fundId, status, limit = 50, offset = 0 } = {}, connection) {
-    assertTenantId(tenantId);
-    const conditions = ['tenant_id = ?'];
-    const params = [tenantId];
-    if (contributorId !== undefined) {
-      conditions.push('contributor_id = ?');
-      params.push(contributorId);
-    }
-    if (fundId !== undefined) {
-      conditions.push('fund_id = ?');
-      params.push(fundId);
-    }
-    if (status !== undefined) {
-      conditions.push('status = ?');
-      params.push(status);
-    }
+  async search(tenantId, { limit = 50, offset = 0, ...filters } = {}, connection) {
+    const { clause, params } = buildSearchWhere(tenantId, filters);
     const [rows] = await this.runner(connection).query(
-      `SELECT * FROM pledges WHERE ${conditions.join(' AND ')}
+      `SELECT * FROM pledges WHERE ${clause}
        ORDER BY pledge_date DESC, id DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
     return rows;
+  }
+
+  /** How many pledges `search` would match — for counts shown to a person. */
+  async countSearch(tenantId, filters = {}, connection) {
+    const { clause, params } = buildSearchWhere(tenantId, filters);
+    const [rows] = await this.runner(connection).query(
+      `SELECT COUNT(*) AS total FROM pledges WHERE ${clause}`,
+      params
+    );
+    return Number(rows[0]?.total ?? 0);
   }
 
   // Derived, never stored — same principle as account balances

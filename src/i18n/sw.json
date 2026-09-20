@@ -626,5 +626,20 @@
   "contributions.alreadyRecorded": "Mchango huu ulikwisha rekodiwa — hakuna kipya kilichoingizwa.",
   "contributions.resendSms": "Tuma SMS",
   "expenses.reviewInApprovals": "Kagua kwenye Idhini",
-  "expenses.payInApprovals": "Lipa kwenye Idhini"
+  "expenses.payInApprovals": "Lipa kwenye Idhini",
+  "reports.truncated": "Zinaonyeshwa safu {{limit}} za kwanza pekee — rekodi zaidi zimelingana na vichujio hivi. Punguza kipindi cha tarehe kisha endesha tena ili kuona zilizobaki.",
+  "reports.truncated.totalsComplete": "Jumla iliyo hapa chini inajumuisha kila rekodi iliyolingana, pamoja na safu zisizoorodheshwa.",
+  "reports.truncated.totalsShownOnly": "Jumla iliyo hapa chini inahusu safu zinazoonyeshwa hapa pekee.",
+  "common.gotIt": "Nimeelewa",
+  "delete.blocked.title": "Rekodi hii haiwezi kufutwa",
+  "delete.blocked.hint": "Hakuna kilichofutwa. Rekodi zenye historia ya fedha hubaki kwenye leja — badala yake izime au ighairi rekodi hiyo.",
+  "delete.blocked.references": "Bado inarejelewa na",
+  "delete.blocker.contributions": "Michango iliyorekodiwa",
+  "delete.blocker.pledges": "Ahadi zilizopo",
+  "delete.blocker.transactions": "Miamala ya leja",
+  "delete.blocker.expenses": "Rekodi za matumizi",
+  "delete.blocker.auditLogs": "Kumbukumbu za ukaguzi",
+  "delete.blocker.journalEntries": "Maingizo ya jarida",
+  "delete.blocker.receipts": "Risiti zilizotolewa",
+  "reports.truncated.lead": "Ripoti haijakamilika"
 }

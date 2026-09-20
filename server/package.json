@@ -13,7 +13,9 @@
     "bootstrap:platform-admin": "node scripts/bootstrapPlatformAdmin.js",
     "verify:platform": "node scripts/verifyPlatform.js",
     "db:check": "node src/db/check.js",
+    "backfill:journal": "node scripts/backfillJournal.js",
     "test": "vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.js",
     "test:watch": "vitest",
     "lint": "eslint ."
   },

@@ -4,7 +4,7 @@ import { pledgesRepository } from './pledges.repository.js';
 import { contributionsRepository } from '../contributions/contributions.repository.js';
 import { generatePledgeNumber } from './pledgeNumber.js';
 import { recordAuditLog } from '../audit/auditLog.service.js';
-import { hardDelete, refuseDelete } from '../../db/deleteGuards.js';
+import { hardDelete, refuseDelete, blocker } from '../../db/deleteGuards.js';
 import { subtractMoney } from '../financial/money.js';
 import { computePledgeSchedule } from './pledgeSchedule.js';
 
@@ -146,10 +146,11 @@ export async function hardDeletePledge(tenantId, pledgeId, actorUserId) {
   const pledge = await pledgesRepository.findById(tenantId, pledgeId);
   if (!pledge) throw notFound('Pledge not found');
 
-  const payments = await contributionsRepository.search(tenantId, { pledgeId, limit: 1 });
-  if (payments.length > 0) {
+  const paymentCount = await contributionsRepository.countSearch(tenantId, { pledgeId });
+  if (paymentCount > 0) {
     refuseDelete(
-      'Payments have already been recorded against this pledge, so it cannot be deleted. Cancel it instead — the payments stay in the ledger either way.'
+      'Payments have already been recorded against this pledge, so it cannot be deleted. Cancel it instead — the payments stay in the ledger either way.',
+      [blocker('contributions', paymentCount)]
     );
   }
 

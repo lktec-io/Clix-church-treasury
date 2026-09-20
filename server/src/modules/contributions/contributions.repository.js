@@ -30,6 +30,35 @@ async function resolveOptionalColumns(runner) {
   return presentOptionalColumns;
 }
 
+// The WHERE clause shared by `search` and `sumSearch`, so a listing and its
+// total can never be computed over different sets of rows.
+//
+// Only these keys are honoured; any other property on the filter object is
+// ignored, exactly as the named-parameter version was. Callers pass a
+// general-purpose filter bag (the reports controller builds one for every
+// report), and a key this table has no column for must stay a no-op rather
+// than become an SQL error.
+const SEARCH_FILTERS = {
+  contributorId: 'contributor_id = ?',
+  pledgeId: 'pledge_id = ?',
+  fundId: 'fund_id = ?',
+  paymentMethod: 'payment_method = ?',
+  dateFrom: 'contribution_date >= ?',
+  dateTo: 'contribution_date <= ?',
+};
+
+function buildSearchWhere(tenantId, filters = {}) {
+  assertTenantId(tenantId);
+  const conditions = ['tenant_id = ?'];
+  const params = [tenantId];
+  for (const [key, condition] of Object.entries(SEARCH_FILTERS)) {
+    if (filters[key] === undefined) continue;
+    conditions.push(condition);
+    params.push(filters[key]);
+  }
+  return { clause: conditions.join(' AND '), params };
+}
+
 class ContributionsRepository extends TenantScopedRepository {
   constructor() {
     super('contributions');
@@ -74,40 +103,49 @@ class ContributionsRepository extends TenantScopedRepository {
     return rows[0] ?? null;
   }
 
-  async search(tenantId, { contributorId, pledgeId, fundId, paymentMethod, dateFrom, dateTo, limit = 50, offset = 0 } = {}, connection) {
-    assertTenantId(tenantId);
-    const conditions = ['tenant_id = ?'];
-    const params = [tenantId];
-    if (contributorId !== undefined) {
-      conditions.push('contributor_id = ?');
-      params.push(contributorId);
-    }
-    if (pledgeId !== undefined) {
-      conditions.push('pledge_id = ?');
-      params.push(pledgeId);
-    }
-    if (fundId !== undefined) {
-      conditions.push('fund_id = ?');
-      params.push(fundId);
-    }
-    if (paymentMethod !== undefined) {
-      conditions.push('payment_method = ?');
-      params.push(paymentMethod);
-    }
-    if (dateFrom !== undefined) {
-      conditions.push('contribution_date >= ?');
-      params.push(dateFrom);
-    }
-    if (dateTo !== undefined) {
-      conditions.push('contribution_date <= ?');
-      params.push(dateTo);
-    }
+  async search(tenantId, { limit = 50, offset = 0, ...filters } = {}, connection) {
+    const { clause, params } = buildSearchWhere(tenantId, filters);
     const [rows] = await this.runner(connection).query(
-      `SELECT * FROM contributions WHERE ${conditions.join(' AND ')}
+      `SELECT * FROM contributions WHERE ${clause}
        ORDER BY contribution_date DESC, id DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
     return rows;
+  }
+
+  /**
+   * How many rows `search` would match. Used where the answer is a number
+   * shown to a person — "this member has 12 contributions on record" — so
+   * fetching rows to measure their length would be the wrong query.
+   */
+  async countSearch(tenantId, filters = {}, connection) {
+    const { clause, params } = buildSearchWhere(tenantId, filters);
+    const [rows] = await this.runner(connection).query(
+      `SELECT COUNT(*) AS total FROM contributions WHERE ${clause}`,
+      params
+    );
+    return Number(rows[0]?.total ?? 0);
+  }
+
+  /**
+   * Posted total for exactly the rows `search` would match, summed by MySQL
+   * over every matching row rather than over the page that was fetched.
+   *
+   * The contributions report used to add up the row objects it had just
+   * listed, which silently understated the total the moment the list hit its
+   * row cap: the report showed the first N contributions and a "total" that
+   * was the sum of those N, presented as the period's total giving. The
+   * figure has to come from the database, independently of paging.
+   */
+  async sumSearch(tenantId, filters = {}, connection) {
+    const { clause, params } = buildSearchWhere(tenantId, filters);
+    const [rows] = await this.runner(connection).query(
+      `SELECT CAST(COALESCE(SUM(amount), 0) AS DECIMAL(14,2)) AS total
+         FROM contributions
+        WHERE ${clause} AND status = 'posted'`,
+      params
+    );
+    return String(rows[0]?.total ?? '0.00');
   }
 
   // ---------------------------------------------------------------------------

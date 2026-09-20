@@ -796,6 +796,42 @@
    REPORT LINK CARD — a report that has its own page rather than living in
    the generic runner (currently the trial balance).
    ========================================================================== */
+/* ---------- Incomplete-report notice ----------
+   Sits above a capped report's table. It carries three facts — that the
+   report is incomplete, what the cap was, and whether the totals still cover
+   everything — and a treasurer must not have to read a paragraph to find the
+   third. Stacked lines, so each is scanned on its own, and every one of them
+   wraps inside the phone's width instead of stretching the card. */
+.report-notice {
+  align-items: flex-start;
+  border-left: 3px solid var(--color-warning);
+}
+
+.report-notice__icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 16px;
+}
+
+.report-notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* Without this a long unbroken run of text refuses to shrink inside the
+     flex row and pushes the card wider than the screen. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-notice__lead {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.report-notice__totals {
+  font-weight: 700;
+}
+
 .report-link-card {
   display: flex;
   align-items: center;
