@@ -12,8 +12,8 @@
 -- Two changes, both non-destructive (no rows removed, no columns dropped):
 --   1. New tenants default to 'sw'.
 --   2. Existing tenants still sitting on the original 'en' default are moved
---      to 'sw'. Scoped to `WHERE locale_default = 'en'` so any tenant
---      deliberately set to another locale is left untouched.
+--      to 'sw'. Scoped to WHERE locale_default = 'en' so any tenant
+--      deliberately set to another language setting is left untouched.
 --
 -- Per-contributor overrides (contributors.locale) are NOT touched — a member
 -- who explicitly wants English keeps it.
