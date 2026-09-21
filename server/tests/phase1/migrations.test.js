@@ -68,4 +68,3 @@ describe('migrations', () => {
 beforeAll(async () => {
   await up();
 });
-

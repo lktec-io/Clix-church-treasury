@@ -7,6 +7,16 @@ import { invalidateSchemaCaches } from '../db/schemaGuard.js';
 // does not have" — schema drift, almost always an unapplied migration.
 const SCHEMA_ERROR_CODES = new Set(['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR']);
 
+// The table a failed statement was writing to or reading from, taken from the
+// statement text. Only the identifier is returned — the statement itself is
+// never logged or sent, because mysql2 interpolates the submitted values into
+// it (member names, phone numbers, amounts).
+export function failingTable(sql) {
+  if (typeof sql !== 'string') return null;
+  const match = /^\s*(?:INSERT\s+(?:IGNORE\s+)?INTO|UPDATE|DELETE\s+FROM|SELECT\b[\s\S]*?\bFROM)\s+`?([A-Za-z0-9_]+)`?/i.exec(sql);
+  return match ? match[1] : null;
+}
+
 // Last middleware in the stack (docs/API_ARCHITECTURE.md §3, §4). Never leaks
 // stack traces or raw DB error text to the client in production.
 // Async because the schema branch re-reads migration status before it
@@ -59,21 +69,42 @@ export async function errorHandler(err, req, res, next) {
     invalidateSchemaCaches();
     const status = await readMigrationStatus({ force: true });
     const pending = status.pending;
+    const missing = status.missingColumns ?? [];
+
+    // WHICH TABLE. MySQL's "Unknown column 'transaction_id' in 'field list'"
+    // does not say which table it means — and a request that records a
+    // contribution writes to six. Without this, the obvious reading is the
+    // table named in the URL, which is how a broken journal_entries got
+    // mistaken for a broken contributions table. The failing statement is on
+    // the error (mysql2 sets err.sql); only the TABLE NAME is taken from it,
+    // never the statement, which carries the submitted values.
+    const table = failingTable(err.sql);
 
     console.error(
       `[schema] ${req.method} ${req.originalUrl} failed on a missing table/column: ${err.message}` +
+        (table ? ` — in table "${table}"` : '') +
         ` — database "${status.database ?? 'unknown'}" (${env.db.host}:${env.db.port})` +
-        (pending.length > 0 ? `, pending migrations: ${pending.join(', ')}` : ', no migrations pending')
+        (pending.length > 0 ? `, pending migrations: ${pending.join(', ')}` : ', no migrations pending') +
+        (missing.length > 0 ? `, missing columns: ${missing.join(', ')}` : '')
     );
 
-    // Two genuinely different situations, told apart rather than merged.
-    const message =
-      pending.length > 0
-        ? 'The server database is missing an update this action needs, so nothing was saved. ' +
-          'An administrator must run "npm run migrate" on the server, then try again.'
-        : 'This action failed against the server database and nothing was saved. The migrations ' +
-          'are all applied, so this is not a pending update — an administrator should check the ' +
-          'server logs. Trying again may work.';
+    // Three genuinely different situations, told apart rather than merged.
+    let message;
+    if (pending.length > 0) {
+      message =
+        'The server database is missing an update this action needs, so nothing was saved. ' +
+        'An administrator must run "npm run migrate" on the server, then try again.';
+    } else if (missing.length > 0) {
+      message =
+        'The server database does not match this version of the system, so nothing was saved. ' +
+        'Its migrations are recorded as applied but some columns are missing. An administrator ' +
+        'must run "npm run migrate" on the server (it includes a repair step), then try again.';
+    } else {
+      message =
+        'This action failed against the server database and nothing was saved. The migrations ' +
+        'are all applied, so this is not a pending update — an administrator should check the ' +
+        'server logs. Trying again may work.';
+    }
 
     return res.status(503).json({
       success: false,
@@ -85,6 +116,10 @@ export async function errorHandler(err, req, res, next) {
         // has migrated a different database than the one this process uses.
         database: status.database,
         pendingMigrations: pending,
+        // Names of schema objects, never data — safe to return, and exactly
+        // what the operator needs to see.
+        missingColumns: missing,
+        ...(table ? { table } : {}),
         ...(env.isProduction ? {} : { detail: err.message }),
       },
     });

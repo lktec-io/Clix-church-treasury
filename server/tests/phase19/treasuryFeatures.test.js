@@ -9,6 +9,7 @@ import { runInBackground } from '../../src/utils/backgroundJob.js';
 import { requireApprovalRole, APPROVAL_ROLES } from '../../src/middleware/rbac.js';
 import { permissionsRepository } from '../../src/modules/permissions/permissions.repository.js';
 import { registerSchemaCache, invalidateSchemaCaches } from '../../src/db/schemaGuard.js';
+import { failingTable } from '../../src/middleware/errorHandler.js';
 import ExcelJS from 'exceljs';
 import { toCsv, toExcelBuffer } from '../../src/modules/reports/exporters.js';
 
@@ -424,5 +425,37 @@ describe('schema cache invalidation', () => {
     registerSchemaCache(() => { reached = true; });
     expect(() => invalidateSchemaCaches()).not.toThrow();
     expect(reached).toBe(true);
+  });
+});
+
+// "Unknown column 'transaction_id' in 'field list'" does not say which table.
+// Recording a contribution writes to several; the one that failed in
+// production was journal_entries, not contributions. The handler names it —
+// and must take only the identifier, never the statement, which carries the
+// submitted values.
+describe('failingTable', () => {
+  it.each([
+    ['INSERT INTO journal_entries (tenant_id, transaction_id) VALUES (1, 2)', 'journal_entries'],
+    ['INSERT INTO `journal_lines` (tenant_id) VALUES (1)', 'journal_lines'],
+    ['INSERT IGNORE INTO chart_of_accounts (code) VALUES (5300)', 'chart_of_accounts'],
+    ['UPDATE contributions SET fee_transaction_id = 9 WHERE id = 1', 'contributions'],
+    ['DELETE FROM pledges WHERE id = 3', 'pledges'],
+    ['SELECT c.id FROM contributions c LEFT JOIN transactions t ON t.id = c.fee_transaction_id', 'contributions'],
+    ['  insert into journal_entries (memo) values (1)', 'journal_entries'],
+  ])('names the table in %s', (sql, table) => {
+    expect(failingTable(sql)).toBe(table);
+  });
+
+  it('never returns the submitted values', () => {
+    const sql = "INSERT INTO contributors (full_name, phone) VALUES ('Asha Mwakyusa', '+255712345678')";
+    const result = failingTable(sql);
+    expect(result).toBe('contributors');
+    expect(result).not.toMatch(/Asha|255/);
+  });
+
+  it('returns null rather than guessing when there is no statement', () => {
+    expect(failingTable(undefined)).toBeNull();
+    expect(failingTable('')).toBeNull();
+    expect(failingTable('SHOW TABLES')).toBeNull();
   });
 });

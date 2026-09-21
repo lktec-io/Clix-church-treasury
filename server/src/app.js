@@ -63,11 +63,16 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
   app.get('/health', async (req, res, next) => {
     try {
       const status = await readMigrationStatus();
+      const missingColumns = status.missingColumns ?? [];
       res.json({
         success: true,
         data: {
-          status: status.pending.length > 0 ? 'degraded' : 'ok',
+          // Missing columns count as degraded even with nothing pending: that
+          // is the state in which recording income fails while `npm run
+          // migrate` claims there is nothing to do.
+          status: status.pending.length > 0 || missingColumns.length > 0 ? 'degraded' : 'ok',
           pendingMigrations: status.pending.length,
+          missingColumns,
           database: status.database,
           // false = the check itself could not run, which is not a clean bill
           // of health and must not be displayed as one.

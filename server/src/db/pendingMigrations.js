@@ -26,7 +26,25 @@ import { listMigrationFiles, migrationName } from './migrate.js';
 // storm. Applying a migration is visible within TTL_MS, with no restart.
 const TTL_MS = 5000;
 
-let cache = { at: 0, pending: [], database: null, checked: false };
+// SHAPE CHECK — the columns the money-moving write paths cannot work without.
+//
+// schema_migrations only records that a migration FILE ran, not that the
+// schema it was meant to produce exists. When a migration file is edited
+// after the fact, or a table is created by hand, the two part company:
+// `npm run migrate` reports nothing pending while every contribution fails
+// on an unknown column. That is exactly what happened to the general ledger
+// (see migration 0041). So the status also verifies the columns directly.
+//
+// Deliberately a short list of what would break recording money, not a
+// copy of the whole schema: it has to stay correct without upkeep.
+const REQUIRED_COLUMNS = {
+  contributions: ['transaction_id', 'fee_transaction_id'],
+  chart_of_accounts: ['code', 'account_type', 'normal_balance', 'system_role'],
+  journal_entries: ['transaction_id', 'financial_period_id', 'entry_date', 'memo'],
+  journal_lines: ['journal_entry_id', 'coa_account_id', 'fund_id', 'debit', 'credit', 'description'],
+};
+
+let cache = { at: 0, pending: [], missingColumns: [], database: null, checked: false };
 let inFlight = null;
 
 /**
@@ -60,9 +78,22 @@ export async function readMigrationStatus({ force = false } = {}) {
         rows.forEach((r) => applied.add(r.name));
       }
 
+      // One query for every required column, compared as "table.column".
+      const [present] = await connection.query(
+        `SELECT table_name AS t, column_name AS c
+           FROM information_schema.columns
+          WHERE table_schema = DATABASE() AND table_name IN (?)`,
+        [Object.keys(REQUIRED_COLUMNS)]
+      );
+      const have = new Set(present.map((r) => `${r.t ?? r.TABLE_NAME}.${r.c ?? r.COLUMN_NAME}`));
+      const missingColumns = Object.entries(REQUIRED_COLUMNS).flatMap(([table, columns]) =>
+        columns.map((column) => `${table}.${column}`).filter((key) => !have.has(key))
+      );
+
       cache = {
         at: Date.now(),
         pending: names.filter((name) => !applied.has(name)),
+        missingColumns,
         database: row?.current ?? null,
         checked: true,
       };
@@ -71,7 +102,7 @@ export async function readMigrationStatus({ force = false } = {}) {
       // A failed check must never stop the API from starting or turn one
       // failure into two. Report it and say so honestly: unknown, not clear.
       console.error(`[schema] could not check migration status: ${error.message}`);
-      cache = { at: Date.now(), pending: [], database: null, checked: false };
+      cache = { at: Date.now(), pending: [], missingColumns: [], database: null, checked: false };
       return cache;
     } finally {
       connection?.release();
@@ -105,8 +136,22 @@ export async function checkPendingMigrations() {
         '\n[schema] If you already ran it: check that DB_NAME/DB_HOST in this process\'s .env' +
         ' match the database you migrated.\n'
     );
-  } else {
-    console.log(`[schema] "${status.database}" is up to date (${status.pending.length === 0 ? 'all' : ''} migrations applied)`);
+  } else if (status.missingColumns.length === 0) {
+    console.log(`[schema] "${status.database}" is up to date (all migrations applied, required columns present)`);
+  }
+
+  // Reported even when nothing is pending — that combination is the
+  // dangerous one, because it is the case where `npm run migrate` looks
+  // like it has nothing left to fix.
+  if (status.missingColumns.length > 0) {
+    console.error(
+      `\n[schema] "${status.database}" is MISSING columns the code writes, even though` +
+        ` ${status.pending.length === 0 ? 'every migration is recorded as applied' : 'see pending list above'}:\n` +
+        status.missingColumns.map((key) => `           [ ] ${key}`).join('\n') +
+        '\n[schema] Recording income will fail until this is fixed. This usually means a migration file' +
+        '\n[schema] was edited after it ran, or a table was created by hand. Run `npm run migrate`:' +
+        '\n[schema] migration 0041 repairs the general ledger and contribution columns.\n'
+    );
   }
   return status.pending;
 }
