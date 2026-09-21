@@ -103,77 +103,99 @@ export async function updateExpense(tenantId, id, updates, actorUserId) {
 }
 
 export async function submitExpense(tenantId, id, actorUserId) {
-  const expense = await expensesRepository.findById(tenantId, id);
-  if (!expense) throw notFound('Expense not found');
-  assertStatus(expense, 'draft');
+  // One transaction around the state change AND its audit record: a
+  // transition that happened but was not recorded is a hole in the audit
+  // trail, and the trail is the only account of who moved this money.
+  return withTransaction(async (connection) => {
+    const expense = await expensesRepository.findById(tenantId, id, connection);
+    if (!expense) throw notFound('Expense not found');
+    assertStatus(expense, 'draft');
 
-  // Conditional write: two submits of the same draft cannot both succeed.
-  const updated = assertTransitioned(
-    await expensesRepository.updateWhere(tenantId, id, { status: 'draft' }, { status: 'submitted' }),
-    'draft'
-  );
-  await recordAuditLog({
-    tenantId,
-    actorUserId,
-    action: 'expense.submitted',
-    entityType: 'expenses',
-    entityId: id,
+    // Conditional write: two submits of the same draft cannot both succeed.
+    const updated = assertTransitioned(
+      await expensesRepository.updateWhere(tenantId, id, { status: 'draft' }, { status: 'submitted' }, connection),
+      'draft'
+    );
+    await recordAuditLog(
+      {
+        tenantId,
+        actorUserId,
+        action: 'expense.submitted',
+        entityType: 'expenses',
+        entityId: id,
+      },
+      connection
+    );
+    return updated;
   });
-  return updated;
 }
 
 // Segregation of duties: the requester cannot approve their own expense —
 // docs/SECURITY_ARCHITECTURE.md §3, docs/MASTER_TODO.md Phase 5.
 export async function approveExpense(tenantId, id, actorUserId) {
-  const expense = await expensesRepository.findById(tenantId, id);
-  if (!expense) throw notFound('Expense not found');
-  assertStatus(expense, 'submitted');
-  if (expense.requested_by_user_id === actorUserId) {
-    throw forbidden('You cannot approve an expense you requested yourself');
-  }
+  return withTransaction(async (connection) => {
+    const expense = await expensesRepository.findById(tenantId, id, connection);
+    if (!expense) throw notFound('Expense not found');
+    assertStatus(expense, 'submitted');
+    if (expense.requested_by_user_id === actorUserId) {
+      throw forbidden('You cannot approve an expense you requested yourself');
+    }
 
-  const updated = assertTransitioned(
-    await expensesRepository.updateWhere(
-      tenantId,
-      id,
-      { status: 'submitted' },
-      { status: 'approved', approved_by_user_id: actorUserId, approval_date: nowSql() }
-    ),
-    'submitted'
-  );
-  await recordAuditLog({
-    tenantId,
-    actorUserId,
-    action: 'expense.approved',
-    entityType: 'expenses',
-    entityId: id,
+    const updated = assertTransitioned(
+      await expensesRepository.updateWhere(
+        tenantId,
+        id,
+        { status: 'submitted' },
+        { status: 'approved', approved_by_user_id: actorUserId, approval_date: nowSql() },
+        connection
+      ),
+      'submitted'
+    );
+    // Inside the transaction: an approval with no audit row, or an audit row
+    // for an approval that did not take, are both worse than neither.
+    await recordAuditLog(
+      {
+        tenantId,
+        actorUserId,
+        action: 'expense.approved',
+        entityType: 'expenses',
+        entityId: id,
+      },
+      connection
+    );
+    return updated;
   });
-  return updated;
 }
 
 export async function rejectExpense(tenantId, id, reason, actorUserId) {
-  const expense = await expensesRepository.findById(tenantId, id);
-  if (!expense) throw notFound('Expense not found');
-  assertStatus(expense, 'submitted');
+  return withTransaction(async (connection) => {
+    const expense = await expensesRepository.findById(tenantId, id, connection);
+    if (!expense) throw notFound('Expense not found');
+    assertStatus(expense, 'submitted');
 
-  const updated = assertTransitioned(
-    await expensesRepository.updateWhere(
-      tenantId,
-      id,
-      { status: 'submitted' },
-      { status: 'rejected', rejected_by_user_id: actorUserId, rejection_reason: reason }
-    ),
-    'submitted'
-  );
-  await recordAuditLog({
-    tenantId,
-    actorUserId,
-    action: 'expense.rejected',
-    entityType: 'expenses',
-    entityId: id,
-    after: { reason },
+    const updated = assertTransitioned(
+      await expensesRepository.updateWhere(
+        tenantId,
+        id,
+        { status: 'submitted' },
+        { status: 'rejected', rejected_by_user_id: actorUserId, rejection_reason: reason },
+        connection
+      ),
+      'submitted'
+    );
+    await recordAuditLog(
+      {
+        tenantId,
+        actorUserId,
+        action: 'expense.rejected',
+        entityType: 'expenses',
+        entityId: id,
+        after: { reason },
+      },
+      connection
+    );
+    return updated;
   });
-  return updated;
 }
 
 // Distinct from reject: sends a submitted expense back to draft so the
@@ -182,23 +204,28 @@ export async function rejectExpense(tenantId, id, reason, actorUserId) {
 // Gated by the same expense.reject permission — both are an approver-tier
 // "not approving this as-is" decision, just with a different outcome.
 export async function returnForCorrection(tenantId, id, reason, actorUserId) {
-  const expense = await expensesRepository.findById(tenantId, id);
-  if (!expense) throw notFound('Expense not found');
-  assertStatus(expense, 'submitted');
+  return withTransaction(async (connection) => {
+    const expense = await expensesRepository.findById(tenantId, id, connection);
+    if (!expense) throw notFound('Expense not found');
+    assertStatus(expense, 'submitted');
 
-  const updated = assertTransitioned(
-    await expensesRepository.updateWhere(tenantId, id, { status: 'submitted' }, { status: 'draft' }),
-    'submitted'
-  );
-  await recordAuditLog({
-    tenantId,
-    actorUserId,
-    action: 'expense.returned_for_correction',
-    entityType: 'expenses',
-    entityId: id,
-    after: { reason },
+    const updated = assertTransitioned(
+      await expensesRepository.updateWhere(tenantId, id, { status: 'submitted' }, { status: 'draft' }, connection),
+      'submitted'
+    );
+    await recordAuditLog(
+      {
+        tenantId,
+        actorUserId,
+        action: 'expense.returned_for_correction',
+        entityType: 'expenses',
+        entityId: id,
+        after: { reason },
+      },
+      connection
+    );
+    return updated;
   });
-  return updated;
 }
 
 // The only transition with a financial effect. Posts through the same

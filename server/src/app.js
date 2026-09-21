@@ -1,5 +1,5 @@
 import express from 'express';
-import { getPendingMigrations } from './db/pendingMigrations.js';
+import { readMigrationStatus } from './db/pendingMigrations.js';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -56,12 +56,27 @@ export function createApp({ authenticate: authenticateOverride } = {}) {
   // the process is up and a load balancer must not restart it — but the
   // body says "degraded" and how many are missing, which the header's status
   // light (SystemStatus.jsx) turns into a visible "Server issue".
-  app.get('/health', (req, res) => {
-    const pendingMigrations = getPendingMigrations().length;
-    res.json({
-      success: true,
-      data: { status: pendingMigrations > 0 ? 'degraded' : 'ok', pendingMigrations },
-    });
+  // Read live (5s TTL) rather than from a boot-time snapshot: after an
+  // operator runs `npm run migrate`, /health must go green on its own. It
+  // reporting "degraded" until someone restarts the server is how a fixed
+  // database gets mistaken for a broken one.
+  app.get('/health', async (req, res, next) => {
+    try {
+      const status = await readMigrationStatus();
+      res.json({
+        success: true,
+        data: {
+          status: status.pending.length > 0 ? 'degraded' : 'ok',
+          pendingMigrations: status.pending.length,
+          database: status.database,
+          // false = the check itself could not run, which is not a clean bill
+          // of health and must not be displayed as one.
+          schemaChecked: status.checked,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
   });
 
   app.use('/api/v1/auth', authRoutes({ authenticate: auth, tenantContext }));

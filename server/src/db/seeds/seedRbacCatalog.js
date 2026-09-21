@@ -5,6 +5,7 @@ import { PERMISSIONS, SYSTEM_ROLES, PLATFORM_ONLY_PERMISSIONS } from './permissi
 const ROLE_DESCRIPTIONS = {
   'Super Administrator': 'Full access to every module and every tenant setting (within one tenant — not a platform-level role).',
   Treasurer: 'Mhazini — full financial recording and management authority for the church.',
+  'Senior Treasurer': 'Mhazini Mkuu — everything a Treasurer can do, plus authority to approve and reject expenses.',
   'Assistant Treasurer': 'Can record income/expenses but cannot manage accounts, funds, or budgets.',
   Approver: 'Reviews and approves/rejects pending expenses; cannot create them (segregation of duties).',
   Auditor: 'Read-only access plus the audit log; cannot create or modify financial records.',

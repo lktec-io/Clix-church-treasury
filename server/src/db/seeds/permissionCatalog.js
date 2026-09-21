@@ -113,6 +113,34 @@ export const SYSTEM_ROLES = {
     'financial_period.view', 'financial_period.manage', 'financial_period.close',
     'remittance.view', 'remittance.pay',
   ],
+  // SENIOR TREASURER — the Treasurer's authority PLUS the authority to
+  // approve. Created because the church asked for a role that can both
+  // approve an expense and mark it paid; Treasurer can only pay, and
+  // Approver can only approve.
+  //
+  // NOTE ON SEGREGATION OF DUTIES: keeping approval and payment in separate
+  // roles is a deliberate financial control — the person who authorises a
+  // payment is not the person who releases the money, so no single account
+  // can move funds end to end. This role intentionally sets that aside, and
+  // `approveExpense` still refuses to let anyone approve their OWN request,
+  // which is the last remaining check on the path.
+  'Senior Treasurer': [
+    'dashboard.view',
+    'income.view', 'income.create', 'income.update', 'income.reverse',
+    'contributors.view', 'contributors.manage',
+    'expense.view', 'expense.create', 'expense.update', 'expense.submit',
+    'expense.approve', 'expense.reject', 'expense.pay',
+    'accounts.view', 'accounts.manage',
+    'funds.view', 'funds.manage',
+    'categories.manage',
+    'transfers.create',
+    'pledges.view', 'pledges.create',
+    'receipts.view',
+    'reports.view', 'reports.export',
+    'budget.view', 'budget.manage',
+    'financial_period.view', 'financial_period.manage', 'financial_period.close',
+    'remittance.view', 'remittance.pay',
+  ],
   'Assistant Treasurer': [
     'dashboard.view',
     'income.view', 'income.create',

@@ -97,9 +97,31 @@ apiClient.interceptors.response.use(
         config.headers.Authorization = `Bearer ${token}`;
         return apiClient(config);
       } catch (refreshError) {
-        setAccessToken(null);
-        onAuthExpired?.();
-        return Promise.reject(refreshError);
+        // ONLY AN AUTH FAILURE ENDS THE SESSION.
+        //
+        // This used to sign the user out whenever the refresh call failed
+        // for ANY reason. A server-side fault — a 503 while the database is
+        // mid-migration, a 500, a dropped connection — therefore did not
+        // just fail the request in front of the user: it destroyed their
+        // session. Every later call then went out with no token at all and
+        // came back 401, which is the cascade of 401s on /contributions,
+        // /funds and /categories that follows a single 503.
+        //
+        // A 401/403 from /auth/refresh is the refresh token itself being
+        // rejected, and that genuinely is the end of the session. Anything
+        // else is the server having a bad moment, and the session must
+        // survive it so a retry works once the server recovers.
+        const status = refreshError?.response?.status;
+        const sessionRejected = status === 401 || status === 403;
+        if (sessionRejected) {
+          setAccessToken(null);
+          onAuthExpired?.();
+          return Promise.reject(refreshError);
+        }
+        // Report the ORIGINAL failure, not the refresh's. The user asked to
+        // save a contribution; "could not refresh the session" would send
+        // them looking in the wrong place.
+        return Promise.reject(error);
       }
     }
     return Promise.reject(error);

@@ -641,5 +641,6 @@
   "delete.blocker.auditLogs": "Audit trail entries",
   "delete.blocker.journalEntries": "Journal entries",
   "delete.blocker.receipts": "Receipts issued",
-  "reports.truncated.lead": "Incomplete report"
+  "reports.truncated.lead": "Incomplete report",
+  "approvals.roleRequired": "Only a Super Administrator or Senior Treasurer can approve or pay. Ask an administrator to assign you one of those roles."
 }

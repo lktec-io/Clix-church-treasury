@@ -641,5 +641,6 @@
   "delete.blocker.auditLogs": "Kumbukumbu za ukaguzi",
   "delete.blocker.journalEntries": "Maingizo ya jarida",
   "delete.blocker.receipts": "Risiti zilizotolewa",
-  "reports.truncated.lead": "Ripoti haijakamilika"
+  "reports.truncated.lead": "Ripoti haijakamilika",
+  "approvals.roleRequired": "Ni Msimamizi Mkuu au Mhazini Mkuu pekee anayeweza kuidhinisha au kulipa. Muombe msimamizi akupe mojawapo ya nafasi hizo."
 }

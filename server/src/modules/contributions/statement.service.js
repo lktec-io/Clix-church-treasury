@@ -120,7 +120,11 @@ function buildLineItems(posted, items, categoryById) {
 export async function getYearlyTotal(tenantId, contributorId, year) {
   const dateFrom = `${year}-01-01`;
   const dateTo = `${year}-12-31`;
-  const contributions = await contributionsRepository.search(tenantId, { contributorId, dateFrom, dateTo, limit: 1000 });
-  const total = sumMoney(contributions.filter((c) => c.status === 'posted').map((c) => c.amount));
+  // One aggregate rather than fetching a year of rows to add them up in JS.
+  // A member would have to give over a thousand times in one year to have
+  // hit the old row cap, so this fixes nothing that was broken — but a total
+  // must never be a function of how many rows a list happened to return,
+  // and the query is cheaper besides.
+  const total = await contributionsRepository.sumSearch(tenantId, { contributorId, dateFrom, dateTo });
   return { contributorId, year, total };
 }

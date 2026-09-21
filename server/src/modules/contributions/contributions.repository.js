@@ -1,4 +1,5 @@
 import { TenantScopedRepository, assertTenantId } from '../../db/TenantScopedRepository.js';
+import { registerSchemaCache } from '../../db/schemaGuard.js';
 
 // Columns added by later migrations. Recording income is the core of this
 // product, so a server whose database is a migration or two behind must
@@ -13,8 +14,30 @@ const OPTIONAL_COLUMNS = ['department_id', 'mobile_provider', 'transfer_fee', 'f
 let presentOptionalColumns = null;
 const warnedFor = new Set();
 
+// A COMPLETE answer is permanent; an INCOMPLETE one is not.
+//
+// Columns are never dropped by this product, so once every optional column
+// has been seen the probe never needs to run again. The reverse is not true:
+// "column X is missing" stops being true the moment someone runs the
+// migration, and this process used to hold that belief until it restarted —
+// saving contributions WITHOUT the department, provider and fee columns long
+// after the database had them. That is silent data loss on a write path.
+//
+// So a negative result is only trusted for RECHECK_MS, and is dropped
+// outright whenever a schema error surfaces anywhere (schemaGuard.js).
+const RECHECK_MS = 10000;
+let probedAt = 0;
+
+registerSchemaCache(() => {
+  presentOptionalColumns = null;
+  probedAt = 0;
+});
+
 async function resolveOptionalColumns(runner) {
-  if (presentOptionalColumns) return presentOptionalColumns;
+  const complete = presentOptionalColumns?.size === OPTIONAL_COLUMNS.length;
+  if (presentOptionalColumns && (complete || Date.now() - probedAt < RECHECK_MS)) {
+    return presentOptionalColumns;
+  }
   try {
     const [rows] = await runner.query(
       `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
@@ -22,9 +45,19 @@ async function resolveOptionalColumns(runner) {
       [OPTIONAL_COLUMNS]
     );
     presentOptionalColumns = new Set(rows.map((row) => row.COLUMN_NAME));
+    probedAt = Date.now();
+    // A column that reappears after a migration is worth saying out loud —
+    // it is the evidence that the earlier warnings have stopped applying.
+    for (const column of OPTIONAL_COLUMNS) {
+      if (presentOptionalColumns.has(column) && warnedFor.delete(column)) {
+        console.log(`[contributions] contributions.${column} is now present — writing it again.`);
+      }
+    }
   } catch {
     // If the probe itself fails, assume none are present and write the
-    // columns this table has always had.
+    // columns this table has always had. Deliberately NOT stamped with
+    // probedAt, so a failed probe is retried on the next write rather than
+    // freezing the pessimistic answer in place for the TTL.
     presentOptionalColumns = new Set();
   }
   return presentOptionalColumns;

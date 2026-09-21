@@ -10,6 +10,7 @@ import { useActivity } from '../context/ActivityContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import PermissionGate from '../components/PermissionGate.jsx';
+import { APPROVAL_ROLES } from '../utils/approvalRoles.js';
 import PageHeader from '../components/ui/PageHeader.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import RecordedStamp from '../components/ui/RecordedStamp.jsx';
@@ -33,7 +34,8 @@ import { formatMoney } from '../utils/format.js';
 // contributions that will never arrive in this queue.
 export default function ApprovalsPage() {
   const { t } = useLocale();
-  const { session } = useAuth();
+  const { session, hasAnyRole } = useAuth();
+  const canDecide = hasAnyRole(APPROVAL_ROLES);
   const toast = useToast();
   const confirm = useConfirm();
   const { recordActivity } = useActivity();
@@ -148,7 +150,14 @@ export default function ApprovalsPage() {
           <RecordedStamp value={expense.created_at} />
         </div>
         <div className="approval-card__actions">
-          {stage === 'approval' ? (
+          {/* Role gate, outside the permission gates: this church allows only
+              an Admin or a Senior Treasurer to decide an expense. Someone
+              without one of those roles sees the queue (their .view
+              permission earns them that) but no action keys, and is told
+              why rather than left wondering where the buttons are. */}
+          {!canDecide ? (
+            <span className="approval-card__note">{t('approvals.roleRequired')}</span>
+          ) : stage === 'approval' ? (
             <>
               {!isOwn && (
                 <PermissionGate permission="expense.approve">

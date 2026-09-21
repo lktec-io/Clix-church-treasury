@@ -89,9 +89,26 @@ export function AuthProvider({ children }) {
     [session]
   );
 
+  // Role-name check, for the one policy the church states as roles rather
+  // than capabilities: only an Admin (Super Administrator) or a Senior
+  // Treasurer may decide an expense.
+  //
+  // THIS HIDES BUTTONS; IT DOES NOT ENFORCE ANYTHING. The server re-derives
+  // the same rule from the database on every request
+  // (rbac.js#requireApprovalRole) and is the only thing standing between a
+  // user and the ledger. Hiding a control the server would refuse is a
+  // courtesy to the user, not a security boundary.
+  const hasAnyRole = useCallback(
+    (...names) => {
+      const held = session?.roles ?? [];
+      return names.flat().some((name) => held.includes(name));
+    },
+    [session]
+  );
+
   const value = useMemo(
-    () => ({ status, session, login, platformLogin, logout, hasPermission }),
-    [status, session, login, platformLogin, logout, hasPermission]
+    () => ({ status, session, login, platformLogin, logout, hasPermission, hasAnyRole }),
+    [status, session, login, platformLogin, logout, hasPermission, hasAnyRole]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

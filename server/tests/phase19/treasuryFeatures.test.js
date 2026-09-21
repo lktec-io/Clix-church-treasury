@@ -6,6 +6,9 @@ import { computePledgeSchedule } from '../../src/modules/pledges/pledgeSchedule.
 import { titheComplianceStatus } from '../../src/modules/contributors/titheCompliance.js';
 import { hardDelete, refuseDelete, blocker, parseForeignKeyReference } from '../../src/db/deleteGuards.js';
 import { runInBackground } from '../../src/utils/backgroundJob.js';
+import { requireApprovalRole, APPROVAL_ROLES } from '../../src/middleware/rbac.js';
+import { permissionsRepository } from '../../src/modules/permissions/permissions.repository.js';
+import { registerSchemaCache, invalidateSchemaCaches } from '../../src/db/schemaGuard.js';
 import ExcelJS from 'exceljs';
 import { toCsv, toExcelBuffer } from '../../src/modules/reports/exporters.js';
 
@@ -317,5 +320,109 @@ describe('delete refusal details', () => {
   it('omits the count when the number is genuinely unknown', () => {
     expect(blocker('transactions')).toEqual({ entity: 'transactions' });
     expect(blocker('transactions', 0)).toEqual({ entity: 'transactions', count: 0 });
+  });
+});
+
+// WHO MAY DECIDE AN EXPENSE. Only an Admin (Super Administrator) or a Senior
+// Treasurer, re-read from the database on every request — never from the JWT.
+describe('requireApprovalRole', () => {
+  const runGate = async (roles, action = 'approve an expense') => {
+    const original = permissionsRepository.listRoleNamesForUser;
+    permissionsRepository.listRoleNamesForUser = async () => roles;
+    try {
+      const req = { auth: { userId: 7 } };
+      let error = null;
+      let passed = false;
+      await requireApprovalRole(action)(req, {}, (err) => {
+        if (err) error = err;
+        else passed = true;
+      });
+      return { error, passed, req };
+    } finally {
+      permissionsRepository.listRoleNamesForUser = original;
+    }
+  };
+
+  it('names the two authorised roles', () => {
+    expect(APPROVAL_ROLES).toEqual(['Super Administrator', 'Senior Treasurer']);
+  });
+
+  it.each(APPROVAL_ROLES)('lets a %s through', async (role) => {
+    const { passed, error } = await runGate([role]);
+    expect(error).toBeNull();
+    expect(passed).toBe(true);
+  });
+
+  it('lets a user through on the strength of one qualifying role among several', async () => {
+    const { passed } = await runGate(['Viewer', 'Senior Treasurer', 'Auditor']);
+    expect(passed).toBe(true);
+  });
+
+  // Treasurer and Approver each hold one half of the workflow but neither is
+  // an authorised decider under this church's policy.
+  it.each([['Treasurer'], ['Approver'], ['Assistant Treasurer'], ['Auditor'], ['Viewer']])(
+    'refuses a %s with 403',
+    async (role) => {
+      const { error, passed } = await runGate([role]);
+      expect(passed).toBe(false);
+      expect(error.status).toBe(403);
+      expect(error.code).toBe('FORBIDDEN');
+    }
+  );
+
+  it('states the gap: what is needed, what the user has, and what to do', async () => {
+    const { error } = await runGate(['Treasurer'], 'mark an expense paid');
+    expect(error.message).toContain('Super Administrator or Senior Treasurer');
+    expect(error.message).toContain('mark an expense paid');
+    expect(error.message).toContain('Treasurer');
+    expect(error.message).toMatch(/ask an administrator/i);
+  });
+
+  it('handles a user with no roles at all without crashing', async () => {
+    const { error } = await runGate([]);
+    expect(error.status).toBe(403);
+    expect(error.message).toContain('none');
+  });
+
+  it('passes a database failure on as an error rather than a silent allow', async () => {
+    const original = permissionsRepository.listRoleNamesForUser;
+    permissionsRepository.listRoleNamesForUser = async () => {
+      throw Object.assign(new Error('no such table'), { code: 'ER_NO_SUCH_TABLE' });
+    };
+    try {
+      let seen = null;
+      let passed = false;
+      await requireApprovalRole('approve')({ auth: { userId: 1 } }, {}, (err) => {
+        if (err) seen = err;
+        else passed = true;
+      });
+      expect(passed).toBe(false);
+      expect(seen.code).toBe('ER_NO_SUCH_TABLE');
+    } finally {
+      permissionsRepository.listRoleNamesForUser = original;
+    }
+  });
+});
+
+// A repository that remembered "this column does not exist" used to keep
+// acting on that belief until the process restarted — writing contributions
+// WITHOUT the migrated columns long after the migration had run.
+describe('schema cache invalidation', () => {
+  it('clears every registered cache', () => {
+    let a = 'stale';
+    let b = 'stale';
+    registerSchemaCache(() => { a = 'fresh'; });
+    registerSchemaCache(() => { b = 'fresh'; });
+    invalidateSchemaCaches();
+    expect(a).toBe('fresh');
+    expect(b).toBe('fresh');
+  });
+
+  it('clears the rest even when one resetter throws', () => {
+    let reached = false;
+    registerSchemaCache(() => { throw new Error('boom'); });
+    registerSchemaCache(() => { reached = true; });
+    expect(() => invalidateSchemaCaches()).not.toThrow();
+    expect(reached).toBe(true);
   });
 });

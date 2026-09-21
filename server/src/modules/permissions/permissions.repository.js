@@ -64,6 +64,26 @@ class PermissionsRepository {
     );
     return rows.map((r) => r.name);
   }
+
+  // Role NAMES a user holds. Authorization in this codebase is normally
+  // expressed as permissions, not roles, and should stay that way — this
+  // exists for the one rule the church states in terms of roles rather than
+  // capabilities ("only an Admin or a Senior Treasurer may approve"), and
+  // for telling a blocked user which role they would need.
+  //
+  // Read from the database on every request, never from the JWT, exactly as
+  // listForUser is (docs/SECURITY_ARCHITECTURE.md §3): a role removed a
+  // second ago must take effect on the next request, not when the access
+  // token happens to expire.
+  async listRoleNamesForUser(userId, connection) {
+    const [rows] = await this.runner(connection).query(
+      `SELECT DISTINCT r.name FROM roles r
+       INNER JOIN user_roles ur ON ur.role_id = r.id
+       WHERE ur.user_id = ?`,
+      [userId]
+    );
+    return rows.map((r) => r.name);
+  }
 }
 
 export const permissionsRepository = new PermissionsRepository();
