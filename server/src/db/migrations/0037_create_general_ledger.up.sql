@@ -1,4 +1,4 @@
-CREATE TABLE remittance_rules (
+CREATE TABLE IF NOT EXISTS remittance_rules (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id BIGINT UNSIGNED NOT NULL,
   fund_id BIGINT UNSIGNED NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE remittance_rules (
   CONSTRAINT chk_remittance_rules_percentage CHECK (percentage_to_remit >= 0 AND percentage_to_remit <= 100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE remittance_ledgers (
+CREATE TABLE IF NOT EXISTS remittance_ledgers (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id BIGINT UNSIGNED NOT NULL,
   financial_period_id BIGINT UNSIGNED NOT NULL,
