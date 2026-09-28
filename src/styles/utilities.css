@@ -287,6 +287,21 @@
   background-color: var(--color-primary);
 }
 
+/* The panel's white above is INHERITED, and inheritance loses to any rule
+   that targets an element directly — typography.css sets `h1, h2, h3 { color:
+   var(--text-heading) }` globally, which is near-black and wins here. That is
+   why the slideshow headline rendered dark over the photo while the lede and
+   the trust points, which set their own colour, stayed white.
+   Scoped to the panel, which closes before .auth-split__form, so the login
+   card's own headings keep the normal ink colour. Solid #ffffff rather than
+   var(--text): this text sits on a photograph in every theme, so it must not
+   follow the theme's ink colour. */
+.auth-split__panel h1,
+.auth-split__panel h2,
+.auth-split__panel h3 {
+  color: #ffffff;
+}
+
 /* Slide layer. Each .auth-slide is a full-bleed photo; the scrim lives in a
    SEPARATE layer above them (.auth-split__scrim) so a crossfade between two
    photos never fades the scrim with them — which would flash the raw image
