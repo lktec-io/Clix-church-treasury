@@ -521,7 +521,7 @@ table.data-table {
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   font-size: 22px;
-  color: #ffffff;
+  color: var(--text);
 }
 
 .integrity-strip.is-balanced .integrity-strip__icon {
@@ -700,7 +700,7 @@ table.data-table {
 }
 
 .entry-total__term.is-net .entry-total__value {
-  color: #ffffff;
+  color: var(--text);
 }
 
 .entry-total__op {
@@ -921,7 +921,7 @@ table.data-table {
 
 .btn.btn--approve:hover:not(:disabled) {
   background: var(--color-accent);
-  color: #ffffff;
+  color: var(--text);
 }
 
 .btn.btn--reject {
@@ -932,5 +932,5 @@ table.data-table {
 
 .btn.btn--reject:hover:not(:disabled) {
   background: var(--color-danger);
-  color: #ffffff;
+  color: var(--text);
 }

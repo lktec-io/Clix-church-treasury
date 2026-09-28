@@ -64,7 +64,7 @@
 .balance-tile--emphasis {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--text);
 }
 
 .balance-tile__label {
@@ -94,7 +94,7 @@
 }
 
 .balance-tile--emphasis .balance-tile__value {
-  color: #ffffff;
+  color: var(--text);
 }
 
 .balance-tile__currency {
@@ -106,7 +106,7 @@
 
 .balance-tile--emphasis .balance-tile__currency,
 .balance-tile--emphasis .balance-tile__caption {
-  color: #ffffff;
+  color: var(--text);
 }
 
 .balance-tile__caption {
@@ -140,7 +140,7 @@
 }
 
 .balance-tile--emphasis .balance-tile__line dt {
-  color: #ffffff;
+  color: var(--text);
 }
 
 .balance-tile__line dd {
@@ -158,7 +158,7 @@
 }
 
 .balance-tile--emphasis .balance-tile__line dd {
-  color: #ffffff;
+  color: var(--text);
 }
 
 /* ---------- Sections ---------- */

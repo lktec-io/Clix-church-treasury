@@ -142,7 +142,7 @@
 /* Headline balance card: the one solid emerald surface on a white page. */
 .hero-card {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--text);
   border-radius: var(--radius-sm);
   border-top: 3px solid var(--color-gold);
   margin-bottom: 16px;
@@ -171,7 +171,7 @@
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   margin-top: 6px;
-  color: #ffffff;
+  color: var(--text);
 }
 
 @media (max-width: 480px) {
@@ -183,7 +183,7 @@
 
 .hero-card__meta {
   font-size: 13px;
-  color: #ffffff;
+  color: var(--text);
   margin-top: 4px;
 }
 
@@ -196,7 +196,7 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: #ffffff;
+  color: var(--text);
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -250,7 +250,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #ffffff;
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -258,7 +258,7 @@
   font-size: 17px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: #ffffff;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 
@@ -345,7 +345,7 @@
 }
 .badge__remove:hover {
   background: var(--color-danger);
-  color: #ffffff;
+  color: var(--text);
 }
 .badge__remove:focus-visible {
   outline: none;
@@ -473,7 +473,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--color-accent);
-  color: #ffffff;
+  color: var(--text);
   font-size: 20px;
 }
 
@@ -671,7 +671,7 @@
   height: 84px;
   border-radius: var(--radius-sm);
   background: var(--color-accent);
-  color: #ffffff;
+  color: var(--text);
   font-size: 44px;
 }
 
@@ -950,7 +950,7 @@
 .icon-btn.icon-btn--danger:hover:not(:disabled) {
   background: var(--color-danger);
   border-color: var(--color-danger);
-  color: #ffffff;
+  color: var(--text);
 }
 
 .icon-btn:disabled {
