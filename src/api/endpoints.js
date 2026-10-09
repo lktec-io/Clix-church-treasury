@@ -240,6 +240,9 @@ const REPORT_PATHS = {
   trialBalance: () => '/reports/trial-balance',
   // Cockpit aggregates: collections split, department giving, mobile-money fees.
   dashboardInsights: () => '/reports/dashboard-insights',
+  // Rolling monthly posted income/expense totals (GROUP BY in SQL, so never
+  // truncated) — the dashboard's bar trend.
+  monthlyTrends: () => '/reports/monthly-trends',
 };
 
 export const reportsApi = {

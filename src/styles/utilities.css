@@ -4,6 +4,20 @@
    the staff and member login/register screens.
    ========================================================================== */
 
+/* Readable by screen readers, invisible on screen (chart table captions,
+   live announcements, loading labels). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ---------- Toasts ---------- */
 .toast-stack {
   position: fixed;
@@ -30,21 +44,29 @@
   align-items: flex-start;
   gap: 10px;
   width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--text-muted);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-lg);
+  background: var(--surface-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
   padding: 13px 13px 13px 15px;
   font-size: 14px;
   pointer-events: auto;
-  transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
+  transition: background-color var(--motion-slow) var(--ease-premium);
 }
 
+/* The toast's type is carried by a tinted icon chip rather than a coloured
+   left edge. */
 .toast__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  margin-top: 1px;
-  font-size: 17px;
+  width: 28px;
+  height: 28px;
+  margin-top: -3px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted);
+  color: var(--icon);
+  font-size: 16px;
 }
 
 .toast__message {
@@ -67,28 +89,20 @@
   background: var(--bg-muted);
 }
 
-.toast--success {
-  border-left-color: var(--color-success);
-}
 .toast--success .toast__icon {
+  background: var(--color-success-bg);
   color: var(--color-success);
 }
-.toast--error {
-  border-left-color: var(--color-danger);
-}
 .toast--error .toast__icon {
+  background: var(--color-danger-bg);
   color: var(--color-danger);
 }
-.toast--warning {
-  border-left-color: var(--color-warning);
-}
 .toast--warning .toast__icon {
+  background: var(--color-warning-bg);
   color: var(--color-warning);
 }
-.toast--info {
-  border-left-color: var(--color-primary);
-}
 .toast--info .toast__icon {
+  background: var(--color-lavender-soft);
   color: var(--color-primary);
 }
 
@@ -121,8 +135,9 @@
   max-height: calc(100dvh - 24px);
   overflow-y: auto;
   background: var(--glass-panel-bg);
+  color: var(--text-primary);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   transition: background-color var(--motion-slow) var(--ease-premium);
 }
 
@@ -164,10 +179,12 @@
 }
 
 .modal__blockers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -180,10 +197,6 @@
   padding: 9px 12px;
   font-size: 14px;
   background: var(--bg-muted);
-}
-
-.modal__blockers li + li {
-  border-top: 1px solid var(--border);
 }
 
 .modal__blocker-label {
@@ -237,9 +250,9 @@
   width: 100%;
   max-width: 400px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--color-primary);
+  color: var(--text-primary);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   padding: 32px;
 }
 
@@ -262,16 +275,16 @@
   min-height: 100svh;
 }
 
-/* Three stacked layers, painted back to front:
-     1. the element itself  — solid navy + hero gradient (always present)
-     2. ::before            — the /loginpage.jpg photo under a navy scrim
-     3. ::after             — a soft green bloom
-     4. content (z-index 1) — brand, headline, lede, trust points
+/* Stacked layers, painted back to front:
+     1. the element itself   — solid emerald hero fill (always present)
+     2. .auth-slide          — the slideshow photographs
+     3. .auth-split__scrim   — the darkening scrim
+     4. content (z-index 1)  — brand, headline, lede, trust points
 
    Layer 1 is deliberately a complete, finished background on its own. The
-   photo in layer 2 is an enhancement, not a dependency: until loginpage.jpg
-   is added to /public the panel renders as a darkened hero gradient, which
-   is a correct-looking design rather than a broken one. */
+   photos are an enhancement, not a dependency: if one fails to load the
+   panel renders as the solid hero fill, which is a correct-looking design
+   rather than a broken one. */
 .auth-split__panel {
   position: relative;
   isolation: isolate;
@@ -282,24 +295,22 @@
   gap: 18px;
   /* Extra bottom padding clears the absolutely-positioned pagination dots. */
   padding: 34px 24px 62px;
-  color: #ffffff;
+  color: var(--text-on-image);
   background-image: var(--gradient-hero);
   background-color: var(--color-primary);
 }
 
-/* The panel's white above is INHERITED, and inheritance loses to any rule
+/* The panel's colour above is INHERITED, and inheritance loses to any rule
    that targets an element directly — typography.css sets `h1, h2, h3 { color:
-   var(--text-heading) }` globally, which is near-black and wins here. That is
-   why the slideshow headline rendered dark over the photo while the lede and
-   the trust points, which set their own colour, stayed white.
+   var(--text-heading) }` globally, which is near-black and wins here.
    Scoped to the panel, which closes before .auth-split__form, so the login
-   card's own headings keep the normal ink colour. Solid #ffffff rather than
-   var(--text): this text sits on a photograph in every theme, so it must not
+   card's own headings keep the normal ink colour. --text-on-image rather
+   than --text: this text sits on a photograph in every theme, so it must not
    follow the theme's ink colour. */
 .auth-split__panel h1,
 .auth-split__panel h2,
 .auth-split__panel h3 {
-  color: #ffffff;
+  color: var(--text-on-image);
 }
 
 /* Slide layer. Each .auth-slide is a full-bleed photo; the scrim lives in a
@@ -328,13 +339,8 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image:
-    /* Text-bed, softened from 0.82 to 0.55 at the anchor and pulled in to
-       fade out by 58% — the photo now reads across roughly the right half
-       of the panel instead of a third of it. */
-    linear-gradient(100deg, rgba(4, 12, 32, 0.55) 0%, rgba(4, 12, 32, 0.28) 30%, rgba(4, 12, 32, 0) 58%),
-    /* Even wash, per the specified 0.45 → 0.55 ramp. */
-    linear-gradient(to bottom, rgba(49, 46, 129, 0.45), rgba(30, 27, 75, 0.55));
+  /* A dark text-bed anchored where the copy sits, over an even wash. */
+  background-image: var(--image-scrim-side), var(--image-scrim-wash);
 }
 
 /* On narrow screens the panel is short and the text spans its full width, so
@@ -342,9 +348,7 @@
    vertical one. */
 @media (max-width: 899px) {
   .auth-split__scrim {
-    background-image:
-      linear-gradient(to bottom, rgba(4, 12, 32, 0.24) 0%, rgba(4, 12, 32, 0.58) 100%),
-      linear-gradient(to bottom, rgba(49, 46, 129, 0.45), rgba(30, 27, 75, 0.55));
+    background-image: var(--image-scrim-bottom), var(--image-scrim-wash);
   }
 }
 
@@ -368,13 +372,13 @@
   padding: 0;
   border: none;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.34);
+  background: var(--color-on-image-soft);
   cursor: pointer;
   transition: background-color var(--motion-base) var(--ease-premium);
 }
 
 .auth-slides__dot:hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--color-on-image-hover);
 }
 
 .auth-slides__dot.is-active {
@@ -393,29 +397,6 @@
   }
 }
 
-/* A gold rule on the panel's edge where it meets the form: along the
-   bottom when the panel is stacked above it, down the right side when the
-   two sit side by side. */
-.auth-split__panel::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  background: var(--color-gold);
-  pointer-events: none;
-}
-
-@media (min-width: 900px) {
-  .auth-split__panel::after {
-    left: auto;
-    top: 0;
-    width: 3px;
-    height: auto;
-  }
-}
-
 /* Lifts the PANEL CONTENT above the backdrop layers.
  *
  * The three exclusions are load-bearing, not tidiness. This rule is declared
@@ -430,7 +411,7 @@
  * re-ordering the file later cannot resurrect the bug.
  *
  * Paint order inside the panel: .auth-slide (auto) → .auth-split__scrim
- * (auto, later in DOM) → ::after bloom → content and dots (z-index 1 / 2).
+ * (auto, later in DOM) → content and dots (z-index 1 / 2).
  */
 .auth-split__panel > *:not(.auth-slide):not(.auth-split__scrim):not(.auth-slides__dots) {
   position: relative;
@@ -456,7 +437,6 @@
   border-radius: var(--radius-sm);
   font-size: 19px;
   background: var(--color-primary);
-  border: 1px solid rgba(var(--color-gold-rgb), 0.6);
   color: var(--color-gold);
 }
 
@@ -479,21 +459,19 @@
   max-width: 15ch;
   /* Small lift against a photograph: the scrim carries the contrast, this
      just keeps the edges crisp where a bright highlight sits behind. */
-  text-shadow: 0 1px 4px rgba(4, 12, 32, 0.85), 0 2px 18px rgba(4, 12, 32, 0.6);
+  text-shadow: var(--image-headline-shadow);
 }
 
-/* Solid #ffffff, not a translucent white. Against a photograph, alpha text
-   picks up whatever is behind it and turns muddy; the hierarchy is carried
-   by size and weight instead. The shadow is what replaces the contrast the
-   softened scrim gave up — a tight dark halo that only shows where a bright
-   part of the image sits directly behind a glyph. */
+/* Solid on-image white, not a translucent white. Against a photograph,
+   alpha text picks up whatever is behind it and turns muddy; the hierarchy
+   is carried by size and weight instead. */
 .auth-split__lede {
   margin: 0;
   font-size: 14.5px;
   line-height: 1.6;
-  color: #ffffff;
+  color: var(--text-on-image);
   max-width: 46ch;
-  text-shadow: 0 1px 3px rgba(4, 12, 32, 0.8), 0 2px 14px rgba(4, 12, 32, 0.55);
+  text-shadow: var(--image-text-shadow);
 }
 
 .auth-split__points {
@@ -511,14 +489,16 @@
   gap: 10px;
   font-size: 13.5px;
   font-weight: 600;
-  color: #ffffff;
-  text-shadow: 0 1px 3px rgba(4, 12, 32, 0.8);
+  color: var(--text-on-image);
+  text-shadow: var(--image-text-shadow);
 }
 
+/* Fixed brighter green: these icons sit on the photograph in every theme,
+   and the light-theme accent is too dark to read there. */
 .auth-split__point svg {
   flex-shrink: 0;
   font-size: 15px;
-  color: var(--color-accent);
+  color: var(--color-success-on-dark);
 }
 
 .auth-split__form {
@@ -528,11 +508,6 @@
   justify-content: center;
   padding: 28px 20px 40px;
   background: var(--bg);
-}
-
-.auth-split__form .auth-card {
-  border: 1px solid rgba(var(--color-primary-rgb), 0.07);
-  box-shadow: var(--shadow-lg);
 }
 
 @media (min-width: 900px) {
@@ -579,7 +554,10 @@
   height: 36px;
   border-radius: var(--radius-sm);
   background: var(--gradient-primary);
-  color: var(--sidebar-active-text);
+  /* Gold seal on emerald, like the sidebar mark. (It used
+     --sidebar-active-text, which is emerald in the light theme — an
+     emerald icon on an emerald tile.) */
+  color: var(--color-gold);
   font-weight: 700;
   flex-shrink: 0;
 }

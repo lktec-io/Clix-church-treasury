@@ -1,25 +1,80 @@
 /* ==========================================================================
-   TYPOGRAPHY — Nunito, globally, everywhere. No page or shared component
+   TYPOGRAPHY — Cipher, globally, everywhere. No page or shared component
    may reference another font-family; every element that renders text
-   inherits from html/body here.
+   inherits --font-primary from here (variables.css).
+
+   CIPHER FACES. One @font-face per weight the design system uses
+   (--font-weight-regular … --font-weight-heavy). Each face tries a locally
+   installed Cipher first, then the self-hosted file in /public/fonts/cipher/.
+   If a face cannot be resolved the browser moves to the next family in
+   --font-primary (Nunito, bundled) for that weight only, so a missing file
+   degrades to a clean sans rather than invisible or synthesised text.
+   font-display: swap keeps text visible while Cipher downloads.
    ========================================================================== */
 
+@font-face {
+  font-family: 'Cipher';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Cipher'), local('Cipher Regular'), local('Cipher-Regular'),
+    url('/fonts/cipher/Cipher-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cipher';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local('Cipher Medium'), local('Cipher-Medium'), url('/fonts/cipher/Cipher-Medium.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cipher';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Cipher SemiBold'), local('Cipher-SemiBold'), url('/fonts/cipher/Cipher-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cipher';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Cipher Bold'), local('Cipher-Bold'), url('/fonts/cipher/Cipher-Bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cipher';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: local('Cipher ExtraBold'), local('Cipher-ExtraBold'), url('/fonts/cipher/Cipher-ExtraBold.woff2') format('woff2');
+}
+
+/* Form controls and tables do not inherit font-family from body in every
+   browser; SVG chart text and native option lists neither. Listed here once
+   so no surface can fall back to the UA default. */
 html,
 body,
 button,
 input,
 textarea,
 select,
+optgroup,
+option,
 table,
 th,
-td {
+td,
+svg text {
   font-family: var(--font-primary);
 }
 
 body {
   font: var(--font-weight-regular) 15px/1.6 var(--font-primary);
-  color: var(--text);
-  background: var(--bg);
+  color: var(--text-primary);
+  background: var(--page-bg);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -29,10 +84,7 @@ body {
   transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
 }
 
-/* Headings sit at 800 rather than 700 and tighten their tracking — the
-   brief's "bold, heavy corporate presentation" for titles. The colour is
-   --text-heading, which is near-black charcoal rather than raw black,
-   also per the brief. Nunito is retained throughout. */
+/* Headings: heavy weight, tightened tracking, theme ink. */
 h1,
 h2,
 h3 {
@@ -69,6 +121,15 @@ textarea {
   color: inherit;
 }
 
+/* Placeholders: a theme token at full opacity. Browsers default to a
+   translucent grey of the CURRENT text colour, which is how a dark-theme
+   placeholder ended up near-invisible and a light-theme one too dark to tell
+   from a typed value. */
+::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
+}
+
 /* Financial figures always read as tabular numerals so amounts in a column
    align digit-for-digit. */
 .tabular-nums {
@@ -82,4 +143,3 @@ textarea {
   font-size: 12px;
   color: var(--text-muted);
 }
-

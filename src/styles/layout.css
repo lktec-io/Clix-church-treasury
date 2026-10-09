@@ -93,13 +93,15 @@
   justify-content: space-between;
   gap: 10px;
   padding: 14px 20px;
-  background: var(--gradient-sidebar);
-  border-bottom: 1px solid var(--sidebar-border);
+  /* Opaque: it is sticky, so content scrolls underneath it. (It used
+     --gradient-sidebar, which resolves to `none` — a transparent bar.) */
+  background: var(--color-navbar-bg);
+  box-shadow: var(--shadow-bar);
   color: var(--sidebar-text-strong);
   position: sticky;
   top: 0;
   z-index: 10;
-  transition: border-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
+  transition: background-color var(--motion-slow) var(--ease-premium), color var(--motion-slow) var(--ease-premium);
 }
 
 @media (max-width: 480px) {
@@ -127,13 +129,11 @@
 }
 
 .member-topbar .btn--secondary {
-  background: var(--sidebar-hover-bg);
+  background: var(--bg-muted);
   color: var(--sidebar-text-strong);
-  border-color: var(--sidebar-border);
 }
 .member-topbar .btn--secondary:hover {
-  background: var(--sidebar-hover-bg);
-  filter: brightness(1.15);
+  background: var(--color-lavender);
 }
 
 .member-greeting {
@@ -157,8 +157,8 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--glass-panel-bg);
-  border-top: 1px solid var(--border);
+  background: var(--color-navbar-bg);
+  box-shadow: var(--shadow-bar-up);
   z-index: 10;
 }
 
@@ -167,9 +167,8 @@
     position: static;
     max-width: 640px;
     margin: 0 auto 20px;
-    border-top: none;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
     padding: 6px;
     gap: 6px;
   }

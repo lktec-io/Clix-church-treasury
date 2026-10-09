@@ -96,7 +96,7 @@ export function sumMoneyStrings(values) {
 //
 // A plain "YYYY-MM-DD" (a DATE column) is parsed as a calendar date with no
 // time, so it can never roll over to the previous or next day.
-function parseServerDate(value) {
+export function parseServerDate(value) {
   if (value instanceof Date) return value;
   const text = String(value);
   const dateTime = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(text);

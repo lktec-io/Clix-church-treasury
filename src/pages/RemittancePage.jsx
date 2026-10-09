@@ -404,17 +404,12 @@ export default function RemittancePage() {
                   </thead>
                   <tbody>
                     {rules.map((rule) => (
-                      <motion.tr
+                      <tr
                         key={rule.id}
                         // A just-created rule flashes green once, so the new
                         // row is findable in a list the treasurer did not
-                        // scroll to.
-                        animate={
-                          justSavedRuleId === rule.id
-                            ? { backgroundColor: ['rgba(16,185,129,0.22)', 'rgba(16,185,129,0)'] }
-                            : {}
-                        }
-                        transition={{ duration: 2 }}
+                        // scroll to (.row-flash, Accounting.css).
+                        className={justSavedRuleId === rule.id ? 'row-flash' : undefined}
                       >
                         <td>{rule.fund_name}</td>
                         <td>{rule.higher_body_name}</td>
@@ -424,7 +419,7 @@ export default function RemittancePage() {
                             {t(rule.status === 'active' ? 'common.active' : 'common.inactive')}
                           </span>
                         </td>
-                      </motion.tr>
+                      </tr>
                     ))}
                   </tbody>
                 </table>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiShield } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiShield } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLocale } from '../../i18n/LocaleContext.jsx';
 
@@ -21,7 +21,9 @@ export default function PlatformLoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
+  // Stored exactly as typed or pasted; see LoginPage.jsx.
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const handleSubmit = async (e) => {
@@ -29,7 +31,8 @@ export default function PlatformLoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const session = await platformLogin(form);
+      // Email trimmed (pasted whitespace), password sent exactly as entered.
+      const session = await platformLogin({ email: form.email.trim(), password: form.password });
       // Defence in depth — the server already refuses to issue a session
       // without platform.manage, so this should be unreachable; it exists
       // so a future server-side regression can't silently drop a
@@ -61,30 +64,53 @@ export default function PlatformLoginPage() {
         </div>
         <div className="auth-card__subtitle">{t('platform.login.subtitle')}</div>
         {error && <div className="alert alert--error">{error}</div>}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} method="post">
           <div className="field">
             <label htmlFor="platformEmail">{t('auth.login.email')}</label>
             <input
               id="platformEmail"
+              name="email"
               type="email"
+              inputMode="email"
               value={form.email}
               onChange={handleChange('email')}
-              autoComplete="email"
+              placeholder={t('auth.login.emailPlaceholder')}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
             />
           </div>
           <div className="field">
             <label htmlFor="platformPassword">{t('auth.login.password')}</label>
-            <input
-              id="platformPassword"
-              type="password"
-              value={form.password}
-              onChange={handleChange('password')}
-              autoComplete="current-password"
-              required
-            />
+            <div className="field__control">
+              <input
+                id="platformPassword"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+                onChange={handleChange('password')}
+                placeholder={t('auth.login.passwordPlaceholder')}
+                autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+              />
+              <button
+                type="button"
+                className="field__reveal"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')}
+                aria-pressed={showPassword}
+                aria-controls="platformPassword"
+              >
+                {showPassword ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
+              </button>
+            </div>
           </div>
-          <button type="submit" className="btn btn--primary" disabled={submitting}>
+          <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>
             {submitting ? t('common.loading') : t('platform.login.submit')}
           </button>
         </form>

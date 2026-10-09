@@ -16,12 +16,15 @@
   width: var(--sidebar-width);
   flex-shrink: 0;
   order: 1;
+  /* The panel itself never scrolls in either axis — only .app-sidebar__nav
+     scrolls, vertically. `clip` after `hidden` so browsers that support it
+     do not even create a scroll container here. */
   overflow: hidden;
-  /* Flat, opaque soft-slate column (--color-sidebar-bg). No blur, gradient
-     or elevation on desktop — a single hairline separates it from the
-     white workspace. */
+  overflow: clip;
+  /* Opaque column separated from the tinted canvas by its own surface
+     colour and a soft edge shadow — no border line. */
   background: var(--color-sidebar-bg);
-  border-right: 1px solid var(--sidebar-border);
+  box-shadow: var(--shadow-sidebar);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -38,14 +41,11 @@
   /* Square edges: a flat panel flush against the viewport edge. The mobile
      drawer adds a shadow below, where it genuinely floats over content. */
   border-radius: 0;
-  /* border-color only, deliberately — `width` is already animated inline
-     by Framer Motion (Layout.jsx's collapse/expand), so it's left out of
-     this transition to avoid two animation systems fighting over the same
-     property. background-image (the gradient) isn't reliably animatable
-     across browsers, so a theme switch still snaps the sidebar's gradient
-     — border-color is the part of this surface CSS transitions can
-     actually smooth. */
-  transition: border-color var(--motion-slow) var(--ease-premium);
+  /* background-color only, deliberately — `width` is already animated
+     inline by Framer Motion (Layout.jsx's collapse/expand), so it's left out
+     of this transition to avoid two animation systems fighting over the
+     same property. */
+  transition: background-color var(--motion-slow) var(--ease-premium);
 }
 
 /* No backdrop-filter: an opaque panel has nothing to refract, and blur on a
@@ -116,15 +116,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  /* Same height as the topbar row it sits under, so the two hairlines align. */
   min-height: 64px;
+  min-width: 0;
   padding: 0 18px 0 20px;
   font-weight: 800;
   font-size: 15px;
   letter-spacing: 0.01em;
   color: var(--sidebar-text-strong);
-  border-bottom: 1px solid var(--sidebar-border);
   white-space: nowrap;
+}
+
+/* The product name truncates rather than pushing the brand row (and with it
+   the panel) wider than its column. */
+.app-sidebar__brand-text > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-sidebar__brand-text {
@@ -141,10 +148,9 @@
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  /* Emerald seal with a gold initial and gold hairline — the one place the
-     two brand colours meet, like an embossed bank monogram. */
+  /* Emerald seal with a gold initial — the one place the two brand colours
+     meet, like an embossed bank monogram. */
   background: var(--color-primary);
-  border: 1px solid rgba(var(--color-gold-rgb), 0.55);
   color: var(--color-gold);
   font-weight: var(--font-weight-heavy);
   flex-shrink: 0;
@@ -198,30 +204,56 @@
   }
 }
 
+/* THE ONLY SCROLLER IN THE SIDEBAR — vertical only.
+   A horizontal scrollbar can only appear if something inside is wider than
+   the column, so the fix is two-sided: this container refuses to scroll on
+   x, AND every level below it (group → motion wrapper → link → label) is
+   allowed to shrink (min-width: 0) so nothing is wider in the first place.
+   The slide-in animation's translateX on each link is clipped here too. */
 .app-sidebar__nav {
-  flex: 1;
-  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
   overflow-x: hidden;
+  overflow-y: auto;
   /* The drawer's own list scrolls; it must never hand the gesture to the
      page underneath when it reaches its end. */
   overscroll-behavior: contain;
-  padding: 14px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-control-border) transparent;
+  padding: 14px 10px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
 }
 
+.app-sidebar.is-collapsed .app-sidebar__nav {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.app-sidebar__nav::-webkit-scrollbar {
+  width: 6px;
+  height: 0;
+}
+
+.app-sidebar__nav::-webkit-scrollbar-thumb {
+  background: var(--sidebar-control-border);
+  border-radius: var(--radius-lg);
+}
+
+/* Groups are separated by spacing (the nav's gap), not a rule. */
 .app-sidebar__group {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding-top: 12px;
-  border-top: 1px solid var(--sidebar-border);
+  gap: 2px;
+  min-width: 0;
 }
 
-.app-sidebar__group:first-child {
-  padding-top: 0;
-  border-top: none;
+/* The Framer Motion wrapper around each link/toggle. */
+.app-sidebar__group > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* "Treasury setup" disclosure: styled as a quiet link row with a caret. */
@@ -230,11 +262,13 @@
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-width: 0;
   min-height: 42px;
-  padding: 10px 20px;
+  padding: 10px 12px;
   border: none;
+  border-radius: var(--radius-lg);
   background: transparent;
-  color: var(--color-text-on-sidebar);
+  color: var(--sidebar-text);
   font: inherit;
   font-size: 12px;
   font-weight: 800;
@@ -288,27 +322,41 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
   min-height: 42px;
-  /* Full-bleed rows: the active indicator sits on the panel's own edge. */
-  padding: 10px 20px;
-  border-radius: 0;
-  color: var(--color-text-on-sidebar);
+  /* Inset rows inside the nav's 10px gutter, with soft corners — the
+     active state is a filled bed rather than an edge rule. */
+  padding: 9px 12px;
+  border-radius: var(--radius-lg);
+  color: var(--sidebar-text);
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.3;
   transition: background var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
 }
 
-/* The gold indicator rule. Always present at zero height so activation
-   draws it from the centre rather than popping it in. */
+/* The label is the only flexible part of a row. It may shrink to zero and
+   wraps (never truncates — "Makusanyo (Zaka na Sadaka)" cut to "Makusanyo
+   (Za…" loses the meaning) so a long translation grows the row downward
+   instead of pushing the column sideways. */
+.app-sidebar__link span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Gold activity marker: a short bar inside the row's own padding. Always
+   present at zero height so activation draws it from the centre. */
 .app-sidebar__link::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: 3px;
   top: 50%;
   width: 3px;
   height: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-gold);
   transform: translateY(-50%);
   transition: height var(--motion-base) var(--ease-premium);
@@ -356,7 +404,7 @@
 }
 
 .app-sidebar__link.is-active::before {
-  height: 100%;
+  height: 55%;
 }
 
 .app-sidebar__link.is-active svg {
@@ -376,10 +424,11 @@
 
 .app-sidebar__footer {
   padding: 14px 16px;
-  border-top: 1px solid var(--sidebar-border);
+  min-width: 0;
+  /* A recessed band instead of a top rule. */
+  background: var(--sidebar-hover-bg);
   font-size: 13px;
-  color: var(--color-text-on-sidebar);
-  white-space: nowrap;
+  color: var(--sidebar-text);
   overflow: hidden;
   /* Clears the iOS home indicator / Android gesture bar on the mobile
      drawer, which runs to `bottom: 0`. Collapses to the base 14px on any
@@ -448,8 +497,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  color: var(--text);
+  color: var(--text-on-primary);
   font-size: 13px;
   font-weight: 700;
 }
@@ -471,7 +519,6 @@
   padding: 2px;
   border-radius: var(--radius-sm);
   background: var(--sidebar-control-bg);
-  border: 1px solid var(--sidebar-control-border);
   align-self: flex-start;
 }
 
@@ -480,7 +527,7 @@
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-text-on-sidebar);
+  color: var(--sidebar-text);
   font: inherit;
   font-size: 11.5px;
   font-weight: 700;
@@ -508,9 +555,8 @@
 }
 
 /* ---------- Sidebar ghost button (logout) ---------- */
-/* A micro-framed ghost rather than .btn--secondary: that variant is built
-   for light page surfaces (white fill, navy text) and looked like a pasted-on
-   chip against the navy panel. */
+/* A filled sidebar control rather than .btn--secondary, so it belongs to
+   the panel rather than the page. */
 .sidebar-ghost-btn {
   display: inline-flex;
   align-items: center;
@@ -519,28 +565,25 @@
   width: 100%;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--sidebar-control-border);
+  border: none;
   background: var(--sidebar-control-bg);
-  color: var(--color-text-on-sidebar);
+  color: var(--sidebar-text);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
-    color var(--motion-fast) var(--ease-premium);
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
 }
 
 /* Logout tints toward danger on hover — the one destructive action in the
    sidebar should say so before it's clicked. */
 .sidebar-ghost-btn:hover {
   background: var(--color-danger-bg);
-  border-color: rgba(var(--color-danger-rgb), 0.4);
   color: var(--color-danger);
 }
 
 .sidebar-ghost-btn:focus-visible {
   outline: none;
-  border-color: var(--color-primary);
   box-shadow: var(--ring-accent-strong);
 }
 
@@ -563,16 +606,17 @@
   gap: 12px;
   padding: 0 24px;
   height: var(--navbar-height);
-  /* Opaque and flat: a hairline, no blur, no drop shadow. */
+  /* Opaque, no blur. A soft shadow (not a border line) lifts it over the
+     content scrolling underneath. */
   background: var(--color-navbar-bg);
-  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-bar);
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   z-index: 100;
   color: var(--text-heading);
-  transition: background-color var(--motion-slow) var(--ease-premium), border-color var(--motion-slow) var(--ease-premium);
+  transition: background-color var(--motion-slow) var(--ease-premium);
 }
 
 @media (max-width: 480px) {
@@ -638,31 +682,28 @@
   height: 40px;
   flex-shrink: 0;
   padding: 0;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
+  border-radius: var(--radius-lg);
+  border: none;
+  background: var(--bg-muted);
+  color: var(--icon);
   font-size: 17px;
   cursor: pointer;
-  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
-    color var(--motion-fast) var(--ease-premium);
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
 }
 
 .topbar-btn:hover {
-  background: var(--color-lavender-soft);
-  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: var(--color-lavender);
   color: var(--color-primary);
 }
 
 .topbar-btn:focus-visible {
   outline: none;
-  border-color: var(--color-primary);
   box-shadow: var(--ring-accent-strong);
 }
 
 /* An open menu keeps its trigger in the active (gold) state. */
 .topbar-btn[aria-expanded='true'] {
-  border-color: var(--color-gold);
+  background: var(--color-gold-soft);
   box-shadow: inset 0 -2px 0 var(--color-gold);
   color: var(--color-primary);
 }
@@ -692,7 +733,7 @@
   padding: 0 5px;
   border-radius: var(--radius-sm);
   background: var(--color-danger);
-  color: var(--text);
+  color: var(--text-on-danger);
   font-size: 10.5px;
   font-weight: 800;
   line-height: 18px;
@@ -729,7 +770,11 @@
 }
 
 .topbar-panel__item + .topbar-panel__item {
-  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.topbar-panel__item:hover {
+  background: var(--bg-muted);
 }
 
 .topbar-panel__item-icon {
@@ -765,9 +810,6 @@
   padding: 6px;
   border-radius: var(--radius-lg);
   background: var(--glass-panel-bg);
-  border: 1px solid var(--border);
-  /* Emerald cap: marks the panel as belonging to the bar above it. */
-  border-top: 2px solid var(--color-primary);
   box-shadow: var(--shadow-xl);
   color: var(--text);
   transform-origin: top right;
@@ -809,27 +851,24 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: none;
+  background: var(--bg-muted);
   font-size: 19px;
   cursor: pointer;
-  color: var(--text-muted);
-  transition: background-color var(--motion-fast) var(--ease-premium), border-color var(--motion-fast) var(--ease-premium),
-    color var(--motion-fast) var(--ease-premium);
+  color: var(--icon);
+  transition: background-color var(--motion-fast) var(--ease-premium), color var(--motion-fast) var(--ease-premium);
 }
 .app-topbar__menu-btn:hover {
-  background: var(--color-lavender-soft);
-  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: var(--color-lavender);
   color: var(--color-primary);
 }
 .app-topbar__menu-btn:focus-visible {
   outline: none;
-  border-color: var(--color-primary);
   box-shadow: var(--ring-accent-strong);
 }
 .app-topbar__menu-btn[aria-expanded='true'] {
-  border-color: var(--color-gold);
+  background: var(--color-gold-soft);
   box-shadow: inset 0 -2px 0 var(--color-gold);
 }
 
@@ -878,11 +917,10 @@
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   align-items: stretch;
-  /* White dock to match the light shell. It kept a translucent navy fill
-     with a green top edge — the last dark surface in the app once the
-     sidebar went light, and it read as a foreign bar pinned to the page. */
+  /* Same surface as the topbar, lifted off the content by an upward shadow
+     rather than a top border. */
   background: var(--color-navbar-bg);
-  border-top: 1px solid var(--border);
+  box-shadow: var(--shadow-bar-up);
   /* Clears the iOS home indicator / Android gesture bar, and collapses to
      0 on devices that have neither. */
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -1058,21 +1096,21 @@
   gap: 9px;
   height: 40px;
   padding: 0 10px 0 4px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: none;
+  background: var(--bg-muted);
   color: var(--text);
   font: inherit;
   cursor: pointer;
-  transition: border-color var(--motion-fast) var(--ease-premium);
+  transition: background-color var(--motion-fast) var(--ease-premium);
 }
 
 .profile-menu__trigger:hover {
-  border-color: rgba(var(--color-primary-rgb), 0.35);
+  background: var(--color-lavender);
 }
 
 .profile-menu__trigger[aria-expanded='true'] {
-  border-color: var(--color-gold);
+  background: var(--color-gold-soft);
   box-shadow: inset 0 -2px 0 var(--color-gold);
 }
 
@@ -1143,7 +1181,8 @@
 
 .profile-menu__header {
   padding: 16px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
   background: var(--color-lavender-soft);
 }
 
@@ -1173,8 +1212,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
 }
 
 .profile-menu__row-label {
@@ -1190,8 +1228,7 @@
   display: inline-flex;
   padding: 2px;
   border-radius: var(--radius-sm);
-  background: var(--color-gray-light);
-  border: 1px solid var(--border);
+  background: var(--bg-muted);
 }
 
 .seg-switch__opt {
@@ -1210,7 +1247,7 @@
 
 .seg-switch__opt.is-active {
   background: var(--color-gold);
-  color: var(--color-on-gold);
+  color: var(--text-on-gold);
 }
 
 .seg-switch__opt:focus-visible {

@@ -83,15 +83,18 @@ a,
   --sidebar-width: 240px;
   --sidebar-width-collapsed: 76px;
 
-  /* Nunito, self-hosted via @fontsource/nunito (main.jsx) — SIL Open Font
-     License, freely bundleable. Weights 400/500/600/700/800. */
-  --font-primary: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  /* THE ONE FONT STACK. Cipher is the product typeface (its @font-face lives
+     in typography.css and loads from /public/fonts/cipher/). Nunito —
+     self-hosted via @fontsource/nunito in main.jsx — is the metric fallback
+     that renders while Cipher loads, or if a weight is missing, so text is
+     never invisible and the layout never collapses to a system serif.
+     Weights used everywhere: 400/500/600/700/800. */
+  --font-primary: 'Cipher', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  /* Loaded in main.jsx. Used by headings, metric figures and the greeting
-     — the "heavy corporate" tier of the purple design language. */
+  /* Headings, metric figures and the greeting — the heavy tier. */
   --font-weight-heavy: 800;
 
   color-scheme: light dark;

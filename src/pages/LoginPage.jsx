@@ -78,6 +78,9 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, [slideIndex]);
 
+  // Values are stored exactly as typed or pasted — no formatting on input,
+  // so a pasted credential is never altered mid-entry and the caret never
+  // jumps.
   const handleChange = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const handleSubmit = async (e) => {
@@ -85,7 +88,14 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const session = await login(form);
+      // Identifiers are trimmed at submit: a pasted "  treasurer@church.org "
+      // otherwise fails with "invalid credentials" for no visible reason.
+      // The password is sent byte-for-byte — spaces can be part of it.
+      const session = await login({
+        tenantSlug: form.tenantSlug.trim(),
+        email: form.email.trim(),
+        password: form.password,
+      });
       // A platform admin's landing page is always /platform, regardless
       // of what page originally redirected them to /login — they may not
       // hold any tenant-scoped permission at all (permissionCatalog.js:
@@ -189,25 +199,47 @@ export default function LoginPage() {
         <div className="auth-card__brand">{t('auth.login.welcome')}</div>
         <div className="auth-card__subtitle">{t('auth.login.subtitle')}</div>
         {error && <div className="alert alert--error">{error}</div>}
-        <form onSubmit={handleSubmit}>
+        {/* method="post" + named fields: password managers recognise this as
+            a sign-in form and offer to fill and save it. Submission is still
+            handled entirely by handleSubmit. */}
+        <form onSubmit={handleSubmit} method="post">
           <div className="field">
             <label htmlFor="tenantSlug">{t('auth.login.tenantSlug')}</label>
             <input
               id="tenantSlug"
+              name="tenantSlug"
+              type="text"
               value={form.tenantSlug}
               onChange={handleChange('tenantSlug')}
+              placeholder={t('auth.login.tenantSlugPlaceholder')}
+              aria-describedby="tenantSlug-hint"
               autoComplete="organization"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
             />
+            <span id="tenantSlug-hint" className="field-hint">
+              {t('auth.login.tenantSlugHint')}
+            </span>
           </div>
           <div className="field">
             <label htmlFor="email">{t('auth.login.email')}</label>
+            {/* autocomplete="username": the login identifier, so a password
+                manager pairs it with the password below. type="email" keeps
+                the email keyboard on phones. */}
             <input
               id="email"
+              name="email"
               type="email"
+              inputMode="email"
               value={form.email}
               onChange={handleChange('email')}
-              autoComplete="email"
+              placeholder={t('auth.login.emailPlaceholder')}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
             />
           </div>
@@ -219,10 +251,15 @@ export default function LoginPage() {
             <div className="field__control">
               <input
                 id="password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 value={form.password}
                 onChange={handleChange('password')}
+                placeholder={t('auth.login.passwordPlaceholder')}
                 autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
               />
               <button
@@ -231,7 +268,7 @@ export default function LoginPage() {
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')}
                 aria-pressed={showPassword}
-                tabIndex={-1}
+                aria-controls="password"
               >
                 {showPassword ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
               </button>

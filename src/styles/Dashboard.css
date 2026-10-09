@@ -1,10 +1,11 @@
 /* ==========================================================================
-   DASHBOARD — the treasurer's overview. Only rules used by DashboardPage and
-   components/dashboard/TreasuryInsights.jsx live here.
+   DASHBOARD — the treasurer's overview. Only rules used by DashboardPage,
+   components/dashboard/TreasuryInsights.jsx and DashboardCharts.jsx live here.
 
-   White on white: sections are separated by hairlines and whitespace, never
-   by shadows or tinted panels. Emerald marks headings and the one emphasised
-   balance; crimson and green mark money out and in.
+   Borderless: every section is a card surface on the tinted canvas,
+   separated by elevation (--shadow-card) and spacing. Emerald marks headings
+   and the one emphasised balance; green and crimson mark money in and out in
+   text, the validated chart palette (--chart-*) marks it in charts.
    ========================================================================== */
 
 /* ---------- Page header ---------- */
@@ -14,9 +15,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 14px 24px;
-  padding-bottom: 18px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 22px;
 }
 
 .dash-header__text {
@@ -28,7 +27,7 @@
   font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--color-primary);
+  color: var(--text-heading);
   overflow-wrap: anywhere;
 }
 
@@ -46,25 +45,26 @@
 .balance-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .balance-tile {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  padding: 22px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
-/* The net treasury balance: the one solid emerald surface on the page. */
+/* The net treasury balance: the one solid emerald surface on the page.
+   Every piece of text inside takes --text-on-primary (gold for the label). */
 .balance-tile--emphasis {
   background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--text);
+  color: var(--text-on-primary);
+  box-shadow: var(--shadow-md);
 }
 
 .balance-tile__label {
@@ -93,20 +93,11 @@
   overflow-wrap: anywhere;
 }
 
-.balance-tile--emphasis .balance-tile__value {
-  color: var(--text);
-}
-
 .balance-tile__currency {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--text-muted);
-}
-
-.balance-tile--emphasis .balance-tile__currency,
-.balance-tile--emphasis .balance-tile__caption {
-  color: var(--text);
 }
 
 .balance-tile__caption {
@@ -115,15 +106,24 @@
   color: var(--text-muted);
 }
 
+.balance-tile--emphasis .balance-tile__value,
+.balance-tile--emphasis .balance-tile__currency,
+.balance-tile--emphasis .balance-tile__caption,
+.balance-tile--emphasis .balance-tile__line dt,
+.balance-tile--emphasis .balance-tile__line dd {
+  color: var(--text-on-primary);
+}
+
+/* Supporting lines sit in a recessed band rather than under a rule. */
 .balance-tile__lines {
-  margin: 16px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  margin: 18px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
 }
 
 .balance-tile--emphasis .balance-tile__lines {
-  /* The rule stays translucent — it is a divider, not text. */
-  border-top-color: rgba(255, 255, 255, 0.28);
+  background: color-mix(in srgb, var(--color-on-primary) 10%, transparent);
 }
 
 .balance-tile__line {
@@ -139,10 +139,6 @@
   color: var(--text-muted);
 }
 
-.balance-tile--emphasis .balance-tile__line dt {
-  color: var(--text);
-}
-
 .balance-tile__line dd {
   margin: 0;
   font-weight: 800;
@@ -150,40 +146,52 @@
 }
 
 .balance-tile__line dd.is-in {
-  color: var(--color-success);
+  color: var(--text-success);
 }
 
 .balance-tile__line dd.is-out {
-  color: var(--color-danger);
+  color: var(--text-danger);
 }
 
-.balance-tile--emphasis .balance-tile__line dd {
-  color: var(--text);
+/* On the emerald tile the in/out figures stay on-primary ink: green or
+   crimson text on emerald is illegible. The row labels carry the meaning.
+   (Needs the extra class to outrank the .is-in/.is-out rules above.) */
+.balance-tile--emphasis .balance-tile__line dd.is-in,
+.balance-tile--emphasis .balance-tile__line dd.is-out {
+  color: var(--text-on-primary);
 }
 
 /* ---------- Sections ---------- */
 .dash-columns {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
-  gap: 14px;
+  gap: 16px;
   align-items: start;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .dash-section {
   min-width: 0;
-  padding: 18px 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  padding: 20px 22px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .dash-section + .dash-section {
-  margin-top: 14px;
+  margin-top: 16px;
 }
 
-.dash-columns > .dash-section + .dash-section {
+.dash-columns > .dash-section + .dash-section,
+.dash-charts > .dash-section + .dash-section {
   margin-top: 0;
+}
+
+@media (max-width: 480px) {
+  .dash-section,
+  .balance-tile {
+    padding: 16px;
+  }
 }
 
 .dash-section__head {
@@ -202,6 +210,11 @@
   margin: 0;
   font-size: 15px;
   font-weight: 800;
+  color: var(--text-heading);
+}
+
+.dash-section__title svg {
+  flex-shrink: 0;
   color: var(--color-primary);
 }
 
@@ -218,9 +231,7 @@
 }
 
 .dash-section__note {
-  margin: 14px 0 0;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+  margin: 16px 0 0;
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--text-muted);
@@ -231,13 +242,15 @@
   display: block;
   width: 100%;
   height: 6px;
-  background: var(--color-gray-light);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
   overflow: hidden;
 }
 
 .fin-bar__fill {
   display: block;
   height: 100%;
+  border-radius: var(--radius-lg);
   background: var(--color-primary);
   transition: width var(--motion-slow) var(--ease-premium);
 }
@@ -257,11 +270,11 @@
 }
 
 /* ---------- Department sub-accounts ---------- */
+/* Tinted tiles separated by a gap, instead of a ruled grid. */
 .subaccount-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  border-top: 1px solid var(--border);
-  border-left: 1px solid var(--border);
+  gap: 8px;
 }
 
 .subaccount {
@@ -270,8 +283,12 @@
   gap: 6px;
   min-width: 0;
   padding: 12px 14px;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.subaccount .fin-bar {
+  background: var(--surface);
 }
 
 .subaccount__name {
@@ -295,6 +312,9 @@
 
 /* ---------- Makato widget ---------- */
 .makato-widget__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
 }
 
@@ -303,18 +323,13 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 6px 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.makato-widget__row:last-child {
-  border-bottom: none;
+  padding: 8px 0;
 }
 
 .makato-widget__row dt {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .makato-widget__row dd {
@@ -330,11 +345,11 @@
 }
 
 .makato-widget__row.is-out dd {
-  color: var(--color-danger);
+  color: var(--text-danger);
 }
 
 .makato-widget__row.is-in dd {
-  color: var(--color-success);
+  color: var(--text-success);
 }
 
 /* ---------- Recent activity ---------- */
@@ -354,15 +369,17 @@
   padding: 11px 0;
 }
 
-/* A 1px axis through the node column, trimmed at the first and last item. */
+/* A quiet axis through the node column — it carries sequence (one entry
+   after the next), trimmed at the first and last item. */
 .activity-timeline__item::before {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
   left: calc(var(--node-size) / 2);
-  width: 1px;
-  background: var(--border);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--divider);
 }
 
 .activity-timeline__item:first-child::before {
@@ -377,24 +394,26 @@
   display: none;
 }
 
+/* Tinted node in the direction's colour, instead of an outlined box. */
 .activity-timeline__node {
   position: relative;
   display: grid;
   place-items: center;
   width: var(--node-size);
   height: var(--node-size);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border-radius: var(--radius-lg);
+  background: var(--bg-muted);
   font-size: 14px;
 }
 
 .activity-timeline__item.is-in .activity-timeline__node {
-  color: var(--color-success);
+  background: var(--color-success-bg);
+  color: var(--text-success);
 }
 
 .activity-timeline__item.is-out .activity-timeline__node {
-  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  color: var(--text-danger);
 }
 
 .activity-timeline__title {
@@ -417,11 +436,11 @@
 }
 
 .activity-timeline__item.is-in .activity-timeline__amount {
-  color: var(--color-success);
+  color: var(--text-success);
 }
 
 .activity-timeline__item.is-out .activity-timeline__amount {
-  color: var(--color-danger);
+  color: var(--text-danger);
 }
 
 /* Phones: the amount drops under the entry instead of squeezing it. */
@@ -445,6 +464,9 @@
 
 /* ---------- Income vs expenses comparison ---------- */
 .compare-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
 }
 
@@ -453,17 +475,13 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 4px 12px;
-  padding: 10px 0;
-}
-
-.compare-row + .compare-row {
-  border-top: 1px solid var(--border);
+  padding: 8px 0;
 }
 
 .compare-row dt {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -476,11 +494,11 @@
 }
 
 .compare-row dd.is-in {
-  color: var(--color-success);
+  color: var(--text-success);
 }
 
 .compare-row dd.is-out {
-  color: var(--color-danger);
+  color: var(--text-danger);
 }
 
 .compare-row .fin-bar {
@@ -497,12 +515,12 @@
   padding: 12px 14px;
   border-radius: var(--radius-sm);
   background: var(--color-success-bg);
-  color: var(--color-success);
+  color: var(--text-success);
 }
 
 .compare-result.is-deficit {
   background: var(--color-danger-bg);
-  color: var(--color-danger);
+  color: var(--text-danger);
 }
 
 .compare-result__label {
@@ -558,9 +576,8 @@
 
 .variance-row__kind {
   padding: 1px 6px;
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--color-gray-light);
+  background: var(--bg-muted);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
@@ -570,9 +587,8 @@
 }
 
 .variance-row__kind.is-income {
-  border-color: rgba(var(--color-accent-rgb), 0.35);
   background: var(--color-success-bg);
-  color: var(--color-success);
+  color: var(--text-success);
 }
 
 .variance-row__figures {
@@ -592,6 +608,392 @@
 }
 
 .variance-row__note.is-over {
-  color: var(--color-danger);
+  color: var(--text-danger);
   font-weight: 700;
+}
+
+/* ==========================================================================
+   CHARTS — DashboardCharts.jsx
+   Marks wear --chart-* tokens; every piece of text (axes, legend, tooltip)
+   wears text tokens, never a series colour, so labels stay readable on
+   every theme.
+   ========================================================================== */
+
+.chart-card--wide {
+  margin-bottom: 16px;
+}
+
+/* Activity dots get the wider column; the donut needs less. Single column
+   below 1024px, where the donut would otherwise be squeezed. */
+.dash-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 1024px) {
+  .dash-charts {
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  }
+}
+
+.dash-charts > * {
+  min-width: 0;
+}
+
+/* Held at reduced opacity while a range change refetches — no skeleton
+   flash, no layout jump. */
+.chart-card.is-refreshing .chart-frame,
+.chart-card.is-refreshing .donut {
+  opacity: 0.55;
+  transition: opacity var(--motion-base) var(--ease-premium);
+}
+
+/* The measured box the SVG is drawn into. Positioned so the tooltip can be
+   placed inside it; never wider than its card. */
+.chart-frame {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.chart-svg {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.chart-svg:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+  border-radius: var(--radius-sm);
+}
+
+/* Recessive chrome: hairline, solid, one step off the surface. */
+.chart-grid {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.chart-axis {
+  fill: var(--chart-text);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-band {
+  fill: var(--surface-sunken);
+}
+
+.chart-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+/* 2px surface ring keeps overlapping dots legible. */
+.chart-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+  opacity: 0.9;
+  transition: opacity var(--motion-fast) var(--ease-premium);
+}
+
+.chart-dot.is-active {
+  opacity: 1;
+}
+
+/* ---------- Legend ---------- */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: -4px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.chart-legend__value {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+/* Identity key: the colour lives here, beside the text, never on it. */
+.chart-key {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--key-color);
+}
+
+.chart-key--circle {
+  border-radius: 50%;
+}
+
+/* ---------- Tooltip ---------- */
+.chart-tooltip {
+  position: absolute;
+  z-index: 5;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-xl);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.chart-tooltip__title {
+  font-weight: 800;
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.chart-tooltip__meta {
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.chart-tooltip__row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--text-secondary);
+}
+
+.chart-tooltip__row strong {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.chart-tooltip__row--total {
+  padding-top: 6px;
+  margin-top: 8px;
+  box-shadow: inset 0 1px 0 var(--divider);
+}
+
+.chart-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- Table twin ---------- */
+.chart-table {
+  margin-top: 12px;
+}
+
+.chart-table > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-primary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.chart-table > summary::-webkit-details-marker {
+  display: none;
+}
+
+.chart-table > summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--motion-fast) var(--ease-premium);
+}
+
+.chart-table[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.chart-table > summary:hover {
+  background: var(--color-lavender-soft);
+}
+
+.chart-table > summary:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent-strong);
+}
+
+.chart-table .table-wrap {
+  margin-top: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* ---------- Loading / error states ---------- */
+.chart-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 220px;
+  text-align: center;
+}
+
+.chart-state__skeleton {
+  width: 100%;
+  height: 220px;
+}
+
+.chart-state__icon {
+  font-size: 22px;
+  color: var(--text-danger);
+}
+
+.chart-state__text {
+  max-width: 320px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+/* ---------- Donut ---------- */
+.donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 20px 28px;
+}
+
+.donut__figure {
+  position: relative;
+  flex-shrink: 0;
+  width: 200px;
+  max-width: 100%;
+}
+
+.donut__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.donut__arc {
+  transition: opacity var(--motion-fast) var(--ease-premium);
+}
+
+.donut__arc.is-dimmed {
+  opacity: 0.35;
+}
+
+.donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 44px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut__center-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.donut__center-value {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-heading);
+  white-space: nowrap;
+}
+
+.donut__center-share {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.donut__legend {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.donut__legend-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'key label share'
+    '. value value';
+  align-items: center;
+  gap: 2px 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--motion-fast) var(--ease-premium);
+}
+
+.donut__legend-item.is-active {
+  background: var(--surface-sunken);
+}
+
+.donut__legend-item .chart-key {
+  grid-area: key;
+}
+
+.donut__legend-label {
+  grid-area: label;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.donut__legend-share {
+  grid-area: share;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--text-secondary);
+}
+
+.donut__legend-value {
+  grid-area: value;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }

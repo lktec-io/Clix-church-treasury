@@ -2,45 +2,70 @@
    COLORS — semantic alias layer.
 
    themes.css defines the AUTHORITATIVE palette tokens (--color-primary,
-   --color-accent, --color-background, --color-text-primary, etc.). This
-   file defines nothing new on its own; it only maps the semantic names
-   every component file actually uses (--text, --bg, --surface,
-   --border...) onto those authoritative tokens, and derives the handful of
-   tint/shade variants the design needs (soft/light backgrounds, a stronger
-   border) via color-mix() so they stay in step with the palette
-   automatically instead of being hand-picked. Component CSS never
-   references a raw hex value — everything traces back to themes.css.
+   --color-background, --color-text-primary, --color-on-primary, etc.). This
+   file defines nothing new on its own; it maps the semantic names every
+   component file uses onto those tokens, and derives the handful of tint
+   variants the design needs via color-mix() so they stay in step with the
+   palette automatically. Component CSS never references a raw colour value —
+   everything traces back to themes.css, so a theme switch reaches every
+   element.
+
+   PICKING A TEXT TOKEN
+     on the page / a card / a panel   --text-primary, --text-secondary, --text-muted
+     on a SOLID brand or status fill  --text-on-primary / -on-accent / -on-danger / -on-gold
+     on a photograph                  --text-on-image
+   Never put --text / --text-primary on a solid fill: it is near-black in the
+   light theme.
    ========================================================================== */
 
 :root {
   /* Text */
   --text-heading: var(--color-text-primary);
   --text: var(--color-text-primary);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
   --text-muted: var(--color-text-secondary);
+  --text-inverse: var(--color-background);
+  --text-on-primary: var(--color-on-primary);
+  --text-on-accent: var(--color-on-accent);
+  --text-on-danger: var(--color-on-danger);
+  --text-on-gold: var(--color-on-gold);
+  --text-on-image: var(--color-on-image);
+  --text-success: var(--color-success);
+  --text-warning: var(--color-warning);
+  --text-danger: var(--color-danger);
+  --icon: var(--color-text-secondary);
 
   /* Surfaces */
   --bg: var(--color-background);
+  --page-bg: var(--color-background);
   --bg-muted: var(--color-gray-light);
   --surface: var(--color-card-bg);
-  --surface-raised: var(--color-card-glass-bg);
+  --surface-elevated: var(--color-surface-elevated);
+  /* A recessed bed inside a card: table header band, tinted rows, tracks. */
+  --surface-sunken: var(--color-gray-light);
 
-  /* Borders — --border-strong is derived, not a second palette token:
-     mixing in 40% of the primary text color gives a visibly stronger line
-     than --border without needing a separately maintained value. */
-  --border: var(--color-border);
-  --border-strong: color-mix(in srgb, var(--color-border) 60%, var(--color-text-primary) 40%);
+  /* The one line kept in the borderless design: the quiet row rule inside
+     tables and lists. (Inputs use --input-border below.) */
+  --divider: var(--color-divider);
 
-  /* Tint chips (icon backgrounds, focus rings, badge fills) — derived from
-     the brand colors against the palette's own background, so a "soft
-     primary" chip stays readable if the palette is ever retuned. */
-  --color-primary-soft: color-mix(in srgb, var(--color-primary) 12%, var(--color-background) 88%);
-  --color-accent-light: color-mix(in srgb, var(--color-accent) 18%, var(--color-background) 82%);
+  /* Form controls */
+  --input-bg: var(--color-input-bg);
+  --input-text: var(--color-text-primary);
+  --input-border: var(--color-input-border);
+  --placeholder: var(--color-placeholder);
 
-  /* Hover/pressed variants for the two brand colors — themes.css supplies
-     these directly (they are NOT derived: hover states are deliberately
-     hand-tuned rather than a mechanical darkening). */
-  --color-primary-dark: var(--color-primary-hover);
+  /* Sidebar */
+  --sidebar-text: var(--color-text-on-sidebar);
+
+  /* Accent badge fill, derived against the card surface so it stays in step
+     if the palette is retuned. */
+  --color-accent-light: color-mix(in srgb, var(--color-accent) 18%, var(--color-card-bg) 82%);
+
+  /* Accent text on a light tint — themes.css supplies the hand-tuned hover
+     step, which is also the darker, text-safe one. */
   --color-accent-dark: var(--color-accent-hover);
 
-  --shadow: var(--shadow-sm);
+  /* Card elevation: the one shadow every content surface uses. */
+  --shadow-card: var(--shadow-sm);
 }

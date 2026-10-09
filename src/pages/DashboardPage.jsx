@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiCalendar } from 'react-icons/fi';
+import { FiActivity, FiBarChart2, FiCalendar, FiPieChart } from 'react-icons/fi';
 import { reportsApi, financialPeriodsApi } from '../api/endpoints.js';
 import { unwrapApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -18,6 +18,8 @@ import {
   NetComparison,
   VarianceTracker,
 } from '../components/dashboard/TreasuryInsights.jsx';
+import { ActivityDots, ChartCard, CollectionsDonut, TrendBars } from '../components/dashboard/DashboardCharts.jsx';
+import { activityPoints, collectionsAreEmpty, trendIsEmpty } from '../components/dashboard/chartData.js';
 import { sumMoneyStrings } from '../utils/format.js';
 
 // Every figure here is read from the existing report services — nothing on
@@ -46,6 +48,10 @@ function computeRange(kind) {
   return { dateFrom: isoDate(new Date(now.getFullYear(), now.getMonth(), 1)), dateTo };
 }
 
+// A chart's request state. `data` survives a refetch so a range change does
+// not flash the chart back to a skeleton.
+const IDLE = { status: 'loading', data: null };
+
 export default function DashboardPage() {
   const { session, hasPermission } = useAuth();
   const { t } = useLocale();
@@ -55,21 +61,51 @@ export default function DashboardPage() {
   const [incomeTotal, setIncomeTotal] = useState(null);
   const [expenseTotal, setExpenseTotal] = useState(null);
   // Zaka/Sadaka split, department collections and Makato for the range.
-  const [insights, setInsights] = useState(null);
+  const [insights, setInsights] = useState(IDLE);
   const [recentTransactions, setRecentTransactions] = useState([]);
   // Budget lines of the open period, for the variance tracker.
   const [budgetRows, setBudgetRows] = useState([]);
+  // Chart sources: the 12-month trend (independent of the range selector)
+  // and the posted journal for the selected range (dot graph).
+  const [trends, setTrends] = useState(IDLE);
+  const [activity, setActivity] = useState(IDLE);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const { dateFrom, dateTo } = useMemo(() => computeRange(range), [range]);
+
+  const loadInsights = useCallback(() => {
+    setInsights((s) => ({ ...s, status: 'loading' }));
+    return reportsApi
+      .run('dashboardInsights', { dateFrom, dateTo })
+      .then((data) => setInsights({ status: 'ready', data }))
+      .catch(() => setInsights({ status: 'error', data: null }));
+  }, [dateFrom, dateTo]);
+
+  const loadActivity = useCallback(() => {
+    setActivity((s) => ({ ...s, status: 'loading' }));
+    // status=posted: only money that actually moved — the same population the
+    // income/expense totals above are drawn from.
+    return reportsApi
+      .run('transactionJournal', { dateFrom, dateTo, status: 'posted' })
+      .then((data) => setActivity({ status: 'ready', data }))
+      .catch(() => setActivity({ status: 'error', data: null }));
+  }, [dateFrom, dateTo]);
+
+  const loadTrends = useCallback(() => {
+    setTrends((s) => ({ ...s, status: 'loading' }));
+    return reportsApi
+      .run('monthlyTrends', { months: 12 })
+      .then((data) => setTrends({ status: 'ready', data }))
+      .catch(() => setTrends({ status: 'error', data: null }));
+  }, []);
 
   const loadRangeScoped = useCallback(async () => {
     const requests = [];
     if (hasPermission('income.view')) {
       requests.push(
         reportsApi.run('income', { dateFrom, dateTo }).then((data) => setIncomeTotal(data.totals.amount)).catch(() => setIncomeTotal(null)),
-        reportsApi.run('dashboardInsights', { dateFrom, dateTo }).then(setInsights).catch(() => setInsights(null))
+        loadInsights()
       );
     }
     if (hasPermission('expense.view')) {
@@ -77,8 +113,11 @@ export default function DashboardPage() {
         reportsApi.run('expense', { dateFrom, dateTo }).then((data) => setExpenseTotal(data.totals.amount)).catch(() => setExpenseTotal(null))
       );
     }
+    if (hasPermission('reports.view')) {
+      requests.push(loadActivity());
+    }
     await Promise.all(requests);
-  }, [hasPermission, dateFrom, dateTo]);
+  }, [hasPermission, dateFrom, dateTo, loadInsights, loadActivity]);
 
   const loadStatic = useCallback(async () => {
     setLoading(true);
@@ -96,7 +135,8 @@ export default function DashboardPage() {
       const requests = [];
       if (hasPermission('reports.view')) {
         requests.push(
-          reportsApi.run('transactionJournal', {}).then((data) => setRecentTransactions(data.rows.slice(0, 8))).catch(() => setRecentTransactions([]))
+          reportsApi.run('transactionJournal', {}).then((data) => setRecentTransactions(data.rows.slice(0, 8))).catch(() => setRecentTransactions([])),
+          loadTrends()
         );
         if (current) {
           requests.push(
@@ -118,7 +158,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [hasPermission]);
+  }, [hasPermission, loadTrends]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -127,11 +167,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (openPeriod === undefined) return;
+    // Same fetch-on-change pattern as loadStatic above: the loaders mark
+    // their chart as refreshing before the request goes out.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRangeScoped();
   }, [openPeriod, loadRangeScoped]);
 
   const firstName = session?.user?.full_name?.split(' ')[0];
-  const collections = insights?.collections;
+  const insightsData = insights.data;
+  const collections = insightsData?.collections;
   // Display aggregation only (utils/format.js#sumMoneyStrings works in
   // integer cents): income less expenses over the selected range.
   const netForRange =
@@ -139,6 +183,15 @@ export default function DashboardPage() {
   const fundNameById = new Map((summary?.fundSummaries ?? []).map((fund) => [fund.fundId, fund.name]));
   // Display aggregation only (integer cents in sumMoneyStrings).
   const tithesAndOfferings = collections ? sumMoneyStrings([collections.tithe, collections.offering]) : null;
+  const periodLabel = t(`dashboard.period.${range}`);
+
+  // Chart states. 'ready' only once data has arrived; 'empty' only when the
+  // server answered and there is genuinely nothing to draw.
+  const trendSeries = trends.data?.series ?? [];
+  const trendStatus = trends.data ? (trendIsEmpty(trendSeries) ? 'empty' : 'ready') : trends.status;
+  const points = activity.data ? activityPoints(activity.data.rows ?? []) : [];
+  const activityStatus = activity.data ? (points.length === 0 ? 'empty' : 'ready') : activity.status;
+  const collectionsStatus = insightsData ? (collectionsAreEmpty(collections) ? 'empty' : 'ready') : insights.status;
 
   const periodSelect = (
     <div className="period-select">
@@ -163,7 +216,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div>
+    <div className="page dashboard">
       <header className="dash-header">
         <div className="dash-header__text">
           <h1 className="dash-header__title">
@@ -198,7 +251,7 @@ export default function DashboardPage() {
               <BalanceTile
                 label={t('dashboard.tiles.tithesOfferings')}
                 value={tithesAndOfferings}
-                caption={t(`dashboard.period.${range}`)}
+                caption={periodLabel}
                 lines={
                   collections
                     ? [
@@ -223,22 +276,68 @@ export default function DashboardPage() {
             </PermissionGate>
           </div>
 
+          {/* Trend first and full width: twelve months need the room. */}
+          <PermissionGate permission="reports.view">
+            <ChartCard
+              className="chart-card--wide"
+              icon={FiBarChart2}
+              title={t('charts.trend.title')}
+              hint={t('charts.trend.hint')}
+              status={trendStatus}
+              refreshing={trends.status === 'loading' && Boolean(trends.data)}
+              emptyMessage={t('charts.trend.empty')}
+              onRetry={loadTrends}
+            >
+              <TrendBars series={trendSeries} />
+            </ChartCard>
+          </PermissionGate>
+
+          <div className="dash-charts">
+            <PermissionGate permission="reports.view">
+              <ChartCard
+                icon={FiActivity}
+                title={t('charts.activity.title')}
+                hint={t('charts.activity.hint', { period: periodLabel })}
+                status={activityStatus}
+                refreshing={activity.status === 'loading' && Boolean(activity.data)}
+                emptyMessage={t('charts.activity.empty')}
+                onRetry={loadActivity}
+              >
+                <ActivityDots
+                  points={points}
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  truncated={activity.data?.truncated}
+                  rowLimit={activity.data?.rowLimit}
+                />
+              </ChartCard>
+            </PermissionGate>
+            <PermissionGate permission="income.view">
+              <ChartCard
+                icon={FiPieChart}
+                title={t('charts.collections.title')}
+                hint={periodLabel}
+                status={collectionsStatus}
+                refreshing={insights.status === 'loading' && Boolean(insights.data)}
+                emptyMessage={t('charts.collections.empty')}
+                onRetry={loadInsights}
+              >
+                <CollectionsDonut collections={collections} />
+              </ChartCard>
+            </PermissionGate>
+          </div>
+
           <div className="dash-columns">
-            <NetComparison
-              income={incomeTotal}
-              expenses={expenseTotal}
-              net={netForRange}
-              periodLabel={t(`dashboard.period.${range}`)}
-            />
+            <NetComparison income={incomeTotal} expenses={expenseTotal} net={netForRange} periodLabel={periodLabel} />
             <PermissionGate permission="budget.view">
               <VarianceTracker rows={budgetRows} fundNameById={fundNameById} />
             </PermissionGate>
           </div>
 
-          {insights && (
+          {insightsData && (
             <div className="dash-columns">
-              <DepartmentAccounts departments={insights.departments} />
-              <MakatoWidget makato={insights.makato} />
+              <DepartmentAccounts departments={insightsData.departments} />
+              <MakatoWidget makato={insightsData.makato} />
             </div>
           )}
 
