@@ -2,12 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
-// The product typeface is Cipher (@font-face in styles/typography.css).
-// Nunito is bundled as its fallback face — self-hosted, SIL Open Font
-// License, no runtime dependency on a font CDN — so every weight in the
-// --font-weight-* scale has a real face even before/without Cipher.
-// variables.css sets `font-synthesis: none`, so a weight with no face would
-// otherwise silently render at the nearest available one.
+// Nunito, the --font-primary UI face — self-hosted (SIL Open Font License,
+// no runtime dependency on a font CDN), in every weight of the
+// --font-weight-* scale. variables.css sets `font-synthesis: none`, so a
+// weight with no loaded face would silently render at the nearest one.
+// (JetBrains Mono, --font-mono, is imported in index.css.)
 import '@fontsource/nunito/400.css'
 import '@fontsource/nunito/500.css'
 import '@fontsource/nunito/600.css'

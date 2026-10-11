@@ -94,24 +94,12 @@ table.data-table {
   padding: 9px 14px;
 }
 
+/* Font, tabular figures and right alignment for .is-amount / .is-numeric
+   come from typography.css (FINANCIAL DATA). This adds emphasis only;
+   .is-numeric is the un-emphasised sibling (trial-balance columns). */
 .data-table .is-amount {
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-  letter-spacing: -0.01em;
-  text-align: right;
   color: var(--text-heading);
-}
-
-/* Alignment-only sibling of .is-amount, for figures that must line up on the
-   decimal WITHOUT being emphasised (trial-balance columns). Applies to th as
-   well as td so a numeric column's header aligns with its figures. */
-.data-table th.is-numeric,
-.data-table td.is-numeric {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-  white-space: nowrap;
 }
 
 .data-table th.is-amount {
@@ -145,13 +133,6 @@ table.data-table {
 .cell-stack__secondary {
   font-size: 12px;
   color: var(--text-muted);
-}
-
-/* Reference / voucher numbers: Nunito with tabular figures, slightly
-   tracked so a run of digits is easy to read back. */
-.is-ref {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
 }
 
 .cell-strong {

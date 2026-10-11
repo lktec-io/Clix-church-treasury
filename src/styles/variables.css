@@ -83,13 +83,16 @@ a,
   --sidebar-width: 240px;
   --sidebar-width-collapsed: 76px;
 
-  /* THE ONE FONT STACK. Cipher is the product typeface (its @font-face lives
-     in typography.css and loads from /public/fonts/cipher/). Nunito —
-     self-hosted via @fontsource/nunito in main.jsx — is the metric fallback
-     that renders while Cipher loads, or if a weight is missing, so text is
-     never invisible and the layout never collapses to a system serif.
-     Weights used everywhere: 400/500/600/700/800. */
-  --font-primary: 'Cipher', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  /* THE TWO FONT STACKS (applied in typography.css, nowhere else).
+     --font-primary  Nunito — all UI: body, headings, forms, buttons, nav.
+                     Self-hosted via @fontsource/nunito (main.jsx).
+     --font-mono     JetBrains Mono — financial data: table cells, amounts,
+                     balances, transaction logs, totals. Self-hosted via
+                     @fontsource/jetbrains-mono (index.css).
+     Both are bundled with the app (no font CDN at runtime) in weights
+     400/500/600/700/800; the names after them are fallbacks only. */
+  --font-primary: 'Nunito', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', 'Source Code Pro', monospace;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;

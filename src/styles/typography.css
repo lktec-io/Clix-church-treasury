@@ -1,61 +1,17 @@
 /* ==========================================================================
-   TYPOGRAPHY — Cipher, globally, everywhere. No page or shared component
-   may reference another font-family; every element that renders text
-   inherits --font-primary from here (variables.css).
+   TYPOGRAPHY — the whole font hierarchy, in one file.
 
-   CIPHER FACES. One @font-face per weight the design system uses
-   (--font-weight-regular … --font-weight-heavy). Each face tries a locally
-   installed Cipher first, then the self-hosted file in /public/fonts/cipher/.
-   If a face cannot be resolved the browser moves to the next family in
-   --font-primary (Nunito, bundled) for that weight only, so a missing file
-   degrades to a clean sans rather than invisible or synthesised text.
-   font-display: swap keeps text visible while Cipher downloads.
+     --font-primary  (Nunito)          every piece of UI text
+     --font-mono     (JetBrains Mono)  financial data — see the FINANCIAL
+                                       DATA section at the end of this file
+
+   No page or component stylesheet declares a font-family of its own; they
+   inherit from here. Both stacks live in variables.css.
    ========================================================================== */
 
-@font-face {
-  font-family: 'Cipher';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local('Cipher'), local('Cipher Regular'), local('Cipher-Regular'),
-    url('/fonts/cipher/Cipher-Regular.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Cipher';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: local('Cipher Medium'), local('Cipher-Medium'), url('/fonts/cipher/Cipher-Medium.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Cipher';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: local('Cipher SemiBold'), local('Cipher-SemiBold'), url('/fonts/cipher/Cipher-SemiBold.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Cipher';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: local('Cipher Bold'), local('Cipher-Bold'), url('/fonts/cipher/Cipher-Bold.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Cipher';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: local('Cipher ExtraBold'), local('Cipher-ExtraBold'), url('/fonts/cipher/Cipher-ExtraBold.woff2') format('woff2');
-}
-
-/* Form controls and tables do not inherit font-family from body in every
-   browser; SVG chart text and native option lists neither. Listed here once
-   so no surface can fall back to the UA default. */
+/* Form controls, table headers and SVG text do not reliably inherit
+   font-family from body, so the UI face is set on them explicitly. (Table
+   DATA cells take the mono face below.) */
 html,
 body,
 button,
@@ -66,7 +22,6 @@ optgroup,
 option,
 table,
 th,
-td,
 svg text {
   font-family: var(--font-primary);
 }
@@ -75,9 +30,14 @@ body {
   font: var(--font-weight-regular) 15px/1.6 var(--font-primary);
   color: var(--text-primary);
   background: var(--page-bg);
+  /* Smooth rendering: kerning and ligatures on, grayscale antialiasing on
+     macOS (sub-pixel AA makes light text on dark look bolder). */
   text-rendering: optimizeLegibility;
+  font-kerning: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   /* Theme switches update these two properties; a short transition keeps
      the swap from feeling like a hard flash-cut (respects
      prefers-reduced-motion via animations.css's global override). */
@@ -130,10 +90,76 @@ textarea {
   opacity: 1;
 }
 
-/* Financial figures always read as tabular numerals so amounts in a column
-   align digit-for-digit. */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
+/* ==========================================================================
+   FINANCIAL DATA — JetBrains Mono + tabular figures.
+
+   Every number a treasurer reads, compares or reconciles: table data cells,
+   currency amounts, account balances, transaction logs and totals. A
+   monospaced face with tabular (equal-width) figures means a column of
+   amounts lines up digit-for-digit on the decimal point, and a figure that
+   updates (a range change, a live total) never shifts its neighbours.
+
+   This is the single list. A component that shows money uses one of these
+   classes (or the generic .tabular-nums / .is-amount / .is-numeric) instead
+   of setting a font itself.
+   ========================================================================== */
+td,
+.tabular-nums,
+.is-amount,
+.is-numeric,
+.is-ref,
+/* Account balances and headline figures */
+.balance-tile__value,
+.balance-tile__line dd,
+.stat-tile__value,
+.hero-card__value,
+.hero-card__breakdown-value,
+.subaccount__value,
+/* Transaction logs */
+.activity-timeline__meta,
+.activity-timeline__amount,
+.timeline-item__meta,
+.timeline-item__amount,
+.ledger-stamp__date,
+.ledger-stamp__time,
+/* Totals and comparisons */
+.compare-row dd,
+.compare-result__value,
+.makato-widget__row dd,
+.variance-row__figures,
+.entry-total__value,
+.breakdown-total,
+.approval-card__amount,
+.wizard-review__amount-value,
+.remit-drawer__rows dd,
+.modal__blocker-count,
+/* Amount entry */
+.field--amount input,
+.breakdown-row__amount,
+/* Charts */
+.chart-axis,
+.chart-legend__value,
+.chart-tooltip__row strong,
+.donut__center-value,
+.donut__legend-value,
+.donut__legend-share {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  /* JetBrains Mono's coding ligatures (=>, --, etc.) have no place in a
+     ledger: "--" in a reference number must stay two hyphens. */
+  font-variant-ligatures: none;
+  letter-spacing: 0;
+}
+
+/* Numerical table columns: right-aligned so the figures stack on the
+   decimal point; a column header aligns with its own figures. */
+.data-table th.is-numeric,
+.data-table td.is-numeric,
+.data-table th.is-amount,
+.data-table td.is-amount {
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* The "small metadata" tier of the type hierarchy (helper notes under a

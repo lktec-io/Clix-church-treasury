@@ -7,6 +7,14 @@
    replaced) has been removed; nothing imports it anymore.
    ========================================================================== */
 
+/* JetBrains Mono, self-hosted — the --font-mono face for financial data.
+   (Nunito, --font-primary, is imported in main.jsx.) */
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/600.css';
+@import '@fontsource/jetbrains-mono/700.css';
+@import '@fontsource/jetbrains-mono/800.css';
+
 @import './styles/variables.css';
 @import './styles/colors.css';
 @import './styles/themes.css';
